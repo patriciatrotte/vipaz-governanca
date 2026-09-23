@@ -221,48 +221,8 @@ export const StageWorkspaceView: React.FC<StageWorkspaceViewProps> = ({
             </div>
             <div className="border-l-2 border-emerald-500 pl-3.5 py-1">
               <p className="text-sm text-slate-800 leading-relaxed font-serif">
-                “Antes de começarmos, quero entender como a privacidade e a proteção de dados funcionam hoje na prática na Câmara. Não existem respostas certas ou erradas, e não há problema se alguma informação não estiver disponível neste momento. Quando surgir algo que dependa de outra pessoa ou documento, nós apenas registraremos para verificar posteriormente.”
+                “Antes de começarmos, queremos entender como a privacidade e a proteção de dados funcionam hoje na prática na Câmara. Esta conversa não é uma auditoria nem um checklist e não existem respostas certas ou erradas: nosso objetivo é compreender como as coisas realmente acontecem no dia a dia. É natural que algumas informações técnicas ou de outras áreas não estejam disponíveis agora. Quando surgir algo que dependa de outra pessoa, área ou documento, nós apenas registraremos para verificar posteriormente.”
               </p>
-            </div>
-          </div>
-
-          {/* 2. Orientações Internas para o Facilitador (Apoio secundário) */}
-          <div className="bg-slate-50/80 rounded-xl p-3.5 sm:p-4 border border-slate-200/70 space-y-2.5">
-            <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block">
-              Orientações para o Facilitador
-            </span>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-xs text-slate-600 leading-relaxed">
-              <div className="flex items-start gap-2 bg-white/90 p-2.5 rounded-lg border border-slate-200/60 shadow-2xs">
-                <span className="text-emerald-600 font-bold text-xs shrink-0">1.</span>
-                <div>
-                  <strong className="text-slate-800 block text-xs">Objetivo da conversa:</strong>
-                  Compreender as rotinas fáticas e a organização real da privacidade e proteção de dados na instituição.
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2 bg-white/90 p-2.5 rounded-lg border border-slate-200/60 shadow-2xs">
-                <span className="text-emerald-600 font-bold text-xs shrink-0">2.</span>
-                <div>
-                  <strong className="text-slate-800 block text-xs">Sem respostas certas ou erradas:</strong>
-                  A entrevista não é uma auditoria nem checklist formal; o foco é mapear as práticas vivenciadas.
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2 bg-white/90 p-2.5 rounded-lg border border-slate-200/60 shadow-2xs">
-                <span className="text-emerald-600 font-bold text-xs shrink-0">3.</span>
-                <div>
-                  <strong className="text-slate-800 block text-xs">Tranquilidade com dúvidas:</strong>
-                  É plenamente natural que determinadas informações técnicas ou setoriais não sejam de conhecimento imediato.
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2 bg-white/90 p-2.5 rounded-lg border border-slate-200/60 shadow-2xs">
-                <span className="text-emerald-600 font-bold text-xs shrink-0">4.</span>
-                <div>
-                  <strong className="text-slate-800 block text-xs">Continuidade e pendências:</strong>
-                  Aspectos que demandem outros atores ou comprovação documental serão identificados para tratamento posterior.
-                </div>
-              </div>
             </div>
           </div>
 
