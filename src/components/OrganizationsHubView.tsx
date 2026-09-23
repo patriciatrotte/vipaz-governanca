@@ -42,7 +42,6 @@ export const OrganizationsHubView: React.FC = () => {
   const [stateUf, setStateUf] = useState('');
   const [interlocutorName, setInterlocutorName] = useState('');
   const [interlocutorRole, setInterlocutorRole] = useState('');
-  const [interlocutorEmail, setInterlocutorEmail] = useState('');
   const [formError, setFormError] = useState('');
 
   // Abrir modal de criação
@@ -52,7 +51,6 @@ export const OrganizationsHubView: React.FC = () => {
     setStateUf('');
     setInterlocutorName('');
     setInterlocutorRole('');
-    setInterlocutorEmail('');
     setFormError('');
     setModalMode('CREATE_ORG');
   };
@@ -72,7 +70,7 @@ export const OrganizationsHubView: React.FC = () => {
       state: stateUf.trim().toUpperCase() || undefined,
       mainInterlocutorName: interlocutorName.trim() || undefined,
       mainInterlocutorRole: interlocutorRole.trim() || undefined,
-      mainInterlocutorEmail: interlocutorEmail.trim() || undefined
+      mainInterlocutorEmail: undefined
     });
 
     setCreatedOrgTemp(newOrg);
@@ -396,7 +394,7 @@ export const OrganizationsHubView: React.FC = () => {
                   Interlocutor Principal Inicial (opcional)
                 </span>
                 <p className="text-[11px] text-slate-500">
-                  Identifique a pessoa que acompanhará a recepção das primeiras perguntas da investigação.
+                  Para a entrevista, registre apenas quem responde e em que papel participa. Dados de login e contato serão tratados separadamente quando houver acesso individual.
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -407,21 +405,18 @@ export const OrganizationsHubView: React.FC = () => {
                     onChange={e => setInterlocutorName(e.target.value)}
                     className="p-2 border border-slate-300 rounded-lg text-xs"
                   />
-                  <input
-                    type="text"
-                    placeholder="Cargo ou área (ex: Procuradoria / Encarregado)"
+                  <select
                     value={interlocutorRole}
                     onChange={e => setInterlocutorRole(e.target.value)}
-                    className="p-2 border border-slate-300 rounded-lg text-xs"
-                  />
+                    className="p-2 border border-slate-300 rounded-lg text-xs bg-white text-slate-800"
+                  >
+                    <option value="">Papel em que responde</option>
+                    <option value="Encarregado(a)">Encarregado(a)</option>
+                    <option value="Gestor(a) / Alta Administração">Gestor(a) / Alta Administração</option>
+                    <option value="Representante de área">Representante de área</option>
+                    <option value="Outro">Outro</option>
+                  </select>
                 </div>
-                <input
-                  type="email"
-                  placeholder="E-mail institucional de contato"
-                  value={interlocutorEmail}
-                  onChange={e => setInterlocutorEmail(e.target.value)}
-                  className="w-full p-2 border border-slate-300 rounded-lg text-xs"
-                />
               </div>
 
               {/* Botões do Formulário */}
