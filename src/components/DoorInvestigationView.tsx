@@ -851,15 +851,6 @@ export const DoorInvestigationView: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setShowPedagogicalModal(true)}
-            className="px-3 py-1.5 text-xs font-medium rounded-md bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 flex items-center gap-1.5"
-          >
-            <BookOpen className="w-3.5 h-3.5 text-purple-600" />
-            Intervenção Pedagógica
-          </button>
-
-          <button
-            type="button"
             onClick={() => setShowDontKnowModal(true)}
             className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 flex items-center gap-1.5"
           >
