@@ -584,6 +584,74 @@ export const DoorInvestigationView: React.FC = () => {
         </div>
       </div>
 
+      {/* Primeiro passo da conversa: registrar a resposta principal */}
+      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-3">
+        <div>
+          <h3 className="text-sm font-bold text-slate-800">1. Registre a resposta</h3>
+          <p className="text-xs text-slate-500 font-serif">Registre o que foi informado pelo participante. Se ele não souber responder, use “Não sei informar”.</p>
+        </div>
+        {/* Caixa de Entrada de Fala do Participante */}
+        <form onSubmit={handleSendResponse} className="space-y-2 pt-2">
+          {retifyingResponseId && (
+            <div className="bg-amber-100 text-amber-900 px-3 py-1.5 rounded text-xs flex items-center justify-between">
+              <span>Registrando <strong>retificação formal</strong> da fala original selecionada.</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setRetifyingResponseId(null);
+                  setInputText('');
+                }}
+                className="font-bold text-amber-800"
+              >
+                Cancelar
+              </button>
+            </div>
+          )}
+
+          <div className="relative">
+            <textarea
+              rows={4}
+              value={inputText}
+              onChange={e => setInputText(e.target.value)}
+              placeholder="Digite a fala literal do respondente ou registre as declarações da entrevista..."
+              className="w-full text-sm p-3 rounded-lg border border-slate-300 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-slate-400">
+              {inputText.trim() && <strong className="text-emerald-700">Rascunho protegido automaticamente · </strong>}
+              {isFacilitator && currentOrg ? (
+                <>Fala atribuída a: <strong>{currentOrg.mainInterlocutorName || 'Interlocutor da entrevista'}</strong> ({currentOrg.mainInterlocutorRole || 'papel não informado'}) · registrada pelo facilitador</>
+              ) : (
+                <>Registrado por: <strong>{currentUser.name}</strong> ({currentUser.department})</>
+              )}
+            </span>
+            <div className="flex items-center gap-2">
+              {!retifyingResponseId && (
+                <button
+                  type="button"
+                  onClick={() => setShowDontKnowModal(true)}
+                  className="text-xs font-medium text-amber-800 bg-amber-50 border border-amber-200 hover:bg-amber-100 px-3 py-2 rounded-lg"
+                >
+                  Não sei informar
+                </button>
+              )}
+            <button
+              type="submit"
+              disabled={!inputText.trim()}
+              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Send className="w-3.5 h-3.5" />
+              {retifyingResponseId ? 'Salvar Retificação Relacionada' : 'Salvar resposta'}
+            </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      </div>
+
       {activeDoorId === 'D1.1' && doorResponses.length > 0 && (
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
           <div className="space-y-1 border-b border-slate-100 pb-3">
@@ -838,24 +906,20 @@ export const DoorInvestigationView: React.FC = () => {
           </div>
         )}
 
-        {/* Barra de Ferramentas de Entrevista */}
-        <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100">
+
+        {doorResponses.length > 0 && (
+          <div className="mt-3">
+        {/* Ações complementares após a resposta */}
+        <div className="space-y-2 pt-3 border-t border-slate-100">
+          <p className="text-[11px] font-semibold text-slate-600">Depois da resposta, complemente somente se necessário:</p>
+          <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => setShowProbingModal(true)}
+            onClick={() => setShowProbingModal(true)
             className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 flex items-center gap-1.5"
           >
             <Sparkles className="w-3.5 h-3.5 text-blue-600" />
             + Perguntou algo a mais? Registre aqui
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowDontKnowModal(true)}
-            className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 flex items-center gap-1.5"
-          >
-            <HelpCircle className="w-3.5 h-3.5 text-amber-600" />
-            Tratar "Não Sei"
           </button>
 
           <button
@@ -875,55 +939,9 @@ export const DoorInvestigationView: React.FC = () => {
             <FileText className="w-3.5 h-3.5 text-slate-600" />
             Indicar Evidência
           </button>
-        </div>
-
-        {/* Caixa de Entrada de Fala do Participante */}
-        <form onSubmit={handleSendResponse} className="space-y-2 pt-2">
-          {retifyingResponseId && (
-            <div className="bg-amber-100 text-amber-900 px-3 py-1.5 rounded text-xs flex items-center justify-between">
-              <span>Registrando <strong>retificação formal</strong> da fala original selecionada.</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setRetifyingResponseId(null);
-                  setInputText('');
-                }}
-                className="font-bold text-amber-800"
-              >
-                Cancelar
-              </button>
-            </div>
-          )}
-
-          <div className="relative">
-            <textarea
-              rows={4}
-              value={inputText}
-              onChange={e => setInputText(e.target.value)}
-              placeholder="Digite a fala literal do respondente ou registre as declarações da entrevista..."
-              className="w-full text-sm p-3 rounded-lg border border-slate-300 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-            />
+  
           </div>
-
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] text-slate-400">
-              {inputText.trim() && <strong className="text-emerald-700">Rascunho protegido automaticamente · </strong>}
-              {isFacilitator && currentOrg ? (
-                <>Fala atribuída a: <strong>{currentOrg.mainInterlocutorName || 'Interlocutor da entrevista'}</strong> ({currentOrg.mainInterlocutorRole || 'papel não informado'}) · registrada pelo facilitador</>
-              ) : (
-                <>Registrado por: <strong>{currentUser.name}</strong> ({currentUser.department})</>
-              )}
-            </span>
-            <button
-              type="submit"
-              disabled={!inputText.trim()}
-              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Send className="w-3.5 h-3.5" />
-              {retifyingResponseId ? 'Salvar Retificação Relacionada' : 'Salvar resposta'}
-            </button>
-          </div>
-        </form>
+        )}
       </div>
 
       {/* Card de Decisão Humana de Suficiência e Avanço (Ajustes 4 e 5) */}
