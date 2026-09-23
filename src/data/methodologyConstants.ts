@@ -10,17 +10,11 @@ export const DOORS_DEFINITIONS: DoorDefinition[] = [
   {
     id: 'D1.1',
     code: 'D1.1',
-    title: 'Organização da Governança',
-    essentialQuestion: 'Hoje, como a governança de privacidade e proteção de dados está organizada na Câmara?',
-    objective: 'Descobrir configuração existente, quem conduz, quem participa, como decisões aparecem e onde o Encarregado se insere.',
-    focusAreas: ['Configuração existente', 'Papéis declarados', 'Fluxos de decisão', 'Inserção do Encarregado', 'Apoio institucional'],
-    contextualHelp: {
-      scopeExplanation: 'Apoia o interlocutor a situar como as deliberações, papéis e orientações gerais de privacidade ocorrem na instituição.',
-      practicalSituations: [
-        'Quando surgem temas gerais sobre dados pessoais na instituição, quem costuma ser consultado ou participar da conversa.',
-        'Como a gestão e os setores tomam conhecimento de assuntos ligados à proteção de dados e onde a função encarregada se situa nesse arranjo.'
-      ]
-    }
+    title: 'Rede de Governança',
+    essentialQuestion: 'Pensando em como as coisas acontecem hoje na Câmara, quando surge algum assunto envolvendo privacidade ou dados pessoais, quem normalmente participa e o que cada pessoa ou área costuma fazer? Pense nas situações da rotina: algumas podem ser tratadas diretamente pelo Encarregado; outras podem exigir alguém do RH, da TI, da gestão ou de outra área. Não é necessário que exista uma pessoa específica de privacidade em cada área. Queremos compreender quem participa quando é necessário e como isso funciona hoje na prática.',
+    objective: 'Construir o mapa real de atores e competências mobilizados quando necessário, sem pressupor representantes de privacidade em cada área.',
+    focusAreas: ['Atores necessários', 'Competências mobilizadas', 'Responsabilidades na prática', 'Definição institucional', 'Fontes mencionadas'],
+    internalLenses: ['ATOR', 'QUANDO_PARTICIPA', 'RESPONSABILIDADE', 'DEFINICAO_INSTITUCIONAL', 'FONTE']
   },
   {
     id: 'D1.2',
