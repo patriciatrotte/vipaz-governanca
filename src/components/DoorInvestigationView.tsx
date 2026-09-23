@@ -97,9 +97,7 @@ export const DoorInvestigationView: React.FC = () => {
 
   const [showProbingModal, setShowProbingModal] = useState(false);
   const [probingQuestion, setProbingQuestion] = useState('');
-  const [probingReason, setProbingReason] = useState('');
   const [probingResponse, setProbingResponse] = useState('');
-  const [isLoadingAIProbes, setIsLoadingAIProbes] = useState(false);
 
   const [showDistributedModal, setShowDistributedModal] = useState(false);
   const [distTargetName, setDistTargetName] = useState('');
@@ -192,34 +190,6 @@ export const DoorInvestigationView: React.FC = () => {
     }
   };
 
-  // Solicitar sondagens neutras via API do servidor (com IA)
-  const handleRequestAIProbes = async () => {
-    setIsLoadingAIProbes(true);
-    try {
-      const lastResp = doorResponses.slice(-1)[0]?.originalText || 'Práticas rotineiras';
-      const res = await fetch('/api/ai/probe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          doorId: activeDoor.id,
-          doorTitle: activeDoor.title,
-          responseText: lastResp
-        })
-      });
-      const data = await res.json();
-      if (data.suggestedProbes && data.suggestedProbes.length > 0) {
-        setProbingQuestion(data.suggestedProbes[0].question);
-        setProbingReason(data.suggestedProbes[0].reason);
-      }
-    } catch (err) {
-      console.error(err);
-      setProbingQuestion('Como essa situação é documentada ou comunicada aos setores envolvidos?');
-      setProbingReason('Aprofundamento de registro neutro.');
-    } finally {
-      setIsLoadingAIProbes(false);
-    }
-  };
-
   // Salvar registro de "Não sei"
   const handleSaveDontKnow = () => {
     recordDontKnow(
@@ -252,14 +222,13 @@ export const DoorInvestigationView: React.FC = () => {
     if (!probingQuestion.trim()) return;
     addProbingRecord({
       doorId: activeDoorId,
-      origin: 'IA_SUGERIDA',
-      reason: probingReason || 'Aprofundamento de aspecto prático',
+      origin: 'FACILITADOR_CRIADA',
+      reason: 'Pergunta adicional formulada livremente durante a entrevista',
       questionEffectivelyAsked: probingQuestion,
       responseText: probingResponse || undefined,
       relatedCriterionOrCapacity: activeDoor.title
     });
     setProbingQuestion('');
-    setProbingReason('');
     setProbingResponse('');
     setShowProbingModal(false);
   };
@@ -643,7 +612,7 @@ export const DoorInvestigationView: React.FC = () => {
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs space-y-1">
             <span className="font-bold text-blue-900 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-              Sondagens Realizadas ({doorProbings.length}):
+              Perguntas adicionais registradas ({doorProbings.length}):
             </span>
             {doorProbings.map(prb => (
               <div key={prb.id} className="text-blue-800 pl-5 text-[11px]">
@@ -677,7 +646,7 @@ export const DoorInvestigationView: React.FC = () => {
             className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 flex items-center gap-1.5"
           >
             <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-            Sondagem Adaptativa (IA / Neutra)
+            + Perguntou algo a mais? Registre aqui
           </button>
 
           <button
@@ -993,7 +962,7 @@ export const DoorInvestigationView: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL: Sondagem Adaptativa (Ajuste 3) */}
+      {/* MODAL: Pergunta adicional livre do facilitador */}
       {showProbingModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl max-w-lg w-full p-5 space-y-4 shadow-xl border border-slate-200">
@@ -1001,28 +970,17 @@ export const DoorInvestigationView: React.FC = () => {
               <div>
                 <h4 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-blue-600" />
-                  Sondagem Adaptativa de Campo
+                  Pergunta adicional da conversa
                 </h4>
                 <p className="text-[11px] text-slate-500 font-serif">
-                  Aprofundar aspectos concretos da rotina em linguagem natural, sem induzir respostas ou pressupor conformidade.
+                  Registre somente o que foi perguntado além da pergunta principal e a resposta obtida.
                 </p>
               </div>
               <button onClick={() => setShowProbingModal(false)} className="text-slate-400 hover:text-slate-600 text-sm cursor-pointer">✕</button>
             </div>
 
             <div className="space-y-3 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-700">Pergunta formulada ao participante:</span>
-                <button
-                  type="button"
-                  onClick={handleRequestAIProbes}
-                  disabled={isLoadingAIProbes}
-                  className="text-[11px] text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 cursor-pointer"
-                >
-                  <Sparkles className="w-3 h-3" />
-                  {isLoadingAIProbes ? 'Consultando IA...' : 'Sugerir pergunta neutra com IA'}
-                </button>
-              </div>
+              <span className="font-semibold text-slate-700">Pergunta feita ao participante:</span>
 
               <textarea
                 rows={2}
@@ -1034,20 +992,7 @@ export const DoorInvestigationView: React.FC = () => {
 
               <div>
                 <label className="font-semibold text-slate-700 block mb-1">
-                  O que você queria compreender com esta pergunta? (em linguagem simples e direta):
-                </label>
-                <input
-                  type="text"
-                  value={probingReason}
-                  onChange={e => setProbingReason(e.target.value)}
-                  placeholder="Ex: Saber se existe procedimento formalizado por escrito ou se a prática é apenas verbal"
-                  className="w-full p-2 border border-slate-300 rounded font-serif"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700 block mb-1">
-                  Resposta obtida do participante (opcional):
+                  Resposta obtida:
                 </label>
                 <textarea
                   rows={2}
@@ -1073,7 +1018,7 @@ export const DoorInvestigationView: React.FC = () => {
                 disabled={!probingQuestion.trim()}
                 className="px-4 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded disabled:opacity-50 cursor-pointer"
               >
-                Registrar Sondagem
+                Salvar pergunta e resposta
               </button>
             </div>
           </div>
