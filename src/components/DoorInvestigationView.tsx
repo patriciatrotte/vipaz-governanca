@@ -782,9 +782,6 @@ export const DoorInvestigationView: React.FC = () => {
               <button type="button" onClick={() => setShowProbingModal(true)} className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-blue-600" /> + Perguntou algo a mais? Registre aqui
               </button>
-              <button type="button" onClick={() => setShowDistributedModal(true)} className="px-3 py-1.5 text-xs font-medium rounded-md bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 flex items-center gap-1.5">
-                <GitPullRequest className="w-3.5 h-3.5 text-sky-600" /> Registrar algo para verificar depois
-              </button>
               <button type="button" onClick={() => setShowEvidenceModal(true)} className="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 flex items-center gap-1.5">
                 <FileText className="w-3.5 h-3.5 text-slate-600" /> Indicar documento ou evidência
               </button>
