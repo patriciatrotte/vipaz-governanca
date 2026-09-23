@@ -110,6 +110,57 @@ export const DoorInvestigationView: React.FC = () => {
   const [evidenceType, setEvidenceType] = useState<'PORTARIA' | 'CONTRATO' | 'FLUXOGRAMA' | 'RELATORIO' | 'EMAIL' | 'SISTEMA_TICKET' | 'ATA_REUNIAO' | 'OUTRO'>('PORTARIA');
   const [evidenceOrigin, setEvidenceOrigin] = useState('');
 
+  type ActorParticipation =
+    | 'PARTICIPA_QUANDO_NECESSARIO'
+    | 'IDENTIFICADO_AINDA_NAO_NECESSARIO'
+    | 'NECESSARIO_MAS_NAO_ESTAVA_CLARO'
+    | 'ATENDIDA_DE_OUTRA_FORMA'
+    | 'NAO_SE_APLICA'
+    | 'NAO_SEI';
+
+  type ResponsibilityBasis =
+    | 'DOCUMENTO_OU_ATO'
+    | 'ATRIBUICAO_FUNCAO_AREA'
+    | 'PRATICA_INSTITUCIONAL_CONHECIDA'
+    | 'SEM_DEFINICAO_CLARA'
+    | 'NAO_SEI';
+
+  interface GovernanceActorDraft {
+    id: string;
+    actor: string;
+    exercisedBy: string;
+    whenParticipates: string;
+    whatDoes: string;
+    participation: ActorParticipation | '';
+    responsibilityBasis: ResponsibilityBasis | '';
+  }
+
+  const [governanceActors, setGovernanceActors] = useState<GovernanceActorDraft[]>([]);
+  const [newActorName, setNewActorName] = useState('');
+
+  const addGovernanceActor = (actor: string) => {
+    const normalized = actor.trim();
+    if (!normalized || governanceActors.some(item => item.actor.toLowerCase() === normalized.toLowerCase())) return;
+    setGovernanceActors(prev => [...prev, {
+      id: `actor-${Date.now()}-${prev.length}`,
+      actor: normalized,
+      exercisedBy: '',
+      whenParticipates: '',
+      whatDoes: '',
+      participation: '',
+      responsibilityBasis: ''
+    }]);
+    setNewActorName('');
+  };
+
+  const updateGovernanceActor = (id: string, patch: Partial<GovernanceActorDraft>) => {
+    setGovernanceActors(prev => prev.map(item => item.id === id ? { ...item, ...patch } : item));
+  };
+
+  const removeGovernanceActor = (id: string) => {
+    setGovernanceActors(prev => prev.filter(item => item.id !== id));
+  };
+
   // Respostas da porta ativa
   const doorResponses = originalResponses.filter(r => r.doorId === activeDoorId);
   const doorProbings = probings.filter(p => p.doorId === activeDoorId);
@@ -507,6 +558,130 @@ export const DoorInvestigationView: React.FC = () => {
           )}
         </div>
       </div>
+
+      {activeDoorId === 'D1.1' && doorResponses.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
+          <div className="space-y-1 border-b border-slate-100 pb-3">
+            <h3 className="text-sm font-bold text-slate-900">Organizar a rede identificada</h3>
+            <p className="text-xs text-slate-600 font-serif leading-relaxed">
+              A partir do que foi contado, registre quem participa quando necessário e como essa participação funciona. Não é preciso existir um responsável por privacidade em cada área.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {['Encarregado(a)', 'Gestão / Presidência', 'RH / Gestão de Pessoas', 'TI', 'Jurídico', 'Controladoria', 'Ouvidoria / SIC', 'Comunicação'].map(actor => (
+              <button
+                key={actor}
+                type="button"
+                onClick={() => addGovernanceActor(actor)}
+                className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700"
+              >
+                + {actor}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex gap-2">
+            <input
+              value={newActorName}
+              onChange={e => setNewActorName(e.target.value)}
+              placeholder="Outra pessoa, área ou competência identificada"
+              className="flex-1 p-2.5 border border-slate-300 rounded-lg text-xs"
+            />
+            <button
+              type="button"
+              onClick={() => addGovernanceActor(newActorName)}
+              disabled={!newActorName.trim()}
+              className="px-3 py-2 bg-slate-800 disabled:opacity-40 text-white rounded-lg text-xs font-semibold"
+            >
+              Adicionar
+            </button>
+          </div>
+
+          {governanceActors.length === 0 ? (
+            <div className="p-4 bg-slate-50 border border-dashed border-slate-300 rounded-lg text-xs text-slate-500 text-center">
+              Nenhum ator foi organizado ainda. Use apenas os que apareceram ou se mostraram relevantes na conversa.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {governanceActors.map(item => (
+                <div key={item.id} className="border border-slate-200 rounded-xl p-4 space-y-3 bg-slate-50/50">
+                  <div className="flex items-center justify-between gap-2">
+                    <strong className="text-sm text-slate-900">{item.actor}</strong>
+                    <button type="button" onClick={() => removeGovernanceActor(item.id)} className="text-[11px] text-slate-400 hover:text-rose-600">Remover</button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <input
+                      value={item.exercisedBy}
+                      onChange={e => updateGovernanceActor(item.id, { exercisedBy: e.target.value })}
+                      placeholder="Quem exerce? Ex.: servidora do RH, empresa de TI"
+                      className="p-2 border border-slate-300 rounded-lg text-xs"
+                    />
+                    <input
+                      value={item.whenParticipates}
+                      onChange={e => updateGovernanceActor(item.id, { whenParticipates: e.target.value })}
+                      placeholder="Quando participa?"
+                      className="p-2 border border-slate-300 rounded-lg text-xs"
+                    />
+                    <input
+                      value={item.whatDoes}
+                      onChange={e => updateGovernanceActor(item.id, { whatDoes: e.target.value })}
+                      placeholder="O que faz quando participa?"
+                      className="p-2 border border-slate-300 rounded-lg text-xs"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <label className="text-[11px] font-semibold text-slate-700 space-y-1">
+                      <span className="block">Como essa participação funciona hoje?</span>
+                      <select
+                        value={item.participation}
+                        onChange={e => updateGovernanceActor(item.id, { participation: e.target.value as ActorParticipation })}
+                        className="w-full p-2 border border-slate-300 rounded-lg bg-white text-xs font-normal"
+                      >
+                        <option value="">Selecione somente se puder confirmar</option>
+                        <option value="PARTICIPA_QUANDO_NECESSARIO">Participa quando necessário</option>
+                        <option value="IDENTIFICADO_AINDA_NAO_NECESSARIO">Está identificado para ser acionado, mas ainda não foi necessário</option>
+                        <option value="NECESSARIO_MAS_NAO_ESTAVA_CLARO">Já foi necessário, mas não estava claro quem deveria participar</option>
+                        <option value="ATENDIDA_DE_OUTRA_FORMA">Essa competência é atendida de outra forma</option>
+                        <option value="NAO_SE_APLICA">Não se aplica à realidade da Câmara</option>
+                        <option value="NAO_SEI">Não sei informar</option>
+                      </select>
+                    </label>
+
+                    <label className="text-[11px] font-semibold text-slate-700 space-y-1">
+                      <span className="block">Como vocês sabem o que cabe a essa pessoa ou área fazer?</span>
+                      <select
+                        value={item.responsibilityBasis}
+                        onChange={e => updateGovernanceActor(item.id, { responsibilityBasis: e.target.value as ResponsibilityBasis })}
+                        className="w-full p-2 border border-slate-300 rounded-lg bg-white text-xs font-normal"
+                      >
+                        <option value="">Selecione somente se puder confirmar</option>
+                        <option value="DOCUMENTO_OU_ATO">Está definido em documento ou ato institucional</option>
+                        <option value="ATRIBUICAO_FUNCAO_AREA">Decorre das atribuições da função ou área</option>
+                        <option value="PRATICA_INSTITUCIONAL_CONHECIDA">É uma prática institucional conhecida</option>
+                        <option value="SEM_DEFINICAO_CLARA">Acontece assim, mas a responsabilidade não está claramente definida</option>
+                        <option value="NAO_SEI">Não sei informar</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {governanceActors.length > 0 && (
+            <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3.5 text-xs text-emerald-950">
+              <strong>Confirmação da conversa:</strong> esta representação corresponde ao funcionamento atual? Há alguma pessoa, área ou competência importante que ficou de fora?
+            </div>
+          )}
+
+          <p className="text-[10px] text-slate-500 italic">
+            Teste de campo D1.1: este mapa organiza fatos da conversa. Ele não atribui nível de maturidade e não transforma a ausência de uma área em gap.
+          </p>
+        </div>
+      )}
 
       {/* Histórico da Conversa / Registro de Respostas Imutáveis */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
