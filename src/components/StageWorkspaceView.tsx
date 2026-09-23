@@ -221,7 +221,7 @@ export const StageWorkspaceView: React.FC<StageWorkspaceViewProps> = ({
             </div>
             <div className="border-l-2 border-emerald-500 pl-3.5 py-1">
               <p className="text-sm text-slate-800 leading-relaxed font-serif">
-                “Antes de começarmos, queremos entender como a privacidade e a proteção de dados funcionam hoje na prática na Câmara. Esta conversa não é uma auditoria nem um checklist e não existem respostas certas ou erradas: nosso objetivo é compreender como as coisas realmente acontecem no dia a dia. É natural que algumas informações técnicas ou de outras áreas não estejam disponíveis agora. Quando surgir algo que dependa de outra pessoa, área ou documento, nós apenas registraremos para verificar posteriormente.”
+                “Antes de começarmos, queremos entender como a privacidade e a proteção de dados funcionam hoje na prática na Câmara. Esta conversa não é uma auditoria nem um checklist e não existem respostas certas ou erradas. Vamos conversar sobre situações e rotinas do dia a dia para compreender quem participa, como as coisas acontecem e como a Câmara costuma lidar com essas questões. É natural que algumas informações técnicas ou de outras áreas não estejam disponíveis agora. Quando surgir algo que dependa de outra pessoa, área ou documento, nós apenas registraremos para verificar posteriormente.”
               </p>
             </div>
           </div>
