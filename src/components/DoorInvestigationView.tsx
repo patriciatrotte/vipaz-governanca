@@ -716,7 +716,11 @@ export const DoorInvestigationView: React.FC = () => {
 
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-slate-400">
-              Registrado sob o perfil de: <strong>{currentUser.name}</strong> ({currentUser.department})
+              {isFacilitator && currentOrg ? (
+                <>Fala atribuída a: <strong>{currentOrg.mainInterlocutorName || 'Interlocutor da entrevista'}</strong> ({currentOrg.mainInterlocutorRole || 'papel não informado'}) · registrada pelo facilitador</>
+              ) : (
+                <>Registrado por: <strong>{currentUser.name}</strong> ({currentUser.department})</>
+              )}
             </span>
             <button
               type="submit"
