@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { usePilot } from '../context/PilotContext';
 import { DOORS_DEFINITIONS, PEDAGOGICAL_CONCEPTS } from '../data/methodologyConstants';
 import { 
@@ -161,16 +161,35 @@ export const DoorInvestigationView: React.FC = () => {
     setGovernanceActors(prev => prev.filter(item => item.id !== id));
   };
 
+  // Rascunho local da fala: evita perda acidental antes do registro definitivo.
+  const draftKey = `interviewDraft:${currentOrg?.id || 'no-org'}:${currentCycle?.id || 'no-cycle'}:${activeDoorId}`;
+
+  useEffect(() => {
+    try {
+      const savedDraft = localStorage.getItem(draftKey);
+      setInputText(savedDraft || '');
+    } catch {
+      setInputText('');
+    }
+  }, [draftKey]);
+
+  useEffect(() => {
+    try {
+      if (inputText.trim()) localStorage.setItem(draftKey, inputText);
+      else localStorage.removeItem(draftKey);
+    } catch {
+      // noop: o registro definitivo continua disponível mesmo sem persistência local do rascunho
+    }
+  }, [draftKey, inputText]);
+
   // Respostas da porta ativa
   const doorResponses = originalResponses.filter(r => r.doorId === activeDoorId);
   const doorProbings = probings.filter(p => p.doorId === activeDoorId);
   const doorPedagogical = pedagogicalInterventions.filter(p => p.doorId === activeDoorId);
   const doorDontKnows = dontKnowRecords.filter(d => d.doorId === activeDoorId);
 
-  // Handler para envio de resposta
-  const handleSendResponse = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputText.trim()) return;
+  const persistCurrentResponse = (): boolean => {
+    if (!inputText.trim()) return false;
 
     if (retifyingResponseId) {
       addRetificationResponse(retifyingResponseId, inputText);
@@ -203,10 +222,19 @@ export const DoorInvestigationView: React.FC = () => {
       });
     }
     setInputText('');
+    try { localStorage.removeItem(draftKey); } catch { /* noop */ }
+    return true;
+  };
+
+  // Handler explícito de registro; os passos seguintes também registram automaticamente uma fala pendente.
+  const handleSendResponse = (e: React.FormEvent) => {
+    e.preventDefault();
+    persistCurrentResponse();
   };
 
   // Confirmação explícita humana de suficiência (Ajuste 4)
   const handleConfirmSufficiency = () => {
+    persistCurrentResponse();
     updateDoorStatus(activeDoorId, 'SUFICIENTEMENTE_EXPLORADA');
     setActionFeedback({
       message: `Porta ${activeDoor.code} confirmada como suficientemente explorada.`,
@@ -219,13 +247,7 @@ export const DoorInvestigationView: React.FC = () => {
 
   // Concluir e avançar para a próxima porta (Ajuste 5)
   const handleAdvanceToNextDoor = () => {
-    if (inputText.trim()) {
-      const confirmDiscard = window.confirm(
-        'Existe uma fala digitada no campo de resposta que ainda não foi salva. Deseja descartá-la e avançar para a próxima porta?'
-      );
-      if (!confirmDiscard) return;
-      setInputText('');
-    }
+    persistCurrentResponse();
 
     if (nextDoorId) {
       setActiveDoorId(nextDoorId);
@@ -333,7 +355,10 @@ export const DoorInvestigationView: React.FC = () => {
           return (
             <button
               key={door.id}
-              onClick={() => setActiveDoorId(door.id)}
+              onClick={() => {
+                if (door.id !== activeDoorId) persistCurrentResponse();
+                setActiveDoorId(door.id);
+              }}
               className={`px-3.5 py-2.5 rounded-xl text-left border transition-all shrink-0 min-w-[180px] cursor-pointer select-none active:scale-[0.98] ${
                 isSelected
                   ? 'bg-slate-900 border-slate-900 text-white shadow-md ring-2 ring-emerald-500/60'
@@ -891,6 +916,7 @@ export const DoorInvestigationView: React.FC = () => {
 
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-slate-400">
+              {inputText.trim() && <strong className="text-emerald-700">Rascunho protegido automaticamente · </strong>}
               {isFacilitator && currentOrg ? (
                 <>Fala atribuída a: <strong>{currentOrg.mainInterlocutorName || 'Interlocutor da entrevista'}</strong> ({currentOrg.mainInterlocutorRole || 'papel não informado'}) · registrada pelo facilitador</>
               ) : (
@@ -903,7 +929,7 @@ export const DoorInvestigationView: React.FC = () => {
               className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Send className="w-3.5 h-3.5" />
-              {retifyingResponseId ? 'Salvar Retificação Relacionada' : 'Registrar Resposta Original'}
+              {retifyingResponseId ? 'Salvar Retificação Relacionada' : 'Salvar resposta'}
             </button>
           </div>
         </form>
