@@ -1,0 +1,6 @@
+{
+  "name": "Piloto Dimensional D1 - Governança de Privacidade",
+  "description": "Aplicação piloto D1 v1.0 para diagnóstico, validação metodológica e plano de evolução da governança de privacidade em Câmaras Municipais.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

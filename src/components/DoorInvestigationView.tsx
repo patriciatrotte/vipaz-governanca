@@ -1,0 +1,1346 @@
+import React, { useState } from 'react';
+import { usePilot } from '../context/PilotContext';
+import { DOORS_DEFINITIONS, PEDAGOGICAL_CONCEPTS } from '../data/methodologyConstants';
+import { 
+  DoorId, 
+  DoorStatus, 
+  DontKnowReason, 
+  InfoScope 
+} from '../types';
+import { 
+  Sparkles, 
+  HelpCircle, 
+  BookOpen, 
+  Send, 
+  UserCheck, 
+  Clock, 
+  FileText, 
+  AlertTriangle, 
+  GitPullRequest, 
+  CheckCircle, 
+  CheckCircle2,
+  Lock,
+  ArrowRight,
+  ShieldCheck,
+  Plus,
+  Lightbulb,
+  ChevronDown,
+  ChevronUp
+} from 'lucide-react';
+import { DoorStatusBadge } from './MethodologyBadges';
+import { LocalSaveIndicator } from './LocalSaveIndicator';
+
+export const DoorInvestigationView: React.FC = () => {
+  const {
+    activeDoorId,
+    setActiveDoorId,
+    doorStatuses,
+    updateDoorStatus,
+    originalResponses,
+    addOriginalResponse,
+    addRetificationResponse,
+    recordDontKnow,
+    dontKnowRecords,
+    probings,
+    addProbingRecord,
+    pedagogicalInterventions,
+    addPedagogicalIntervention,
+    createDistributedRequest,
+    evidences,
+    addEvidence,
+    currentUser,
+    setCurrentView,
+    setActiveResponseId,
+    completeInterview,
+    currentCycle
+  } = usePilot();
+
+  const isFacilitator = currentUser.role === 'FACILITADOR';
+
+  const activeDoor = DOORS_DEFINITIONS.find(d => d.id === activeDoorId) || DOORS_DEFINITIONS[0];
+  const currentDoorStatus = doorStatuses[activeDoorId];
+
+  // Ordem sequencial das 6 portas de entrada D1
+  const doorOrder: DoorId[] = ['D1.1', 'D1.2', 'D1.3', 'D1.4', 'D1.5', 'D1.6'];
+  const currentDoorIndex = doorOrder.indexOf(activeDoorId);
+  const isLastDoor = currentDoorIndex === doorOrder.length - 1;
+  const nextDoorId = !isLastDoor ? doorOrder[currentDoorIndex + 1] : null;
+
+  // Estados locais para inputs
+  const [inputText, setInputText] = useState('');
+  const [retifyingResponseId, setRetifyingResponseId] = useState<string | null>(null);
+
+  // Apoio contextual e visualização metodológica (Ajustes 2 e 8)
+  const [showContextualHelp, setShowContextualHelp] = useState(false);
+  const [showMethodologyLenses, setShowMethodologyLenses] = useState(false);
+  const [showAdvancedStatuses, setShowAdvancedStatuses] = useState(false);
+
+  // Modal de fechamento operacional pós D1.6 (Ajuste 6)
+  const [showReviewAndFinishModal, setShowReviewAndFinishModal] = useState(false);
+
+  // Feedback estruturado essencial (Ajuste 9)
+  const [actionFeedback, setActionFeedback] = useState<{
+    message: string;
+    location: string;
+    nextStep: string;
+  } | null>(null);
+
+  // Modais de ferramentas da entrevista
+  const [showDontKnowModal, setShowDontKnowModal] = useState(false);
+  const [dontKnowReason, setDontKnowReason] = useState<DontKnowReason>('FORA_DA_VISIBILIDADE');
+  const [dontKnowJustification, setDontKnowJustification] = useState('');
+  const [dontKnowAction, setDontKnowAction] = useState<'EXPLICACAO_PEDAGOGICA' | 'BUSCA_INTERNA' | 'CONVITE_OUTRA_FONTE' | 'REGISTRO_PENDENCIA'>('CONVITE_OUTRA_FONTE');
+
+  const [showPedagogicalModal, setShowPedagogicalModal] = useState(false);
+  const [selectedConcept, setSelectedConcept] = useState(PEDAGOGICAL_CONCEPTS[0]);
+
+  const [showProbingModal, setShowProbingModal] = useState(false);
+  const [probingQuestion, setProbingQuestion] = useState('');
+  const [probingReason, setProbingReason] = useState('');
+  const [probingResponse, setProbingResponse] = useState('');
+  const [isLoadingAIProbes, setIsLoadingAIProbes] = useState(false);
+
+  const [showDistributedModal, setShowDistributedModal] = useState(false);
+  const [distTargetName, setDistTargetName] = useState('');
+  const [distDepartment, setDistDepartment] = useState('');
+  const [distNeutralQuestion, setDistNeutralQuestion] = useState('');
+  const [distContext, setDistContext] = useState('Mapeamento diagnóstico de processos no âmbito do Piloto de Governança de Privacidade.');
+
+  const [showEvidenceModal, setShowEvidenceModal] = useState(false);
+  const [evidenceTitle, setEvidenceTitle] = useState('');
+  const [evidenceType, setEvidenceType] = useState<'PORTARIA' | 'CONTRATO' | 'FLUXOGRAMA' | 'RELATORIO' | 'EMAIL' | 'SISTEMA_TICKET' | 'ATA_REUNIAO' | 'OUTRO'>('PORTARIA');
+  const [evidenceOrigin, setEvidenceOrigin] = useState('');
+
+  // Respostas da porta ativa
+  const doorResponses = originalResponses.filter(r => r.doorId === activeDoorId);
+  const doorProbings = probings.filter(p => p.doorId === activeDoorId);
+  const doorPedagogical = pedagogicalInterventions.filter(p => p.doorId === activeDoorId);
+  const doorDontKnows = dontKnowRecords.filter(d => d.doorId === activeDoorId);
+
+  // Handler para envio de resposta
+  const handleSendResponse = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputText.trim()) return;
+
+    if (retifyingResponseId) {
+      addRetificationResponse(retifyingResponseId, inputText);
+      setRetifyingResponseId(null);
+      setActionFeedback({
+        message: 'Retificação formal registrada e vinculada à fala anterior.',
+        location: `Histórico imutável da Porta ${activeDoor.code}.`,
+        nextStep: 'Continue a investigação ou avalie a suficiência da porta.'
+      });
+    } else {
+      addOriginalResponse(activeDoorId, inputText);
+      // Se a porta estava não iniciada, move para em descoberta
+      if (currentDoorStatus === 'NAO_INICIADA') {
+        updateDoorStatus(activeDoorId, 'EM_DESCOBERTA');
+      }
+      setActionFeedback({
+        message: 'Resposta original registrada com sucesso.',
+        location: `Histórico imutável da Porta ${activeDoor.code}.`,
+        nextStep: 'Você pode aprofundar com uma sondagem ou avaliar a suficiência da porta.'
+      });
+    }
+    setInputText('');
+  };
+
+  // Confirmação explícita humana de suficiência (Ajuste 4)
+  const handleConfirmSufficiency = () => {
+    updateDoorStatus(activeDoorId, 'SUFICIENTEMENTE_EXPLORADA');
+    setActionFeedback({
+      message: `Porta ${activeDoor.code} confirmada como suficientemente explorada.`,
+      location: `Registro da Porta ${activeDoor.code} atualizado na entrevista.`,
+      nextStep: isLastDoor 
+        ? 'Você pode agora revisar e concluir a entrevista.' 
+        : `Você já pode concluir e avançar para a Porta ${nextDoorId}.`
+    });
+  };
+
+  // Concluir e avançar para a próxima porta (Ajuste 5)
+  const handleAdvanceToNextDoor = () => {
+    if (inputText.trim()) {
+      const confirmDiscard = window.confirm(
+        'Existe uma fala digitada no campo de resposta que ainda não foi salva. Deseja descartá-la e avançar para a próxima porta?'
+      );
+      if (!confirmDiscard) return;
+      setInputText('');
+    }
+
+    if (nextDoorId) {
+      setActiveDoorId(nextDoorId);
+      setShowContextualHelp(false);
+      setShowMethodologyLenses(false);
+      setShowAdvancedStatuses(false);
+      setActionFeedback({
+        message: `Avanço para a Porta ${nextDoorId} realizado com sucesso.`,
+        location: `Iniciando investigação da Porta ${nextDoorId}.`,
+        nextStep: `Apresente a pergunta essencial da Porta ${nextDoorId} ao interlocutor.`
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Solicitar sondagens neutras via API do servidor (com IA)
+  const handleRequestAIProbes = async () => {
+    setIsLoadingAIProbes(true);
+    try {
+      const lastResp = doorResponses.slice(-1)[0]?.originalText || 'Práticas rotineiras';
+      const res = await fetch('/api/ai/probe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          doorId: activeDoor.id,
+          doorTitle: activeDoor.title,
+          responseText: lastResp
+        })
+      });
+      const data = await res.json();
+      if (data.suggestedProbes && data.suggestedProbes.length > 0) {
+        setProbingQuestion(data.suggestedProbes[0].question);
+        setProbingReason(data.suggestedProbes[0].reason);
+      }
+    } catch (err) {
+      console.error(err);
+      setProbingQuestion('Como essa situação é documentada ou comunicada aos setores envolvidos?');
+      setProbingReason('Aprofundamento de registro neutro.');
+    } finally {
+      setIsLoadingAIProbes(false);
+    }
+  };
+
+  // Salvar registro de "Não sei"
+  const handleSaveDontKnow = () => {
+    recordDontKnow(
+      activeDoorId,
+      dontKnowReason,
+      dontKnowJustification || 'Respondente informou desconhecer a rotina.',
+      dontKnowAction
+    );
+    setShowDontKnowModal(false);
+    setDontKnowJustification('');
+  };
+
+  // Salvar intervenção pedagógica
+  const handleSavePedagogical = () => {
+    addPedagogicalIntervention({
+      doorId: activeDoorId,
+      concept: selectedConcept.concept,
+      reason: 'Dúvida ou incompreensão conceitual do respondente sanada sem induzir resposta de conformidade.',
+      contentPresented: selectedConcept.shortExplanation,
+      concreteExample: selectedConcept.concreteExample,
+      followUpQuestion: selectedConcept.neutralQuestion,
+      previousResponseText: doorResponses.slice(-1)[0]?.originalText,
+      subsequentResponseText: ''
+    });
+    setShowPedagogicalModal(false);
+  };
+
+  // Salvar sondagem
+  const handleSaveProbing = () => {
+    if (!probingQuestion.trim()) return;
+    addProbingRecord({
+      doorId: activeDoorId,
+      origin: 'IA_SUGERIDA',
+      reason: probingReason || 'Aprofundamento de aspecto prático',
+      questionEffectivelyAsked: probingQuestion,
+      responseText: probingResponse || undefined,
+      relatedCriterionOrCapacity: activeDoor.title
+    });
+    setProbingQuestion('');
+    setProbingReason('');
+    setProbingResponse('');
+    setShowProbingModal(false);
+  };
+
+  // Salvar convite distribuído
+  const handleSaveDistributed = () => {
+    if (!distTargetName.trim() || !distNeutralQuestion.trim()) return;
+    createDistributedRequest(
+      activeDoorId,
+      distTargetName,
+      distDepartment || 'Outro Setor',
+      'COMPLEMENTACAO',
+      distNeutralQuestion,
+      distContext
+    );
+    setDistTargetName('');
+    setDistDepartment('');
+    setDistNeutralQuestion('');
+    setShowDistributedModal(false);
+    alert('Convite neutro de contribuição registrado. A fonte receberá apenas a pergunta neutra sem exposição da fala alheia.');
+  };
+
+  // Salvar evidência
+  const handleSaveEvidence = () => {
+    if (!evidenceTitle.trim()) return;
+    addEvidence({
+      title: evidenceTitle,
+      type: evidenceType,
+      origin: evidenceOrigin || 'Informado pelo participante',
+      indicatedBy: currentUser.name,
+      date: new Date().toISOString().split('T')[0],
+      status: 'INDICADA',
+      sufficiencyNotes: 'Evidência indicada durante a entrevista. Aguarda apresentação do documento para verificação pelo Facilitador.',
+      limitations: 'Pendente de verificação formal de autenticidade e alcance.',
+      relatedCapacities: ['C1'],
+      sensitivity: 'PUBLICA',
+      aiUsageRule: 'AUTORIZADO_RESUMO'
+    });
+    setEvidenceTitle('');
+    setEvidenceOrigin('');
+    setShowEvidenceModal(false);
+  };
+
+  return (
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* Seletor horizontal das 6 portas de descoberta */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+        {DOORS_DEFINITIONS.map(door => {
+          const isSelected = door.id === activeDoorId;
+          const status = doorStatuses[door.id];
+          return (
+            <button
+              key={door.id}
+              onClick={() => setActiveDoorId(door.id)}
+              className={`px-3.5 py-2.5 rounded-xl text-left border transition-all shrink-0 min-w-[180px] cursor-pointer select-none active:scale-[0.98] ${
+                isSelected
+                  ? 'bg-slate-900 border-slate-900 text-white shadow-md ring-2 ring-emerald-500/60'
+                  : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50/80 active:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center justify-between font-bold text-xs gap-2">
+                <div className="flex items-center gap-1.5">
+                  {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />}
+                  <span>{door.code}</span>
+                </div>
+                {isSelected ? (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded font-mono bg-slate-800 text-slate-300">
+                    {status === 'SUFICIENTEMENTE_EXPLORADA' ? 'EXPLORADA' : status === 'SUFICIENTEMENTE_EXPLORADA_COMPROVACAO_PENDENTE' ? 'PENDENTE' : status.replace(/_/g, ' ')}
+                  </span>
+                ) : (
+                  <DoorStatusBadge status={status} size="sm" showIcon={false} />
+                )}
+              </div>
+              <div className="text-xs truncate font-medium mt-1">{door.title}</div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Banner de Entrevista Concluída */}
+      {currentCycle?.interviewCompletedAt && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 flex items-center justify-between gap-3 text-xs text-emerald-900 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>
+              <strong>Entrevista Presencial Concluída:</strong> A etapa de escuta fática das 6 portas foi finalizada em {new Date(currentCycle.interviewCompletedAt).toLocaleDateString('pt-BR')}. Registros e retificações continuam acessíveis.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCurrentView('HOME')}
+            className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 underline shrink-0 cursor-pointer"
+          >
+            Retornar à Jornada
+          </button>
+        </div>
+      )}
+
+      {/* Banner de Feedback Estruturado Essencial (Ajuste 9) */}
+      {actionFeedback && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 shadow-2xs flex items-start justify-between gap-3 animate-in fade-in">
+          <div className="flex items-start gap-2.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+            <div className="space-y-0.5 text-xs text-slate-700">
+              <p className="font-bold text-emerald-950">✓ {actionFeedback.message}</p>
+              <p className="text-slate-600">📍 {actionFeedback.location}</p>
+              <p className="text-emerald-800 font-medium font-serif">→ {actionFeedback.nextStep}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setActionFeedback(null)}
+            className="text-slate-400 hover:text-slate-600 text-xs px-1 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Cabeçalho da Porta Ativa */}
+      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-0.5 rounded font-mono">
+                {activeDoor.code}
+              </span>
+              <h2 className="text-lg font-bold text-slate-800">{activeDoor.title}</h2>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              <strong>Objetivo da descoberta:</strong> {activeDoor.objective}
+            </p>
+          </div>
+
+          {/* Estado da Porta e Opções Avançadas Secundárias (Ajuste 4) */}
+          <div className="flex items-center gap-2.5 flex-wrap justify-end">
+            <LocalSaveIndicator />
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500 font-medium">Situação:</span>
+              <DoorStatusBadge status={currentDoorStatus} size="sm" />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowAdvancedStatuses(prev => !prev)}
+              className="text-[11px] text-slate-500 hover:text-slate-700 underline font-medium cursor-pointer"
+            >
+              {showAdvancedStatuses ? 'Ocultar opções avançadas' : 'Opções avançadas de estado'}
+            </button>
+          </div>
+        </div>
+
+        {/* Seletor Avançado de Estados (Secundário sob demanda) */}
+        {showAdvancedStatuses && (
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-2 animate-in fade-in">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-slate-700">Classificação Metodológica Específica:</span>
+              <span className="text-[10px] text-slate-500">Apenas para registros excepcionais ou complementares</span>
+            </div>
+            <select
+              value={currentDoorStatus}
+              onChange={e => updateDoorStatus(activeDoorId, e.target.value as DoorStatus)}
+              className="w-full text-xs bg-white border border-slate-300 rounded px-2.5 py-1.5 text-slate-700 font-medium focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+            >
+              <option value="NAO_INICIADA">NÃO INICIADA</option>
+              <option value="EM_DESCOBERTA">EM DESCOBERTA</option>
+              <option value="SUFICIENTEMENTE_EXPLORADA">SUFICIENTEMENTE EXPLORADA</option>
+              <option value="SUFICIENTEMENTE_EXPLORADA_COMPROVACAO_PENDENTE">SUFICIENTEMENTE EXPLORADA — COMPROVAÇÃO PENDENTE</option>
+              <option value="REQUER_OUTRA_FONTE">REQUER OUTRA FONTE</option>
+              <option value="REQUER_APROFUNDAMENTO">REQUER APROFUNDAMENTO</option>
+              <option value="NAO_APROFUNDADA_POR_PROPORCIONALIDADE">NÃO APROFUNDADA POR PROPORCIONALIDADE</option>
+            </select>
+          </div>
+        )}
+
+        {/* Pergunta Essencial Aberta com Apoio Contextual (Ajuste 2) */}
+        <div className="bg-emerald-50/70 border border-emerald-200 rounded-lg p-4 space-y-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <span className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider">
+              Pergunta Essencial (Não indutiva):
+            </span>
+            <div className="flex items-center gap-2">
+              {activeDoor.adaptedQuestion && (
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">
+                  Variação adaptada disponível
+                </span>
+              )}
+              {activeDoor.contextualHelp && (
+                <button
+                  type="button"
+                  onClick={() => setShowContextualHelp(prev => !prev)}
+                  className="text-xs font-semibold text-emerald-800 hover:text-emerald-950 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 px-2.5 py-1 rounded-md flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Lightbulb className="w-3.5 h-3.5 text-amber-600" />
+                  <span>{showContextualHelp ? 'Ocultar contextualização' : 'Ajudar a contextualizar'}</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          <p className="text-sm font-semibold text-emerald-950 leading-relaxed font-serif">
+            “{activeDoor.essentialQuestion}”
+          </p>
+
+          {activeDoor.adaptedQuestion && (
+            <p className="text-xs text-emerald-800 italic pt-0.5">
+              Formulação alternativa: {activeDoor.adaptedQuestion}
+            </p>
+          )}
+
+          {/* Quadro de Apoio Contextual Expansível (Ajuste 2) */}
+          {showContextualHelp && activeDoor.contextualHelp && (
+            <div className="mt-3 pt-3 border-t border-emerald-200 space-y-2.5 text-xs text-emerald-950 bg-white/80 p-3.5 rounded-lg animate-in fade-in">
+              <div className="flex items-center gap-1.5 font-bold text-emerald-900 text-[11px] uppercase tracking-wide">
+                <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
+                <span>Situações institucionais e práticas para apoio à escuta:</span>
+              </div>
+              <p className="font-serif text-slate-700 leading-relaxed">
+                {activeDoor.contextualHelp.scopeExplanation}
+              </p>
+              <div className="space-y-1.5 pt-1">
+                {activeDoor.contextualHelp.practicalSituations.map((sit, idx) => (
+                  <div key={idx} className="flex items-start gap-2 bg-emerald-50/60 p-2 rounded border border-emerald-100 text-slate-700">
+                    <span className="text-emerald-700 font-bold shrink-0">•</span>
+                    <span className="font-serif leading-relaxed">{sit}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-500 italic pt-1">
+                Nota ao Facilitador: Utilize estes exemplos neutros apenas se o interlocutor tiver dúvida para compreender o campo da pergunta. Não utilize como checklist nem antecipe respostas.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Lentes e Focos Metodológicos Secundários (Ajuste 8) */}
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={() => setShowMethodologyLenses(prev => !prev)}
+            className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1.5 font-medium transition-colors cursor-pointer"
+          >
+            <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
+            <span>{showMethodologyLenses ? 'Ocultar o que esta pergunta busca compreender' : 'Ver o que esta pergunta busca compreender'}</span>
+          </button>
+
+          {showMethodologyLenses && (
+            <div className="mt-2.5 p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-3 text-xs animate-in fade-in">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block mb-1">
+                  Áreas de Foco Metodológico:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {activeDoor.focusAreas.map(f => (
+                    <span key={f} className="bg-white border border-slate-200 text-slate-700 px-2 py-0.5 rounded text-[11px]">
+                      {f}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              {activeDoor.internalLenses && activeDoor.internalLenses.length > 0 && (
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-purple-700 tracking-wider block mb-1">
+                    Lentes Internas de Investigação:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {activeDoor.internalLenses.map(lens => (
+                      <span key={lens} className="bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded font-mono text-[10px]">
+                        {lens}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Histórico da Conversa / Registro de Respostas Imutáveis */}
+      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+          <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+            <span>Registro de Falas Originais Imutáveis</span>
+            <span className="text-xs text-slate-400 font-normal">({doorResponses.length} resposta(s) registrada(s))</span>
+          </h3>
+          <span className="text-[11px] text-slate-400 flex items-center gap-1">
+            <Lock className="w-3 h-3" /> Imutável: correções criam novo registro relacionado
+          </span>
+        </div>
+
+        {doorResponses.length === 0 ? (
+          <div className="py-8 text-center text-slate-400 text-xs">
+            Nenhuma resposta registrada ainda para esta porta. Apresente a pergunta essencial ou registre a fala do participante abaixo.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {doorResponses.map(resp => (
+              <div 
+                key={resp.id} 
+                className={`p-3.5 rounded-lg border transition-all ${
+                  resp.isRetificationOfResponseId 
+                    ? 'bg-amber-50/60 border-amber-200' 
+                    : 'bg-slate-50 border-slate-200'
+                }`}
+              >
+                <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-800">{resp.respondentName}</span>
+                    <span className="text-[11px] text-slate-500">({resp.respondentRole})</span>
+                    {resp.isRetificationOfResponseId && (
+                      <span className="bg-amber-200 text-amber-900 text-[10px] px-1.5 py-0.2 rounded font-bold">
+                        Retificação da resposta anterior
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-[11px]">
+                    <span className="font-mono text-slate-400">{resp.id}</span>
+                    <span>{new Date(resp.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                </div>
+
+                <p className="text-sm text-slate-800 leading-relaxed font-serif bg-white p-2.5 rounded border border-slate-100">
+                  “{resp.originalText}”
+                </p>
+
+                {/* Ações sobre a resposta */}
+                <div className="flex items-center justify-between pt-2 mt-2 text-xs">
+                  <span className="text-[11px] text-slate-400">Modalidade: {resp.modality.replace('_', ' ')}</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => {
+                        setRetifyingResponseId(resp.id);
+                        setInputText(resp.originalText);
+                      }}
+                      className="text-amber-700 hover:text-amber-800 font-medium text-[11px] underline cursor-pointer"
+                    >
+                      Registrar Retificação Formal
+                    </button>
+                    {isFacilitator && (
+                      <button
+                        onClick={() => {
+                          setActiveDoorId(resp.doorId);
+                          setActiveResponseId(resp.id);
+                          setCurrentView('FACILITATOR_PANEL');
+                        }}
+                        className="text-slate-600 hover:text-slate-800 text-[11px] flex items-center gap-1 font-medium hover:underline cursor-pointer"
+                        title="Abrir ambiente metodológico de análise das unidades desta resposta"
+                      >
+                        Analisar Unidades no Painel <ArrowRight className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Ocorrências de Não Sei registradas para esta porta */}
+        {doorDontKnows.length > 0 && (
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs space-y-1">
+            <span className="font-bold text-amber-900 flex items-center gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+              Manifestação de "Não Sei" Registrada nesta Porta:
+            </span>
+            {doorDontKnows.map(dk => (
+              <div key={dk.id} className="text-amber-800 pl-5 text-[11px]">
+                • Motivo classificado: <strong>{dk.reasonCategory.replace(/_/g, ' ')}</strong>.
+                {dk.justificationNotes && ` Nota: ${dk.justificationNotes}`}
+                <span className="text-amber-900 font-semibold ml-1">
+                  (Regra: Não é gap nem N1; gerou encaminhamento: {dk.nextStepAction})
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Sondagens registradas nesta porta */}
+        {doorProbings.length > 0 && (
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs space-y-1">
+            <span className="font-bold text-blue-900 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+              Sondagens Realizadas ({doorProbings.length}):
+            </span>
+            {doorProbings.map(prb => (
+              <div key={prb.id} className="text-blue-800 pl-5 text-[11px]">
+                • <strong>P:</strong> “{prb.questionEffectivelyAsked}”
+                {prb.responseText && <span className="text-slate-700 block italic pl-2">R: “{prb.responseText}”</span>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Intervenções pedagógicas registradas */}
+        {doorPedagogical.length > 0 && (
+          <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg text-xs space-y-1">
+            <span className="font-bold text-purple-900 flex items-center gap-1.5">
+              <BookOpen className="w-3.5 h-3.5 text-purple-600" />
+              Intervenção Pedagógica Aplicada:
+            </span>
+            {doorPedagogical.map(ped => (
+              <div key={ped.id} className="text-purple-800 pl-5 text-[11px]">
+                • Conceito explicado: <strong>{ped.concept}</strong>. Pergunta de retomada: “{ped.followUpQuestion}”
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Barra de Ferramentas de Entrevista */}
+        <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100">
+          <button
+            type="button"
+            onClick={() => setShowProbingModal(true)}
+            className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 flex items-center gap-1.5"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+            Sondagem Adaptativa (IA / Neutra)
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowPedagogicalModal(true)}
+            className="px-3 py-1.5 text-xs font-medium rounded-md bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 flex items-center gap-1.5"
+          >
+            <BookOpen className="w-3.5 h-3.5 text-purple-600" />
+            Intervenção Pedagógica
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowDontKnowModal(true)}
+            className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 flex items-center gap-1.5"
+          >
+            <HelpCircle className="w-3.5 h-3.5 text-amber-600" />
+            Tratar "Não Sei"
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowDistributedModal(true)}
+            className="px-3 py-1.5 text-xs font-medium rounded-md bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 flex items-center gap-1.5"
+          >
+            <GitPullRequest className="w-3.5 h-3.5 text-sky-600" />
+            Convidar Outra Fonte (Neutro)
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowEvidenceModal(true)}
+            className="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 flex items-center gap-1.5"
+          >
+            <FileText className="w-3.5 h-3.5 text-slate-600" />
+            Indicar Evidência
+          </button>
+        </div>
+
+        {/* Caixa de Entrada de Fala do Participante */}
+        <form onSubmit={handleSendResponse} className="space-y-2 pt-2">
+          {retifyingResponseId && (
+            <div className="bg-amber-100 text-amber-900 px-3 py-1.5 rounded text-xs flex items-center justify-between">
+              <span>Registrando <strong>retificação formal</strong> da fala original selecionada.</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setRetifyingResponseId(null);
+                  setInputText('');
+                }}
+                className="font-bold text-amber-800"
+              >
+                Cancelar
+              </button>
+            </div>
+          )}
+
+          <div className="relative">
+            <textarea
+              rows={4}
+              value={inputText}
+              onChange={e => setInputText(e.target.value)}
+              placeholder="Digite a fala literal do respondente ou registre as declarações da entrevista..."
+              className="w-full text-sm p-3 rounded-lg border border-slate-300 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-slate-400">
+              Registrado sob o perfil de: <strong>{currentUser.name}</strong> ({currentUser.department})
+            </span>
+            <button
+              type="submit"
+              disabled={!inputText.trim()}
+              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Send className="w-3.5 h-3.5" />
+              {retifyingResponseId ? 'Salvar Retificação Relacionada' : 'Registrar Resposta Original'}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Card de Decisão Humana de Suficiência e Avanço (Ajustes 4 e 5) */}
+      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="space-y-0.5">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>Decisão de Suficiência e Conclusão da Porta</span>
+            </h3>
+            <p className="text-xs text-slate-500 font-serif">
+              A suficiência da investigação é uma avaliação humana do Facilitador para cada área.
+            </p>
+          </div>
+          <DoorStatusBadge status={currentDoorStatus} size="sm" />
+        </div>
+
+        {currentDoorStatus !== 'SUFICIENTEMENTE_EXPLORADA' ? (
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h4 className="text-xs font-bold text-slate-800">
+                Você possui informações suficientes desta porta para seguir adiante?
+              </h4>
+              <p className="text-xs text-slate-600 font-serif leading-relaxed max-w-2xl">
+                Enquanto a escuta estiver em andamento, a porta permanece em investigação. Quando considerar que as práticas reais e rotinas essenciais desta porta foram adequadamente compreendidas, confirme a suficiência para liberar o avanço.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleConfirmSufficiency}
+              className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-xs transition-colors shrink-0 cursor-pointer"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>Confirmar informação suficiente</span>
+            </button>
+          </div>
+        ) : (
+          <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2 text-xs text-emerald-900 font-semibold">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <span>Porta avaliada como suficientemente explorada pelo Facilitador.</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => updateDoorStatus(activeDoorId, 'EM_DESCOBERTA')}
+                className="text-xs text-slate-500 hover:text-slate-800 underline cursor-pointer"
+              >
+                Reabrir para continuar investigando
+              </button>
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-emerald-200/60">
+              <p className="text-xs text-slate-600 font-serif">
+                {isLastDoor 
+                  ? 'Todas as 6 portas da Dimensão D1 foram percorridas.'
+                  : `Pronta para seguir para a próxima área de investigação: Porta ${nextDoorId}.`}
+              </p>
+
+              {isLastDoor ? (
+                <button
+                  type="button"
+                  onClick={() => setShowReviewAndFinishModal(true)}
+                  className="w-full sm:w-auto bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white font-bold text-xs px-5 py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Revisar e concluir entrevista</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleAdvanceToNextDoor}
+                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs px-5 py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
+                >
+                  <span>Concluir e avançar para {nextDoorId}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* MODAL: Tratamento do Não Sei */}
+      {showDontKnowModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-lg w-full p-5 space-y-4 shadow-xl border border-slate-200">
+            <div className="flex items-start justify-between border-b border-slate-100 pb-2">
+              <div>
+                <h4 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                  <HelpCircle className="w-4 h-4 text-amber-600" />
+                  Tratamento Metodológico do "Não Sei"
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  Princípio: "NÃO SEI" NÃO É GAP, NÃO É N1, NÃO É NÃO ATENDE.
+                </p>
+              </div>
+              <button onClick={() => setShowDontKnowModal(false)} className="text-slate-400 hover:text-slate-600 text-sm">✕</button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Qual a causa identificada para o "Não Sei"?</label>
+                <select
+                  value={dontKnowReason}
+                  onChange={e => setDontKnowReason(e.target.value as DontKnowReason)}
+                  className="w-full p-2 border border-slate-300 rounded"
+                >
+                  <option value="FORA_DA_VISIBILIDADE">FORA DA VISIBILIDADE DO RESPONDENTE (Ex: área técnica de TI)</option>
+                  <option value="INCOMPREENSAO_CONCEITUAL">INCOMPREENSÃO CONCEITUAL (Requer explicação breve)</option>
+                  <option value="OUTRA_FONTE_PODE_INFORMAR">OUTRA FONTE PODE INFORMAR (Setor ou responsável específico)</option>
+                  <option value="RESPONDENTE_PODE_BUSCAR">RESPONDENTE PODE BUSCAR A INFORMAÇÃO</option>
+                  <option value="INSTITUICAO_NAO_CONSEGUE_LOCALIZAR">INSTITUIÇÃO NÃO CONSEGUE LOCALIZAR</option>
+                  <option value="MOTIVO_AINDA_INDETERMINADO">MOTIVO AINDA INDETERMINADO</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Próximo Passo Orientado:</label>
+                <select
+                  value={dontKnowAction}
+                  onChange={e => setDontKnowAction(e.target.value as any)}
+                  className="w-full p-2 border border-slate-300 rounded"
+                >
+                  <option value="CONVITE_OUTRA_FONTE">Solicitar contribuição à fonte adequada</option>
+                  <option value="EXPLICACAO_PEDAGOGICA">Realizar intervenção pedagógica conceitual</option>
+                  <option value="BUSCA_INTERNA">Respondente irá buscar o dado internamente</option>
+                  <option value="REGISTRO_PENDENCIA">Registrar pendência de informação</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Observações de Justificativa:</label>
+                <textarea
+                  rows={2}
+                  value={dontKnowJustification}
+                  onChange={e => setDontKnowJustification(e.target.value)}
+                  placeholder="Explique o contexto para assegurar que não seja interpretado como carência institucional..."
+                  className="w-full p-2 border border-slate-300 rounded"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowDontKnowModal(false)}
+                className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveDontKnow}
+                className="px-4 py-1.5 text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white rounded"
+              >
+                Registrar "Não Sei" Metodológico
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Intervenção Pedagógica */}
+      {showPedagogicalModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-lg w-full p-5 space-y-4 shadow-xl border border-slate-200">
+            <div className="flex items-start justify-between border-b border-slate-100 pb-2">
+              <div>
+                <h4 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                  <BookOpen className="w-4 h-4 text-purple-600" />
+                  Intervenção Pedagógica (Ensinar sem Induzir)
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  Fluxo: Conceito necessário → Explicação curta → Exemplo concreto → Pergunta → Descoberta.
+                </p>
+              </div>
+              <button onClick={() => setShowPedagogicalModal(false)} className="text-slate-400 hover:text-slate-600 text-sm">✕</button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Selecione o Conceito Necessário:</label>
+                <select
+                  value={selectedConcept.concept}
+                  onChange={e => {
+                    const c = PEDAGOGICAL_CONCEPTS.find(item => item.concept === e.target.value);
+                    if (c) setSelectedConcept(c);
+                  }}
+                  className="w-full p-2 border border-slate-300 rounded font-medium"
+                >
+                  {PEDAGOGICAL_CONCEPTS.map(c => (
+                    <option key={c.concept} value={c.concept}>{c.concept}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="bg-purple-50 p-3 rounded-lg border border-purple-200 space-y-2">
+                <div>
+                  <span className="font-bold text-purple-900">Explicação curta:</span>
+                  <p className="text-purple-950 mt-0.5">{selectedConcept.shortExplanation}</p>
+                </div>
+                <div>
+                  <span className="font-bold text-purple-900">Exemplo concreto:</span>
+                  <p className="text-purple-950 italic mt-0.5">{selectedConcept.concreteExample}</p>
+                </div>
+                <div>
+                  <span className="font-bold text-purple-900">Pergunta neutra de retomada:</span>
+                  <p className="text-purple-950 font-semibold mt-0.5">“{selectedConcept.neutralQuestion}”</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowPedagogicalModal(false)}
+                className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSavePedagogical}
+                className="px-4 py-1.5 text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white rounded"
+              >
+                Registrar Intervenção
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Sondagem Adaptativa (Ajuste 3) */}
+      {showProbingModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-lg w-full p-5 space-y-4 shadow-xl border border-slate-200">
+            <div className="flex items-start justify-between border-b border-slate-100 pb-2">
+              <div>
+                <h4 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-blue-600" />
+                  Sondagem Adaptativa de Campo
+                </h4>
+                <p className="text-[11px] text-slate-500 font-serif">
+                  Aprofundar aspectos concretos da rotina em linguagem natural, sem induzir respostas ou pressupor conformidade.
+                </p>
+              </div>
+              <button onClick={() => setShowProbingModal(false)} className="text-slate-400 hover:text-slate-600 text-sm cursor-pointer">✕</button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-700">Pergunta formulada ao participante:</span>
+                <button
+                  type="button"
+                  onClick={handleRequestAIProbes}
+                  disabled={isLoadingAIProbes}
+                  className="text-[11px] text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 cursor-pointer"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  {isLoadingAIProbes ? 'Consultando IA...' : 'Sugerir pergunta neutra com IA'}
+                </button>
+              </div>
+
+              <textarea
+                rows={2}
+                value={probingQuestion}
+                onChange={e => setProbingQuestion(e.target.value)}
+                placeholder="Ex: Na rotina diária, como essa solicitação chega até você e quem costuma analisar primeiro?"
+                className="w-full p-2 border border-slate-300 rounded font-serif"
+              />
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">
+                  O que você queria compreender com esta pergunta? (em linguagem simples e direta):
+                </label>
+                <input
+                  type="text"
+                  value={probingReason}
+                  onChange={e => setProbingReason(e.target.value)}
+                  placeholder="Ex: Saber se existe procedimento formalizado por escrito ou se a prática é apenas verbal"
+                  className="w-full p-2 border border-slate-300 rounded font-serif"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">
+                  Resposta obtida do participante (opcional):
+                </label>
+                <textarea
+                  rows={2}
+                  value={probingResponse}
+                  onChange={e => setProbingResponse(e.target.value)}
+                  placeholder="Registre as declarações ou explicações orais dadas à pergunta de sondagem..."
+                  className="w-full p-2 border border-slate-300 rounded font-serif"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowProbingModal(false)}
+                className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveProbing}
+                disabled={!probingQuestion.trim()}
+                className="px-4 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded disabled:opacity-50 cursor-pointer"
+              >
+                Registrar Sondagem
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Convidar Outra Fonte (Investigação Distribuída) */}
+      {showDistributedModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-lg w-full p-5 space-y-4 shadow-xl border border-slate-200">
+            <div className="flex items-start justify-between border-b border-slate-100 pb-2">
+              <div>
+                <h4 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                  <GitPullRequest className="w-4 h-4 text-sky-600" />
+                  Investigação Distribuída (Convite Neutro à Fonte)
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  Regra estrita: NÃO revelar a fala do primeiro respondente ("Fulano disse X"). Enviar apenas formulação neutra.
+                </p>
+              </div>
+              <button onClick={() => setShowDistributedModal(false)} className="text-slate-400 hover:text-slate-600 text-sm">✕</button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Nome da Fonte Convidada:</label>
+                  <input
+                    type="text"
+                    value={distTargetName}
+                    onChange={e => setDistTargetName(e.target.value)}
+                    placeholder="Ex: Rodrigo Santoro Alencar"
+                    className="w-full p-2 border border-slate-300 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Setor / Departamento:</label>
+                  <input
+                    type="text"
+                    value={distDepartment}
+                    onChange={e => setDistDepartment(e.target.value)}
+                    placeholder="Ex: Tecnologia da Informação"
+                    className="w-full p-2 border border-slate-300 rounded"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Pergunta Neutra Dirigida:</label>
+                <textarea
+                  rows={3}
+                  value={distNeutralQuestion}
+                  onChange={e => setDistNeutralQuestion(e.target.value)}
+                  placeholder="Ex: No âmbito do Departamento de TI, como estão organizadas as rotinas de backup e controle de acessos a sistemas com dados pessoais?"
+                  className="w-full p-2 border border-slate-300 rounded"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Contexto Mínimo Transparente Fornecido:</label>
+                <input
+                  type="text"
+                  value={distContext}
+                  onChange={e => setDistContext(e.target.value)}
+                  className="w-full p-2 border border-slate-300 rounded text-slate-600"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowDistributedModal(false)}
+                className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveDistributed}
+                disabled={!distTargetName.trim() || !distNeutralQuestion.trim()}
+                className="px-4 py-1.5 text-xs font-semibold bg-sky-600 hover:bg-sky-700 text-white rounded disabled:opacity-50"
+              >
+                Enviar Solicitação Dirigida
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Indicar Evidência Citada (Ajuste 7) */}
+      {showEvidenceModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-lg w-full p-5 space-y-4 shadow-xl border border-slate-200">
+            <div className="flex items-start justify-between border-b border-slate-100 pb-2">
+              <div>
+                <h4 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-purple-600" />
+                  Indicar Evidência ou Documento Citado
+                </h4>
+                <p className="text-[11px] text-slate-500 font-serif">
+                  O registro durante a entrevista serve para rastrear o que foi citado na escuta. A verificação formal e suficiência do documento pertencem à etapa posterior de análise.
+                </p>
+              </div>
+              <button onClick={() => setShowEvidenceModal(false)} className="text-slate-400 hover:text-slate-600 text-sm cursor-pointer">✕</button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Título / Descrição do Documento Citado:</label>
+                <input
+                  type="text"
+                  value={evidenceTitle}
+                  onChange={e => setEvidenceTitle(e.target.value)}
+                  placeholder="Ex: Portaria nº 014/2023 - Designação do Encarregado"
+                  className="w-full p-2 border border-slate-300 rounded font-serif"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Tipo de Evidência:</label>
+                  <select
+                    value={evidenceType}
+                    onChange={e => setEvidenceType(e.target.value as any)}
+                    className="w-full p-2 border border-slate-300 rounded font-medium"
+                  >
+                    <option value="PORTARIA">Portaria / Ato Normativo</option>
+                    <option value="CONTRATO">Contrato / Termo de Referência</option>
+                    <option value="FLUXOGRAMA">Fluxograma / Procedimento</option>
+                    <option value="RELATORIO">Relatório / Despacho</option>
+                    <option value="SISTEMA_TICKET">Registro em Sistema / Chamado</option>
+                    <option value="ATA_REUNIAO">Ata de Reunião</option>
+                    <option value="EMAIL">E-mail Institucional</option>
+                    <option value="OUTRO">Outro</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Origem / Onde se encontra:</label>
+                  <input
+                    type="text"
+                    value={evidenceOrigin}
+                    onChange={e => setEvidenceOrigin(e.target.value)}
+                    placeholder="Ex: Diário Oficial ou pasta da Secretaria Geral"
+                    className="w-full p-2 border border-slate-300 rounded"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowEvidenceModal(false)}
+                className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEvidence}
+                disabled={!evidenceTitle.trim()}
+                className="px-4 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded disabled:opacity-50 cursor-pointer"
+              >
+                Registrar Evidência Citada
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Encerramento e Revisão da Entrevista (Ajuste 6) */}
+      {showReviewAndFinishModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-xl w-full p-6 space-y-5 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold uppercase tracking-wider mb-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Entrevista Concluída</span>
+                </div>
+                <h3 className="text-lg font-bold text-slate-900">
+                  Fechamento da Coleta — Dimensão D1
+                </h3>
+                <p className="text-xs text-slate-500 font-serif mt-0.5">
+                  Entrevista concluída: As seis áreas de investigação foram percorridas.
+                </p>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setShowReviewAndFinishModal(false)} 
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Verificação Operacional das 6 Portas */}
+            <div className="space-y-2">
+              <span className="text-[11px] uppercase font-bold text-slate-700 tracking-wider block">
+                Verificação Operacional dos Registros de Campo:
+              </span>
+              <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 text-xs overflow-hidden">
+                {DOORS_DEFINITIONS.map(door => {
+                  const responsesCount = originalResponses.filter(r => r.doorId === door.id).length;
+                  const status = doorStatuses[door.id];
+                  return (
+                    <div key={door.id} className="p-3 flex items-center justify-between bg-white hover:bg-slate-50">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-slate-800">{door.code}</span>
+                          <span className="font-medium text-slate-700">{door.title}</span>
+                        </div>
+                        <span className="text-[11px] text-slate-500 block">
+                          {responsesCount === 0 ? 'Nenhuma fala direta registrada' : `${responsesCount} fala(s) gravada(s)`}
+                        </span>
+                      </div>
+                      <DoorStatusBadge status={status} size="sm" />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Resumo quantitativo simples */}
+            <div className="grid grid-cols-3 gap-2 text-center text-xs">
+              <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
+                <span className="text-[10px] text-slate-500 block uppercase">Falas Registradas</span>
+                <span className="text-sm font-bold text-slate-800">{originalResponses.length}</span>
+              </div>
+              <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
+                <span className="text-[10px] text-slate-500 block uppercase">Evidências Citadas</span>
+                <span className="text-sm font-bold text-purple-700">{evidences.length}</span>
+              </div>
+              <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
+                <span className="text-[10px] text-slate-500 block uppercase">"Não Sei" Tratados</span>
+                <span className="text-sm font-bold text-amber-700">{dontKnowRecords.length}</span>
+              </div>
+            </div>
+
+            {/* Esclarecimento Metodológico da Coleta vs Análise Posterior */}
+            <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-4 text-xs text-amber-950 space-y-1.5 font-serif leading-relaxed">
+              <div className="flex items-center gap-1.5 font-bold text-amber-900 text-xs font-sans">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Distinção Metodológica entre Coleta e Análise Posterior:</span>
+              </div>
+              <p>
+                A etapa de <strong>coleta da entrevista presencial está formalmente encerrada</strong>.
+              </p>
+              <p className="text-[11px] text-amber-900">
+                A validação formal de documentos, complementações com outros setores, apuração de gaps, atribuição de nível de maturidade e plano de evolução pertencem exclusivamente à <strong>etapa posterior de trabalho do Facilitador</strong>.
+              </p>
+            </div>
+
+            {/* Ações de Conclusão */}
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowReviewAndFinishModal(false)}
+                className="w-full sm:w-auto px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              >
+                Voltar à entrevista
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowReviewAndFinishModal(false);
+                  completeInterview();
+                }}
+                className="w-full sm:w-auto px-5 py-2.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Concluir entrevista e retornar à Jornada</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

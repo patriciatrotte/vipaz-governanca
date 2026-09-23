@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+/* ======================================================== */
+/* FEEDBACK DE INTERAÇÃO & ACESSIBILIDADE GLOBAL (PILOTO D1)*/
+/* ======================================================== */
+
+/* 1. Affordance inequívoca de cursor em desktop para elementos clicáveis */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+select,
+summary,
+input[type="checkbox"],
+input[type="radio"] {
+  cursor: pointer;
+}
+
+/* Elementos desabilitados não recebem cursor pointer */
+button:disabled,
+[role="button"][aria-disabled="true"],
+select:disabled,
+input:disabled,
+textarea:disabled {
+  cursor: not-allowed !important;
+  opacity: 0.65;
+}
+
+/* Elementos meramente informativos NÃO têm pointer */
+.badge,
+[data-informational="true"] {
+  cursor: default !important;
+}
+
+/* 2. Feedback tátil imediato no clique / toque (touch & desktop) */
+button:not(:disabled):active,
+[role="button"]:not([aria-disabled="true"]):active,
+.clickable-element:active {
+  transform: scale(0.985) translateY(1px);
+  filter: brightness(0.96);
+  transition: transform 60ms ease-out, filter 60ms ease-out;
+}
+
+/* 3. Acessibilidade: foco visível para navegação por teclado */
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+[tabindex="0"]:focus-visible {
+  outline: 2px solid #059669 !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25) !important;
+}
