@@ -650,8 +650,6 @@ export const DoorInvestigationView: React.FC = () => {
         </form>
       </div>
 
-      </div>
-
       {activeDoorId === 'D1.1' && doorResponses.length > 0 && (
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
           <div className="space-y-1 border-b border-slate-100 pb-3">
@@ -908,38 +906,36 @@ export const DoorInvestigationView: React.FC = () => {
 
 
         {doorResponses.length > 0 && (
-          <div className="mt-3">
-        {/* Ações complementares após a resposta */}
-        <div className="space-y-2 pt-3 border-t border-slate-100">
-          <p className="text-[11px] font-semibold text-slate-600">Depois da resposta, complemente somente se necessário:</p>
-          <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowProbingModal(true)
-            className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 flex items-center gap-1.5"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-            + Perguntou algo a mais? Registre aqui
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowDistributedModal(true)}
-            className="px-3 py-1.5 text-xs font-medium rounded-md bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 flex items-center gap-1.5"
-          >
-            <GitPullRequest className="w-3.5 h-3.5 text-sky-600" />
-            Convidar Outra Fonte (Neutro)
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowEvidenceModal(true)}
-            className="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 flex items-center gap-1.5"
-          >
-            <FileText className="w-3.5 h-3.5 text-slate-600" />
-            Indicar Evidência
-          </button>
-  
+          <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
+            <p className="text-[11px] font-semibold text-slate-600">
+              2. Depois da resposta, complemente somente se necessário:
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowProbingModal(true)}
+                className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 flex items-center gap-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                + Perguntou algo a mais? Registre aqui
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDistributedModal(true)}
+                className="px-3 py-1.5 text-xs font-medium rounded-md bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 flex items-center gap-1.5"
+              >
+                <GitPullRequest className="w-3.5 h-3.5 text-sky-600" />
+                Convidar outra pessoa ou área
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowEvidenceModal(true)}
+                className="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 flex items-center gap-1.5"
+              >
+                <FileText className="w-3.5 h-3.5 text-slate-600" />
+                Indicar documento ou evidência
+              </button>
+            </div>
           </div>
         )}
       </div>
