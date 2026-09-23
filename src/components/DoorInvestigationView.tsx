@@ -49,6 +49,7 @@ export const DoorInvestigationView: React.FC = () => {
     evidences,
     addEvidence,
     currentUser,
+    currentOrg,
     setCurrentView,
     setActiveResponseId,
     completeInterview,
@@ -131,7 +132,17 @@ export const DoorInvestigationView: React.FC = () => {
         nextStep: 'Continue a investigação ou avalie a suficiência da porta.'
       });
     } else {
-      addOriginalResponse(activeDoorId, inputText);
+      const interviewRespondent = isFacilitator && currentOrg
+        ? {
+            id: `interview-respondent-${currentOrg.id}`,
+            name: currentOrg.mainInterlocutorName || 'Interlocutor da entrevista',
+            role: 'INTERLOCUTOR_PRINCIPAL' as const,
+            email: '',
+            department: currentOrg.mainInterlocutorRole || 'Papel não informado',
+            organizationId: currentOrg.id
+          }
+        : currentUser;
+      addOriginalResponse(activeDoorId, inputText, interviewRespondent);
       // Se a porta estava não iniciada, move para em descoberta
       if (currentDoorStatus === 'NAO_INICIADA') {
         updateDoorStatus(activeDoorId, 'EM_DESCOBERTA');
@@ -428,7 +439,7 @@ export const DoorInvestigationView: React.FC = () => {
         <div className="bg-emerald-50/70 border border-emerald-200 rounded-lg p-4 space-y-2">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <span className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider">
-              Pergunta Essencial (Não indutiva):
+              {activeDoorId === 'D1.1' ? 'Conversa de abertura — rememore a rotina:' : 'Pergunta Essencial (Não indutiva):'}
             </span>
             <div className="flex items-center gap-2">
               {activeDoor.adaptedQuestion && (
