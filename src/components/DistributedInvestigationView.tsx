@@ -73,17 +73,16 @@ export const DistributedInvestigationView: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
-      {/* Banner de Investigação Distribuída */}
+      {/* Banner de verificações com outras áreas */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <GitPullRequest className="w-5 h-5 text-sky-400" />
-            <h2 className="text-lg font-bold">Investigação Distribuída</h2>
+            <h2 className="text-lg font-bold">Verificações com outras áreas</h2>
           </div>
           <p className="text-xs text-slate-300 mt-1 max-w-2xl">
-            Quando o respondente inicial não possui visibilidade direta sobre determinado aspecto técnico ou operacional, 
-            a metodologia direciona <strong>perguntas neutras e específicas</strong> aos atores competentes, 
-            sem violar a confidencialidade ou expor falas de terceiros.
+            Use esta área quando, durante a entrevista, surgir uma informação que o Encarregado não consegue confirmar diretamente. 
+            Registre <strong>quem ou qual área pode complementar o fato</strong> e formule uma pergunta neutra, sem expor a fala de outra pessoa.
           </p>
         </div>
 
@@ -91,17 +90,17 @@ export const DistributedInvestigationView: React.FC = () => {
           onClick={() => setIsCreating(true)}
           className="bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors flex items-center gap-1.5 self-start md:self-auto shrink-0"
         >
-          + Nova Solicitação Dirigida
+          + Solicitar informação
         </button>
       </div>
 
-      {/* Regra de Ouro Metodológica */}
+      {/* Orientação de neutralidade */}
       <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 text-xs text-sky-900 flex items-start gap-2">
         <Lock className="w-4 h-4 text-sky-700 shrink-0 mt-0.5" />
         <div>
-          <strong>Regra Estrita de Neutralidade:</strong> É expressamente proibido enviar perguntas do tipo: 
+          <strong>Como perguntar:</strong> Evite formular a solicitação a partir da fala de outra pessoa, por exemplo: 
           <em>"O Encarregado informou que o setor de TI não faz backup, você confirma?"</em>. 
-          O convite deve ser estritamente neutro: 
+          Prefira uma pergunta neutra: 
           <em>"No âmbito da TI, quais são as rotinas práticas de backup e guarda de registros adotadas pela Casa?"</em>.
         </div>
       </div>
@@ -110,7 +109,7 @@ export const DistributedInvestigationView: React.FC = () => {
         {/* Coluna 1: Lista de Solicitações */}
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-3">
           <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2 flex items-center justify-between">
-            <span>Solicitações no Ciclo</span>
+            <span>Informações a verificar</span>
             <span className="text-xs text-slate-500 font-normal">
               {distributedRequests.length} ativa(s)
             </span>
@@ -155,10 +154,10 @@ export const DistributedInvestigationView: React.FC = () => {
               <div className="flex items-start justify-between border-b border-slate-100 pb-3">
                 <div>
                   <span className="text-[10px] font-mono bg-slate-100 text-slate-700 px-2 py-0.5 rounded">
-                    Porta {selectedRequest.doorId} • Solicitação #{selectedRequest.id}
+                    Origem: {selectedRequest.doorId.replace('D1.', 'Pergunta ')} • Solicitação #{selectedRequest.id}
                   </span>
                   <h3 className="text-base font-bold text-slate-800 mt-1">
-                    Contribuição Dirigida: {selectedRequest.targetPersonName}
+                    Informação solicitada a: {selectedRequest.targetPersonName}
                   </h3>
                   <p className="text-xs text-slate-500">
                     Setor: {selectedRequest.targetDepartment} • Motivo: {selectedRequest.reasonType.replace(/_/g, ' ')}
@@ -172,7 +171,7 @@ export const DistributedInvestigationView: React.FC = () => {
               {/* Pergunta Neutra Apresentada */}
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-2">
                 <span className="text-[11px] uppercase tracking-wider font-bold text-slate-500 block">
-                  Pergunta Neutra Apresentada à Fonte Convidada:
+                  Pergunta enviada:
                 </span>
                 <p className="text-sm font-semibold text-slate-900 leading-relaxed font-serif">
                   “{selectedRequest.minimalNeutralQuestion}”
@@ -188,7 +187,7 @@ export const DistributedInvestigationView: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
                       <CheckCircle className="w-4 h-4 text-emerald-600" />
-                      Contribuição Fática Registrada
+                      Informação recebida
                     </span>
                     <span className="text-[10px] font-mono bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">
                       {selectedRequest.submittedResponse.providedScope.replace(/_/g, ' ')}
@@ -214,12 +213,12 @@ export const DistributedInvestigationView: React.FC = () => {
                 /* Formulário simplificado da fonte */
                 <form onSubmit={handleSubmitResponse} className="space-y-3 pt-2">
                   <div className="bg-amber-50 border border-amber-200 p-3 rounded text-xs text-amber-900">
-                    <strong>Simulação de Resposta da Fonte:</strong> Você pode responder agora em nome de {selectedRequest.targetPersonName}.
+                    <strong>Simulação da resposta:</strong> Você pode responder agora em nome de {selectedRequest.targetPersonName}.
                   </div>
 
                   <div>
                     <label className="font-semibold text-xs text-slate-700 block mb-1">
-                      Declaração Fática da Fonte:
+                      Resposta:
                     </label>
                     <textarea
                       rows={4}
@@ -267,7 +266,7 @@ export const DistributedInvestigationView: React.FC = () => {
                       disabled={!responseText.trim()}
                       className="bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-50"
                     >
-                      <Send className="w-3.5 h-3.5" /> Enviar Resposta Simplificada
+                      <Send className="w-3.5 h-3.5" /> Registrar resposta
                     </button>
                   </div>
                 </form>
@@ -288,7 +287,7 @@ export const DistributedInvestigationView: React.FC = () => {
             <div className="flex items-start justify-between border-b border-slate-100 pb-2">
               <h4 className="font-bold text-sm text-slate-800 flex items-center gap-1.5">
                 <GitPullRequest className="w-4 h-4 text-sky-600" />
-                Nova Solicitação de Contribuição Dirigida
+                Solicitar informação a outra pessoa ou área
               </h4>
               <button onClick={() => setIsCreating(false)} className="text-slate-400 hover:text-slate-600">✕</button>
             </div>
@@ -296,7 +295,7 @@ export const DistributedInvestigationView: React.FC = () => {
             <form onSubmit={handleCreateRequest} className="space-y-3">
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Nome do Servidor/Profissional:</label>
+                  <label className="font-semibold text-slate-700 block mb-1">Pessoa de referência:</label>
                   <input
                     type="text"
                     value={targetName}
@@ -306,7 +305,7 @@ export const DistributedInvestigationView: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="font-semibold text-slate-700 block mb-1">Setor Institucional:</label>
+                  <label className="font-semibold text-slate-700 block mb-1">Área:</label>
                   <input
                     type="text"
                     value={targetDept}
@@ -318,7 +317,7 @@ export const DistributedInvestigationView: React.FC = () => {
               </div>
 
               <div>
-                <label className="font-semibold text-slate-700 block mb-1">Pergunta Neutra Dirigida:</label>
+                <label className="font-semibold text-slate-700 block mb-1">O que precisa ser verificado?</label>
                 <textarea
                   rows={3}
                   value={neutralQuestion}
@@ -329,7 +328,7 @@ export const DistributedInvestigationView: React.FC = () => {
               </div>
 
               <div>
-                <label className="font-semibold text-slate-700 block mb-1">Contexto Mínimo Transparente:</label>
+                <label className="font-semibold text-slate-700 block mb-1">Contexto para quem vai responder:</label>
                 <input
                   type="text"
                   value={context}
@@ -351,7 +350,7 @@ export const DistributedInvestigationView: React.FC = () => {
                   disabled={!targetName.trim() || !neutralQuestion.trim()}
                   className="px-4 py-1.5 font-semibold bg-sky-600 hover:bg-sky-700 text-white rounded disabled:opacity-50"
                 >
-                  Criar Solicitação
+                  Registrar solicitação
                 </button>
               </div>
             </form>
