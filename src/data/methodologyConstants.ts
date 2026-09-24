@@ -3,131 +3,92 @@ import { CapacityDefinition, DoorDefinition, MaturityLevel } from '../types';
 export const METHODOLOGY_VERSION = 'D1 v1.0';
 export const VERTICAL_NAME = 'Poder Público Municipal — Câmaras Municipais';
 
-export const MOTHER_QUESTION = 
-  '“Em que medida a Câmara possui uma estrutura de governança em privacidade capaz de definir responsabilidades, sustentar a atuação do Encarregado, articular os diferentes atores e manter essa capacidade institucional ao longo do tempo?”';
+export const MOTHER_QUESTION =
+  '“A organização possui capacidade institucional para conduzir a governança de privacidade, mobilizar a atuação necessária, alcançar as instâncias competentes, preservar e conectar conhecimento e manter essa governança em evolução?”';
 
 export const DOORS_DEFINITIONS: DoorDefinition[] = [
   {
     id: 'D1.1',
-    code: 'D1.1',
-    title: 'Rede de Governança',
-    essentialQuestion: 'Pensando em como as coisas acontecem hoje na Câmara, quando surge algum assunto envolvendo privacidade ou dados pessoais, quem normalmente participa e o que cada pessoa ou área costuma fazer? Pense nas situações da rotina: algumas podem ser tratadas diretamente pelo Encarregado; outras podem exigir alguém do RH, da TI, da gestão ou de outra área. Não é necessário que exista uma pessoa específica de privacidade em cada área. Queremos compreender quem participa quando é necessário e como isso funciona hoje na prática.',
-    objective: 'Construir o mapa real de atores e competências mobilizados quando necessário, sem pressupor representantes de privacidade em cada área.',
-    focusAreas: ['Atores necessários', 'Competências mobilizadas', 'Responsabilidades na prática', 'Definição institucional', 'Fontes mencionadas'],
-    internalLenses: ['ATOR', 'QUANDO_PARTICIPA', 'RESPONSABILIDADE', 'DEFINICAO_INSTITUCIONAL', 'FONTE']
+    code: 'Pergunta 1',
+    title: 'Condução da Governança',
+    essentialQuestion: 'Quando chega até você uma questão relacionada à proteção de dados, como você normalmente conduz essa situação?',
+    objective: 'Compreender como o Encarregado conduz sua atuação na prática e validar, pela escuta, as responsabilidades que consegue exercer.',
+    focusAreas: ['Compreensão da demanda', 'Orientação', 'Articulação', 'Iniciativa', 'Escalonamento'],
+    internalLenses: ['C1_CONDUCAO']
   },
   {
     id: 'D1.2',
-    code: 'D1.2',
-    title: 'Condições de Atuação do Encarregado',
-    essentialQuestion: 'Quando você precisa atuar como Encarregado, como isso acontece na prática?',
-    objective: 'Investigar condições institucionais de atuação sem avaliar desempenho pessoal.',
-    focusAreas: ['Formalização', 'Acessibilidade', 'Publicidade', 'Compreensão do papel', 'Disponibilidade e tempo', 'Apoio e recursos', 'Acesso à gestão', 'Substituição/continuidade'],
-    contextualHelp: {
-      scopeExplanation: 'Ajuda a esclarecer as condições práticas de trabalho da função, sem qualquer avaliação sobre o desempenho individual do profissional.',
-      practicalSituations: [
-        'Como a rotina institucional viabiliza tempo, acesso a setores e canais institucionais para o atendimento das demandas.',
-        'O que acontece quando surgem dúvidas, necessidade de apoio institucional ou quando há períodos de ausência ou maior volume de atividades.'
-      ]
-    }
+    code: 'Pergunta 2',
+    title: 'Fluidez da Atuação Institucional',
+    essentialQuestion: 'Quando você precisa que outra pessoa ou área adote uma providência relacionada à proteção de dados, como isso costuma acontecer?',
+    objective: 'Observar o esforço necessário para a atuação institucional: fluidez, orientação, cobrança, demora, urgência e reconhecimento dos caminhos.',
+    focusAreas: ['Fluidez', 'Esforço', 'Insistência', 'Urgência', 'Caminhos conhecidos'],
+    internalLenses: ['C2_FLUIDEZ']
   },
   {
     id: 'D1.3',
-    code: 'D1.3',
-    title: 'Distribuição de Responsabilidades',
-    essentialQuestion: 'Quando surge uma questão envolvendo dados pessoais, quem além do Encarregado precisa agir para que ela seja resolvida?',
-    objective: 'Descobrir como responsabilidades são distribuídas entre setores e atores.',
-    focusAreas: ['Identificação de atores', 'Processos/situações práticas', 'Funções desempenhadas'],
-    internalLenses: ['DECIDE', 'ORIENTA_ARTICULA', 'EXECUTA', 'DETEM_INFORMACAO_EVIDENCIA'],
-    contextualHelp: {
-      scopeExplanation: 'Auxilia a identificar como diferentes setores e atores institucionais participam dos processos que envolvem dados no dia a dia.',
-      practicalSituations: [
-        'Em situações práticas que envolvem informações de pessoas (como atendimento ao público, recursos humanos ou informática), quem orienta, quem executa e quem detém os registros.',
-        'Como os diversos setores compreendem sua participação na condução das tarefas cotidianas relacionadas a esses dados.'
-      ]
-    }
+    code: 'Pergunta 3',
+    title: 'Escalonamento Institucional',
+    essentialQuestion: 'Quando uma questão de proteção de dados depende de decisão, autorização, priorização ou recurso da gestão, como isso costuma acontecer?',
+    objective: 'Compreender se questões que ultrapassam a governabilidade do Encarregado conseguem alcançar a instância competente.',
+    focusAreas: ['Caminho de escalonamento', 'Acesso à instância competente', 'Esforço necessário'],
+    internalLenses: ['C3_ESCALONAMENTO']
   },
   {
     id: 'D1.4',
-    code: 'D1.4',
-    title: 'Articulação',
-    essentialQuestion: 'Quando uma questão de privacidade envolve mais de uma área ou pessoa da Câmara, como vocês se organizam para resolvê-la?',
-    objective: 'Descobrir como os atores trabalham conjuntamente em situações concretas.',
-    focusAreas: ['Casos multi-setoriais', 'Canais de acionamento', 'Coordenação do fluxo', 'Registro e histórico'],
-    internalLenses: ['ACIONAMENTO', 'COORDENACAO', 'RESPOSTA', 'REGISTRO', 'CONTINUIDADE'],
-    contextualHelp: {
-      scopeExplanation: 'Ajuda a compreender os canais e a dinâmica de colaboração quando uma situação requer o envolvimento de mais de um setor.',
-      practicalSituations: [
-        'Como os setores se comunicam e coordenam ações conjuntas quando uma demanda ou solicitação envolve mais de uma área institucional.',
-        'Quais canais, comunicações ou formas de contato costumam ser utilizados para alinhar o andamento entre as partes envolvidas.'
-      ]
-    }
+    code: 'Pergunta 4',
+    title: 'Gestão do Conhecimento e Sustentação',
+    essentialQuestion: 'Quando uma questão de proteção de dados já foi tratada, você consegue recuperar o que foi feito, decidido ou orientado para utilizar como referência posteriormente?',
+    adaptedQuestion: 'Quando precisa recuperar essas informações, você sabe onde procurar e consegue acessar o que precisa?',
+    objective: 'Compreender se o conhecimento distribuído pode ser localizado, recuperado, acessado, relacionado e reutilizado.',
+    focusAreas: ['Recuperabilidade', 'Localização', 'Acesso', 'Memória institucional', 'Fontes de conhecimento'],
+    internalLenses: ['C4_CONHECIMENTO']
   },
   {
     id: 'D1.5',
-    code: 'D1.5',
-    title: 'Sustentação Gerencial',
-    essentialQuestion: 'Quando uma questão de privacidade depende de decisão, apoio ou recurso da gestão, como isso acontece na Câmara?',
-    objective: 'Verificar se decisões, prioridades e condições chegam à instância competente e como são tratadas.',
-    focusAreas: ['Instância decisória competente', 'Formalização de demandas', 'Priorização institucional', 'Segurança da decisão'],
-    internalLenses: ['ACESSO', 'DECISAO', 'PRIORIZACAO', 'RESPONSABILIZACAO'],
-    contextualHelp: {
-      scopeExplanation: 'Apoia a reflexão sobre como necessidades de deliberação ou recursos chegam e são tratadas nas instâncias de gestão da instituição.',
-      practicalSituations: [
-        'Quando uma necessidade de recurso, orientação ou decisão institucional precisa ser apreciada pela gestão, como ela costuma ser encaminhada.',
-        'Como a direção institucional recebe, responde ou prioriza os temas que dependem de sua deliberação.'
-      ]
-    }
+    code: 'Pergunta 5',
+    title: 'Acompanhamento da Governança',
+    essentialQuestion: 'Hoje, como você acompanha se a forma como a Câmara trata privacidade e proteção de dados continua adequada ou se alguma coisa precisa ser revista?',
+    objective: 'Identificar como a governança é acompanhada e quais mudanças internas ou externas provocam revisão.',
+    focusAreas: ['Acompanhamento contínuo', 'Mudanças normativas', 'Mudanças internas', 'Controles', 'Retroalimentação'],
+    internalLenses: ['C5_ACOMPANHAMENTO']
   },
   {
     id: 'D1.6',
-    code: 'D1.6',
-    title: 'Continuidade e Evolução',
-    essentialQuestion: 'Como vocês acompanham se essa organização de responsabilidades continua funcionando ao longo do tempo?',
-    adaptedQuestion: 'Quando alguma ação relacionada à privacidade fica definida, como vocês sabem depois se ela foi realizada ou ainda está pendente?',
-    objective: 'Verificar se a governança consegue permanecer funcionando, ser acompanhada e aprender.',
-    focusAreas: ['Controle de pendências', 'Acompanhamento periódico', 'Revisão de práticas', 'Aprendizagem institucional'],
-    internalLenses: ['PENDENCIA', 'ACOMPANHAMENTO', 'CONTINUIDADE', 'REVISAO', 'APRENDIZAGEM'],
-    contextualHelp: {
-      scopeExplanation: 'Ajuda a situar como a instituição acompanha suas rotinas, providências e aprendizados ao longo do tempo.',
-      practicalSituations: [
-        'Como a instituição sabe se orientações, encaminhamentos ou pendências acordadas anteriormente continuam ativas ou foram concluídas.',
-        'Como são percebidas necessidades de atualização ou revisão nas práticas que já vinham sendo adotadas.'
-      ]
-    }
+    code: 'Pergunta 6',
+    title: 'Evolução e Retroalimentação',
+    essentialQuestion: 'Quando você identifica algo que pode exigir uma mudança, o que normalmente acontece?',
+    objective: 'Compreender como necessidades identificadas produzem análise, orientação, proposta, articulação, escalonamento ou acompanhamento.',
+    focusAreas: ['Análise', 'Ajuste', 'Proposição', 'Encaminhamento', 'Reavaliação'],
+    internalLenses: ['C5_EVOLUCAO']
   }
 ];
 
 export const CAPACITIES_DEFINITIONS: CapacityDefinition[] = [
   {
     id: 'C1',
-    name: 'Estruturação',
-    description: 'Existe configuração reconhecível de governança na Câmara, com papéis e posicionamento identificáveis.'
+    name: 'Condução da Governança',
+    description: 'O Encarregado compreende seu papel e consegue orientar, articular, propor, encaminhar e escalar adequadamente aquilo que surge em sua atuação.'
   },
   {
     id: 'C2',
-    name: 'Sustentação do Encarregado',
-    description: 'A função do Encarregado possui condições institucionais, tempo, acesso e suporte para funcionar na prática.'
+    name: 'Fluidez da Atuação Institucional',
+    description: 'As providências necessárias avançam por caminhos suficientemente reconhecíveis e com esforço proporcional, sem dependência sistemática de improvisação, insistência ou urgência.'
   },
   {
     id: 'C3',
-    name: 'Distribuição',
-    description: 'Responsabilidades relevantes não estão concentradas exclusivamente no Encarregado, envolvendo atores-chave.'
+    name: 'Escalonamento Institucional',
+    description: 'Questões que ultrapassam a governabilidade do Encarregado conseguem alcançar a instância competente.'
   },
   {
     id: 'C4',
-    name: 'Articulação',
-    description: 'Os diferentes atores e setores conseguem atuar conjuntamente de forma coordenada e previsível.'
+    name: 'Gestão do Conhecimento e Sustentação',
+    description: 'Conhecimentos, registros e evidências distribuídos podem ser localizados, recuperados, relacionados e reutilizados para sustentar a governança.'
   },
   {
     id: 'C5',
-    name: 'Sustentação Gerencial',
-    description: 'Decisões, prioridades e condições necessárias chegam à instância gerencial competente e recebem encaminhamento.'
-  },
-  {
-    id: 'C6',
-    name: 'Continuidade e Evolução',
-    description: 'A governança consegue permanecer ativa ao longo do tempo, acompanhar suas ações e aperfeiçoar sua capacidade.'
+    name: 'Acompanhamento e Evolução',
+    description: 'A governança permanece sob acompanhamento, considera mudanças internas e externas e retroalimenta sua evolução.'
   }
 ];
 
