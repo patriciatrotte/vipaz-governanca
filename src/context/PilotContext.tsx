@@ -1604,6 +1604,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         originalResponses,
         addOriginalResponse,
         addRetificationResponse,
+        addComplementResponse,
         dontKnowRecords,
         recordDontKnow,
         informationUnits,
