@@ -592,7 +592,7 @@ export const DoorInvestigationView: React.FC = () => {
 
           {activeDoor.adaptedQuestion && (
             <p className="text-xs text-emerald-800 italic pt-0.5">
-              Formulação alternativa: {activeDoor.adaptedQuestion}
+              Se necessário, aprofunde: {activeDoor.adaptedQuestion}
             </p>
           )}
 
