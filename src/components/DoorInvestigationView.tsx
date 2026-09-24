@@ -37,6 +37,8 @@ export const DoorInvestigationView: React.FC = () => {
     doorStatuses,
     updateDoorStatus,
     originalResponses,
+    informationUnits,
+    addInformationUnit,
     addOriginalResponse,
     addRetificationResponse,
     recordDontKnow,
@@ -61,7 +63,7 @@ export const DoorInvestigationView: React.FC = () => {
   const activeDoor = DOORS_DEFINITIONS.find(d => d.id === activeDoorId) || DOORS_DEFINITIONS[0];
   const currentDoorStatus = doorStatuses[activeDoorId];
 
-  // Ordem sequencial das 6 portas de entrada D1
+  // Ordem sequencial das 6 perguntas de entrada D1
   const doorOrder: DoorId[] = ['D1.1', 'D1.2', 'D1.3', 'D1.4', 'D1.5', 'D1.6'];
   const currentDoorIndex = doorOrder.indexOf(activeDoorId);
   const isLastDoor = currentDoorIndex === doorOrder.length - 1;
@@ -161,6 +163,85 @@ export const DoorInvestigationView: React.FC = () => {
     setGovernanceActors(prev => prev.filter(item => item.id !== id));
   };
 
+
+  type StructuredItem = { id: string; label: string };
+  const C1_ITEMS: StructuredItem[] = [
+    { id: 'identificar', label: 'Identifica o que precisa ser feito diante de uma questão de proteção de dados' },
+    { id: 'orientar', label: 'Presta esclarecimentos e orienta pessoas ou áreas' },
+    { id: 'articular', label: 'Identifica e aciona quem precisa participar' },
+    { id: 'titulares', label: 'Conduz demandas relacionadas aos direitos dos titulares e demais assuntos recebidos como Encarregado' },
+    { id: 'anpd', label: 'Sabe como proceder diante de comunicação ou demanda da ANPD' },
+    { id: 'incidente', label: 'Orienta a organização diante de incidente envolvendo dados pessoais' },
+    { id: 'riscos', label: 'Contribui para análise de riscos e orienta medidas de proteção' },
+    { id: 'novos_tratamentos', label: 'Orienta questões relacionadas a processos, projetos, sistemas, contratos ou novos tratamentos' },
+    { id: 'propor', label: 'Propõe providências ou melhorias quando identifica necessidade' },
+    { id: 'escalonar', label: 'Reconhece quando algo ultrapassa sua governabilidade e encaminha à instância competente' }
+  ];
+  const C2_ITEMS: StructuredItem[] = [
+    { id: 'fluido', label: 'O encaminhamento é compreendido e tratado sem necessidade de insistência' },
+    { id: 'orientacao', label: 'É necessário explicar ou orientar para que a providência avance' },
+    { id: 'cobranca', label: 'É necessário acompanhar ou cobrar para que avance' },
+    { id: 'demora', label: 'Há demora ou situações que ficam paradas até nova provocação' },
+    { id: 'urgencia', label: 'Algumas providências acontecem principalmente quando a situação se torna urgente' },
+    { id: 'variacao', label: 'O funcionamento varia conforme a pessoa, área ou situação' },
+    { id: 'caminho_conhecido', label: 'Os caminhos necessários são conhecidos' },
+    { id: 'caminho_parcial', label: 'Algumas situações têm caminho conhecido e outras precisam ser descobertas' },
+    { id: 'caminho_descobrir', label: 'Frequentemente é necessário descobrir como ou por quem a questão deve ser tratada' },
+    { id: 'sem_experiencia', label: 'Ainda não houve experiência suficiente para avaliar' }
+  ];
+  const C5_ITEMS: StructuredItem[] = [
+    { id: 'normas', label: 'Mudanças na legislação, normas ou orientações aplicáveis' },
+    { id: 'anpd', label: 'Orientações ou manifestações da ANPD' },
+    { id: 'sistemas', label: 'Mudanças em sistemas, processos, serviços ou fornecedores' },
+    { id: 'tratamentos', label: 'Novos tratamentos ou novas formas de utilização de dados' },
+    { id: 'incidentes', label: 'Incidentes, reclamações ou demandas recebidas' },
+    { id: 'rotina', label: 'Dificuldades percebidas na rotina' },
+    { id: 'controles', label: 'Resultados de controles, verificações ou avaliações anteriores' },
+    { id: 'outros', label: 'Outros fatores relevantes' },
+    { id: 'sem_rotina', label: 'Atualmente não existe acompanhamento dessa natureza' }
+  ];
+  const [c1Validation, setC1Validation] = useState<Record<string, string>>({});
+  const [multiValidation, setMultiValidation] = useState<string[]>([]);
+
+  useEffect(() => {
+    setC1Validation({});
+    setMultiValidation([]);
+  }, [activeDoorId]);
+
+  const structuredAlreadySaved = informationUnits.some(
+    u => u.doorId === activeDoorId && u.statement.startsWith('[VALIDACAO_ESTRUTURADA]')
+  );
+
+  const handleSaveStructuredValidation = () => {
+    const lastResponse = doorResponses.slice(-1)[0];
+    if (!lastResponse || structuredAlreadySaved) return;
+    const capacityByDoor: Record<DoorId, 'C1' | 'C2' | 'C3' | 'C4' | 'C5'> = {
+      'D1.1': 'C1', 'D1.2': 'C2', 'D1.3': 'C3', 'D1.4': 'C4', 'D1.5': 'C5', 'D1.6': 'C5'
+    };
+    const items = activeDoorId === 'D1.1'
+      ? C1_ITEMS.filter(i => c1Validation[i.id]).map(i => `${i.label}: ${c1Validation[i.id]}`)
+      : (activeDoorId === 'D1.2' ? C2_ITEMS : C5_ITEMS)
+          .filter(i => multiValidation.includes(i.id)).map(i => i.label);
+    if (!items.length) return;
+    items.forEach(statement => addInformationUnit({
+      responseId: lastResponse.id,
+      doorId: activeDoorId,
+      statement: `[VALIDACAO_ESTRUTURADA] ${statement}`,
+      sourceName: lastResponse.respondentName,
+      sourceRole: lastResponse.respondentRole,
+      scope: 'CONHECIMENTO_DIRETO',
+      extractedBy: 'FACILITADOR',
+      validationStatus: 'VALIDADO',
+      relatedCapacity: capacityByDoor[activeDoorId],
+      registeredBy: currentUser.name
+    }));
+    setActionFeedback({
+      message: 'Fatos da escuta validados e registrados.',
+      location: `${activeDoor.code} · estruturação metodológica da resposta.`,
+      nextStep: 'Continue a conversa ou conclua esta pergunta quando considerar suficiente.'
+    });
+  };
+
   // Rascunho local da fala: evita perda acidental antes do registro definitivo.
   const draftKey = `interviewDraft:${currentOrg?.id || 'no-org'}:${currentCycle?.id || 'no-cycle'}:${activeDoorId}`;
 
@@ -196,7 +277,7 @@ export const DoorInvestigationView: React.FC = () => {
       setRetifyingResponseId(null);
       setActionFeedback({
         message: 'Retificação formal registrada e vinculada à fala anterior.',
-        location: `Histórico imutável da Porta ${activeDoor.code}.`,
+        location: `Histórico imutável da Pergunta ${activeDoor.code.replace('Pergunta ', '')}.`,
         nextStep: 'Continue a investigação ou avalie a suficiência da porta.'
       });
     } else {
@@ -217,7 +298,7 @@ export const DoorInvestigationView: React.FC = () => {
       }
       setActionFeedback({
         message: 'Resposta original registrada com sucesso.',
-        location: `Histórico imutável da Porta ${activeDoor.code}.`,
+        location: `Histórico imutável da Pergunta ${activeDoor.code.replace('Pergunta ', '')}.`,
         nextStep: 'Você pode aprofundar com uma sondagem ou avaliar a suficiência da porta.'
       });
     }
@@ -237,11 +318,11 @@ export const DoorInvestigationView: React.FC = () => {
     persistCurrentResponse();
     updateDoorStatus(activeDoorId, 'SUFICIENTEMENTE_EXPLORADA');
     setActionFeedback({
-      message: `Porta ${activeDoor.code} confirmada como suficientemente explorada.`,
-      location: `Registro da Porta ${activeDoor.code} atualizado na entrevista.`,
+      message: `Pergunta ${activeDoor.code.replace('Pergunta ', '')} confirmada como suficientemente explorada.`,
+      location: `Registro da Pergunta ${activeDoor.code.replace('Pergunta ', '')} atualizado na entrevista.`,
       nextStep: isLastDoor 
         ? 'Você pode agora revisar e concluir a entrevista.' 
-        : `Você já pode concluir e avançar para a Porta ${nextDoorId}.`
+        : `Você já pode concluir e avançar para a próxima pergunta.`
     });
   };
 
@@ -255,9 +336,9 @@ export const DoorInvestigationView: React.FC = () => {
       setShowMethodologyLenses(false);
       setShowAdvancedStatuses(false);
       setActionFeedback({
-        message: `Avanço para a Porta ${nextDoorId} realizado com sucesso.`,
-        location: `Iniciando investigação da Porta ${nextDoorId}.`,
-        nextStep: `Apresente a pergunta essencial da Porta ${nextDoorId} ao interlocutor.`
+        message: `Avanço para a próxima pergunta realizado com sucesso.`,
+        location: `Iniciando investigação da próxima pergunta.`,
+        nextStep: `Apresente a pergunta essencial da próxima pergunta ao interlocutor.`
       });
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -347,7 +428,7 @@ export const DoorInvestigationView: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
-      {/* Seletor horizontal das 6 portas de descoberta */}
+      {/* Seletor horizontal das 6 perguntas de descoberta */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
         {DOORS_DEFINITIONS.map(door => {
           const isSelected = door.id === activeDoorId;
@@ -390,7 +471,7 @@ export const DoorInvestigationView: React.FC = () => {
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>
-              <strong>Entrevista Presencial Concluída:</strong> A etapa de escuta fática das 6 portas foi finalizada em {new Date(currentCycle.interviewCompletedAt).toLocaleDateString('pt-BR')}. Registros e retificações continuam acessíveis.
+              <strong>Entrevista Presencial Concluída:</strong> A etapa de escuta fática das 6 perguntas foi finalizada em {new Date(currentCycle.interviewCompletedAt).toLocaleDateString('pt-BR')}. Registros e retificações continuam acessíveis.
             </span>
           </div>
           <button
@@ -424,7 +505,7 @@ export const DoorInvestigationView: React.FC = () => {
         </div>
       )}
 
-      {/* Cabeçalho da Porta Ativa */}
+      {/* Cabeçalho da Pergunta Ativa */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
           <div>
@@ -484,7 +565,7 @@ export const DoorInvestigationView: React.FC = () => {
         <div className="bg-emerald-50/70 border border-emerald-200 rounded-lg p-4 space-y-2">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <span className="text-[11px] font-bold text-emerald-900 uppercase tracking-wider">
-              {activeDoorId === 'D1.1' ? 'Conversa de abertura — rememore a rotina:' : 'Pergunta Essencial (Não indutiva):'}
+              {activeDoorId === 'D1.1' ? 'Pergunta:' : 'Pergunta:'}
             </span>
             <div className="flex items-center gap-2">
               {activeDoor.adaptedQuestion && (
@@ -587,7 +668,7 @@ export const DoorInvestigationView: React.FC = () => {
       {/* Primeiro passo da conversa: registrar a resposta principal */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-3">
         <div>
-          <h3 className="text-sm font-bold text-slate-800">1. Registre a resposta</h3>
+          <h3 className="text-sm font-bold text-slate-800">Resposta</h3>
           <p className="text-xs text-slate-500 font-serif">Registre o que foi informado pelo participante. Se ele não souber responder, use “Não sei informar”.</p>
         </div>
         {/* Caixa de Entrada de Fala do Participante */}
@@ -650,7 +731,7 @@ export const DoorInvestigationView: React.FC = () => {
         </form>
       </div>
 
-      {activeDoorId === 'D1.1' && doorResponses.length > 0 && (
+      {false && activeDoorId === 'D1.1' && doorResponses.length > 0 && (
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
           <div className="space-y-1 border-b border-slate-100 pb-3">
             <h3 className="text-sm font-bold text-slate-900">Organizar a rede identificada</h3>
@@ -774,10 +855,59 @@ export const DoorInvestigationView: React.FC = () => {
         </div>
       )}
 
+      {doorResponses.length > 0 && ['D1.1', 'D1.2', 'D1.5'].includes(activeDoorId) && (
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-3">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">Validação dos fatos da escuta</h3>
+            <p className="text-xs text-slate-500 font-serif mt-1">
+              Marcação do facilitador a partir da resposta registrada e da escuta ativa. Confirme com o Encarregado sempre que houver dúvida.
+            </p>
+          </div>
+
+          {activeDoorId === 'D1.1' ? (
+            <div className="space-y-2">
+              {C1_ITEMS.map(item => (
+                <div key={item.id} className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-2 items-center border border-slate-200 rounded-lg p-3">
+                  <span className="text-xs text-slate-700">{item.label}</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {['Sim', 'Em parte', 'Não', 'Ainda não vivenciou'].map(value => (
+                      <button key={value} type="button" disabled={structuredAlreadySaved}
+                        onClick={() => setC1Validation(prev => ({...prev, [item.id]: value}))}
+                        className={`px-2.5 py-1.5 rounded-md text-[11px] border ${c1Validation[item.id] === value ? 'bg-emerald-100 border-emerald-400 text-emerald-900 font-semibold' : 'bg-white border-slate-200 text-slate-600'} disabled:opacity-60`}>
+                        {value}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {(activeDoorId === 'D1.2' ? C2_ITEMS : C5_ITEMS).map(item => (
+                <label key={item.id} className="flex items-start gap-2.5 border border-slate-200 rounded-lg p-3 text-xs text-slate-700 cursor-pointer">
+                  <input type="checkbox" disabled={structuredAlreadySaved}
+                    checked={multiValidation.includes(item.id)}
+                    onChange={() => setMultiValidation(prev => prev.includes(item.id) ? prev.filter(x => x !== item.id) : [...prev, item.id])}
+                    className="mt-0.5 accent-emerald-600" />
+                  <span>{item.label}</span>
+                </label>
+              ))}
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <button type="button" onClick={handleSaveStructuredValidation} disabled={structuredAlreadySaved || (activeDoorId === 'D1.1' ? Object.keys(c1Validation).length === 0 : multiValidation.length === 0)}
+              className="px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40">
+              {structuredAlreadySaved ? 'Fatos validados e registrados' : 'Registrar fatos validados'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {doorResponses.length > 0 && (
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
           <div className="space-y-2">
-            <p className="text-xs font-bold text-slate-800">2. Complemente somente se necessário</p>
+            <p className="text-xs font-bold text-slate-800">Complemente somente se necessário</p>
             <div className="flex flex-wrap items-center gap-2">
               <button type="button" onClick={() => setShowProbingModal(true)} className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-blue-600" /> + Perguntou algo a mais? Registre aqui
@@ -796,7 +926,7 @@ export const DoorInvestigationView: React.FC = () => {
           <div className="space-y-0.5">
             <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>Decisão de Suficiência e Conclusão da Porta</span>
+              <span>Conclusão da pergunta</span>
             </h3>
             <p className="text-xs text-slate-500 font-serif">
               A suficiência da investigação é uma avaliação humana do Facilitador para cada área.
@@ -809,10 +939,10 @@ export const DoorInvestigationView: React.FC = () => {
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <h4 className="text-xs font-bold text-slate-800">
-                Você possui informações suficientes desta porta para seguir adiante?
+                Você possui informações suficientes desta pergunta para seguir adiante?
               </h4>
               <p className="text-xs text-slate-600 font-serif leading-relaxed max-w-2xl">
-                Enquanto a escuta estiver em andamento, a porta permanece em investigação. Quando considerar que as práticas reais e rotinas essenciais desta porta foram adequadamente compreendidas, confirme a suficiência para liberar o avanço.
+                Enquanto a escuta estiver em andamento, a pergunta permanece em investigação. Quando considerar que os fatos necessários foram suficientemente compreendidos, confirme para avançar.
               </p>
             </div>
 
@@ -830,7 +960,7 @@ export const DoorInvestigationView: React.FC = () => {
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2 text-xs text-emerald-900 font-semibold">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>Porta avaliada como suficientemente explorada pelo Facilitador.</span>
+                <span>Pergunta considerada suficientemente explorada pelo Facilitador.</span>
               </div>
               <button
                 type="button"
@@ -844,8 +974,8 @@ export const DoorInvestigationView: React.FC = () => {
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-emerald-200/60">
               <p className="text-xs text-slate-600 font-serif">
                 {isLastDoor 
-                  ? 'Todas as 6 portas da Dimensão D1 foram percorridas.'
-                  : `Pronta para seguir para a próxima área de investigação: Porta ${nextDoorId}.`}
+                  ? 'Todas as 6 perguntas da Dimensão D1 foram percorridas.'
+                  : `Pronta para seguir para a próxima área de investigação: próxima pergunta.`}
               </p>
 
               {isLastDoor ? (
@@ -1396,7 +1526,7 @@ export const DoorInvestigationView: React.FC = () => {
               </button>
             </div>
 
-            {/* Verificação Operacional das 6 Portas */}
+            {/* Verificação Operacional das 6 Perguntas */}
             <div className="space-y-2">
               <span className="text-[11px] uppercase font-bold text-slate-700 tracking-wider block">
                 Verificação Operacional dos Registros de Campo:
