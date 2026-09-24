@@ -867,7 +867,7 @@ export const DoorInvestigationView: React.FC = () => {
           {activeDoorId === 'D1.1' ? (
             <div className="space-y-2">
               {C1_ITEMS.map(item => (
-                <div key={item.id} className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-2 items-center border border-slate-200 rounded-lg p-3">
+                <div key={item.id} className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-2 items-center py-2 border-b border-slate-100 last:border-b-0">
                   <span className="text-xs text-slate-700">{item.label}</span>
                   <div className="flex flex-wrap gap-1.5">
                     {['Sim', 'Em parte', 'Não', 'Ainda não vivenciou'].map(value => (
