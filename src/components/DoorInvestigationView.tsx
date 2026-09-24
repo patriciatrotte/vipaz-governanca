@@ -929,7 +929,7 @@ export const DoorInvestigationView: React.FC = () => {
               <span>Conclusão da pergunta</span>
             </h3>
             <p className="text-xs text-slate-500 font-serif">
-              A suficiência da investigação é uma avaliação humana do Facilitador para cada área.
+              A conclusão é uma decisão do Facilitador sobre esta pergunta e não bloqueia a navegação entre as demais.
             </p>
           </div>
           <DoorStatusBadge status={currentDoorStatus} size="sm" />
@@ -939,10 +939,10 @@ export const DoorInvestigationView: React.FC = () => {
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <h4 className="text-xs font-bold text-slate-800">
-                Você possui informações suficientes desta pergunta para seguir adiante?
+                Você considera esta pergunta suficientemente explorada?
               </h4>
               <p className="text-xs text-slate-600 font-serif leading-relaxed max-w-2xl">
-                Enquanto a escuta estiver em andamento, a pergunta permanece em investigação. Quando considerar que os fatos necessários foram suficientemente compreendidos, confirme para avançar.
+                Use esta confirmação quando a resposta e os aprofundamentos necessários já permitirem compreender os fatos buscados nesta pergunta. Você pode navegar entre as perguntas a qualquer momento.
               </p>
             </div>
 
@@ -952,7 +952,7 @@ export const DoorInvestigationView: React.FC = () => {
               className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-xs px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 shadow-xs transition-colors shrink-0 cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>Confirmar informação suficiente</span>
+              <span>Concluir pergunta</span>
             </button>
           </div>
         ) : (
@@ -960,14 +960,14 @@ export const DoorInvestigationView: React.FC = () => {
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2 text-xs text-emerald-900 font-semibold">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>Pergunta considerada suficientemente explorada pelo Facilitador.</span>
+                <span>Pergunta concluída pelo Facilitador.</span>
               </div>
               <button
                 type="button"
                 onClick={() => updateDoorStatus(activeDoorId, 'EM_DESCOBERTA')}
                 className="text-xs text-slate-500 hover:text-slate-800 underline cursor-pointer"
               >
-                Reabrir para continuar investigando
+                Reabrir pergunta
               </button>
             </div>
 
@@ -975,7 +975,7 @@ export const DoorInvestigationView: React.FC = () => {
               <p className="text-xs text-slate-600 font-serif">
                 {isLastDoor 
                   ? 'Todas as 6 perguntas da Dimensão D1 foram percorridas.'
-                  : `Pronta para seguir para a próxima área de investigação: próxima pergunta.`}
+                  : `A pergunta está concluída. Você pode seguir para outra pergunta ou reabri-la se precisar complementar a investigação.`}
               </p>
 
               {isLastDoor ? (
