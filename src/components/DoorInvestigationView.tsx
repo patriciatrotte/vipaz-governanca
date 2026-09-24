@@ -659,6 +659,27 @@ export const DoorInvestigationView: React.FC = () => {
             </p>
           )}
 
+          {activeDoor.contextualHelp && (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-900">Exemplos do cotidiano para situar a conversa</p>
+                <button type="button" onClick={() => setShowContextualHelp(prev => !prev)} className="text-[11px] font-semibold text-emerald-800 underline">
+                  {showContextualHelp ? 'Ocultar' : 'Ver exemplos'}
+                </button>
+              </div>
+              {showContextualHelp && (
+                <div className="space-y-2">
+                  <p className="text-xs text-slate-700 font-serif">{activeDoor.contextualHelp.scopeExplanation}</p>
+                  <ul className="space-y-1.5">
+                    {activeDoor.contextualHelp.practicalSituations.map((sit, idx) => (
+                      <li key={idx} className="text-xs text-slate-700 flex gap-2"><span className="text-emerald-700 font-bold">•</span><span>{sit}</span></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Quadro de Apoio Contextual Expansível (Ajuste 2) */}
           {showContextualHelp && activeDoor.contextualHelp && (
             <div className="mt-3 pt-3 border-t border-emerald-200 space-y-2.5 text-xs text-emerald-950 bg-white/80 p-3.5 rounded-lg animate-in fade-in">
