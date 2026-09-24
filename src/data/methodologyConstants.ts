@@ -19,7 +19,7 @@ export const DOORS_DEFINITIONS: DoorDefinition[] = [
   {
     id: 'D1.2',
     code: 'Pergunta 2',
-    title: 'Fluidez da Atuação Institucional',
+    title: 'Como as providências avançam',
     essentialQuestion: 'Quando você precisa que outra pessoa ou área adote uma providência relacionada à proteção de dados, como isso costuma acontecer?',
     objective: 'Observar o esforço necessário para a atuação institucional: fluidez, orientação, cobrança, demora, urgência e reconhecimento dos caminhos.',
     focusAreas: ['Fluidez', 'Esforço', 'Insistência', 'Urgência', 'Caminhos conhecidos'],
