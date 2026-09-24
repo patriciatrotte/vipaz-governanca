@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   Plus,
   Lightbulb,
+  Volume2,
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
@@ -61,6 +62,31 @@ export const DoorInvestigationView: React.FC = () => {
   const isFacilitator = currentUser.role === 'FACILITADOR';
 
   const activeDoor = DOORS_DEFINITIONS.find(d => d.id === activeDoorId) || DOORS_DEFINITIONS[0];
+  const [isSpeakingQuestion, setIsSpeakingQuestion] = useState(false);
+
+  const handleSpeakQuestion = () => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    if (isSpeakingQuestion) {
+      setIsSpeakingQuestion(false);
+      return;
+    }
+    const utterance = new SpeechSynthesisUtterance(activeDoor.essentialQuestion);
+    utterance.lang = 'pt-BR';
+    utterance.rate = 0.95;
+    utterance.onend = () => setIsSpeakingQuestion(false);
+    utterance.onerror = () => setIsSpeakingQuestion(false);
+    setIsSpeakingQuestion(true);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      setIsSpeakingQuestion(false);
+    }
+  }, [activeDoorId]);
+
   const currentDoorStatus = doorStatuses[activeDoorId];
 
   // Ordem sequencial das 6 perguntas de entrada D1
@@ -263,7 +289,7 @@ export const DoorInvestigationView: React.FC = () => {
     }
   }, [draftKey, inputText]);
 
-  // Respostas da porta ativa
+  // Respostas da pergunta ativa
   const doorResponses = originalResponses.filter(r => r.doorId === activeDoorId);
   const doorProbings = probings.filter(p => p.doorId === activeDoorId);
   const doorPedagogical = pedagogicalInterventions.filter(p => p.doorId === activeDoorId);
@@ -278,7 +304,7 @@ export const DoorInvestigationView: React.FC = () => {
       setActionFeedback({
         message: 'Retificação formal registrada e vinculada à fala anterior.',
         location: `Histórico imutável da Pergunta ${activeDoor.code.replace('Pergunta ', '')}.`,
-        nextStep: 'Continue a investigação ou avalie a suficiência da porta.'
+        nextStep: 'Continue a investigação ou avalie a conclusão da pergunta.'
       });
     } else {
       const interviewRespondent = isFacilitator && currentOrg
@@ -299,7 +325,7 @@ export const DoorInvestigationView: React.FC = () => {
       setActionFeedback({
         message: 'Resposta original registrada com sucesso.',
         location: `Histórico imutável da Pergunta ${activeDoor.code.replace('Pergunta ', '')}.`,
-        nextStep: 'Você pode aprofundar com uma sondagem ou avaliar a suficiência da porta.'
+        nextStep: 'Você pode aprofundar com uma sondagem ou avaliar a conclusão da pergunta.'
       });
     }
     setInputText('');
@@ -520,7 +546,7 @@ export const DoorInvestigationView: React.FC = () => {
             </p>
           </div>
 
-          {/* Estado da Porta e Opções Avançadas Secundárias (Ajuste 4) */}
+          {/* Estado da Pergunta e Opções Avançadas Secundárias (Ajuste 4) */}
           <div className="flex items-center gap-2.5 flex-wrap justify-end">
             <LocalSaveIndicator />
             <div className="flex items-center gap-2">
@@ -586,9 +612,22 @@ export const DoorInvestigationView: React.FC = () => {
             </div>
           </div>
 
-          <p className="text-sm font-semibold text-emerald-950 leading-relaxed font-serif">
-            “{activeDoor.essentialQuestion}”
-          </p>
+          <div className="flex items-start gap-3">
+            <p className="text-sm font-semibold text-emerald-950 leading-relaxed font-serif flex-1">
+              “{activeDoor.essentialQuestion}”
+            </p>
+            {'speechSynthesis' in window && (
+              <button
+                type="button"
+                onClick={handleSpeakQuestion}
+                className="shrink-0 text-xs font-semibold text-emerald-800 hover:text-emerald-950 bg-white/80 hover:bg-emerald-100 border border-emerald-300 px-2.5 py-1.5 rounded-md flex items-center gap-1.5 transition-colors"
+                title={isSpeakingQuestion ? 'Parar leitura' : 'Ouvir pergunta'}
+              >
+                <Volume2 className="w-3.5 h-3.5" />
+                <span>{isSpeakingQuestion ? 'Parar' : 'Ouvir pergunta'}</span>
+              </button>
+            )}
+          </div>
 
           {activeDoor.adaptedQuestion && (
             <p className="text-xs text-emerald-800 italic pt-0.5">
@@ -1016,7 +1055,7 @@ export const DoorInvestigationView: React.FC = () => {
 
         {doorResponses.length === 0 ? (
           <div className="py-8 text-center text-slate-400 text-xs">
-            Nenhuma resposta registrada ainda para esta porta. Apresente a pergunta essencial ou registre a fala do participante abaixo.
+            Nenhuma resposta registrada ainda para esta pergunta. Apresente a pergunta essencial ou registre a fala do participante abaixo.
           </div>
         ) : (
           <div className="space-y-3">
@@ -1069,7 +1108,7 @@ export const DoorInvestigationView: React.FC = () => {
           </div>
         )}
 
-        {/* Ocorrências de Não Sei registradas para esta porta */}
+        {/* Ocorrências de Não Sei registradas para esta pergunta */}
         {doorDontKnows.length > 0 && (
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs space-y-1">
             <span className="font-bold text-amber-900 flex items-center gap-1.5">
@@ -1088,7 +1127,7 @@ export const DoorInvestigationView: React.FC = () => {
           </div>
         )}
 
-        {/* Sondagens registradas nesta porta */}
+        {/* Sondagens registradas nesta pergunta */}
         {doorProbings.length > 0 && (
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs space-y-1">
             <span className="font-bold text-blue-900 flex items-center gap-1.5">
