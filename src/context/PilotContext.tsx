@@ -154,6 +154,7 @@ interface PilotContextType {
   originalResponses: OriginalResponse[];
   addOriginalResponse: (doorId: DoorId, text: string, respondent?: UserProfile) => void;
   addRetificationResponse: (previousResponseId: string, newText: string) => void;
+  addComplementResponse: (previousResponseId: string, newText: string) => void;
 
   // Não sei
   dontKnowRecords: DontKnowRecord[];
@@ -920,6 +921,24 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       isRetificationOfResponseId: previousResponseId
     };
 
+    setOriginalResponses(prevResponses => [...prevResponses, newResponse]);
+  };
+
+  const addComplementResponse = (previousResponseId: string, newText: string) => {
+    const prev = originalResponses.find(r => r.id === previousResponseId);
+    if (!prev) return;
+    const newResponse: OriginalResponse = {
+      id: `resp-compl-${Date.now()}`,
+      questionInstanceId: prev.questionInstanceId,
+      doorId: prev.doorId,
+      respondentId: currentUser.id,
+      respondentName: prev.respondentName,
+      respondentRole: prev.respondentRole,
+      originalText: newText,
+      timestamp: new Date().toISOString(),
+      modality: 'SESSAO_CONDUZIDA',
+      isComplementOfResponseId: previousResponseId
+    };
     setOriginalResponses(prevResponses => [...prevResponses, newResponse]);
   };
 
