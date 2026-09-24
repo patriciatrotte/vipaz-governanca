@@ -1,6 +1,6 @@
 import { CapacityDefinition, DoorDefinition, MaturityLevel } from '../types';
 
-export const METHODOLOGY_VERSION = 'D1 v1.0';
+export const METHODOLOGY_VERSION = 'D1 v1.2';
 export const VERTICAL_NAME = 'Poder Público Municipal — Câmaras Municipais';
 
 export const MOTHER_QUESTION =
@@ -8,59 +8,107 @@ export const MOTHER_QUESTION =
 
 export const DOORS_DEFINITIONS: DoorDefinition[] = [
   {
-    id: 'D1.1',
-    code: 'Pergunta 1',
-    title: 'Condução da Governança',
+    id: 'D1.1', code: 'Pergunta 1', title: 'Atuação do Encarregado',
     essentialQuestion: 'Quando chega até você uma questão relacionada à proteção de dados, como você normalmente conduz essa situação?',
-    objective: 'Compreender como o Encarregado conduz sua atuação na prática e validar, pela escuta, as responsabilidades que consegue exercer.',
-    focusAreas: ['Compreensão da demanda', 'Orientação', 'Articulação', 'Iniciativa', 'Escalonamento'],
-    internalLenses: ['C1_CONDUCAO']
+    objective: 'Compreender como o Encarregado conduz sua atuação na prática e distinguir o que realiza diretamente, o que conduz com apoio e quando aciona outras pessoas ou áreas.',
+    focusAreas: ['Compreensão da demanda', 'Orientação', 'Articulação', 'Atuação com apoio', 'Iniciativa', 'Encaminhamento'],
+    internalLenses: ['C1_CONDUCAO'],
+    contextualHelp: {
+      scopeExplanation: 'Pense em situações reais que possam chegar ao Encarregado. Os exemplos ajudam a situar a conversa; não é necessário que todos já tenham ocorrido.',
+      practicalSituations: [
+        'Um cidadão ou servidor pergunta quais dados a Câmara possui sobre ele ou solicita acesso, correção ou outra providência.',
+        'Surge dúvida sobre dados pessoais ou dados sensíveis, como informações de saúde, biometria, filiação sindical, origem racial ou étnica.',
+        'Uma área pretende iniciar ou alterar um processo, sistema, contrato ou serviço que utiliza dados pessoais.',
+        'Ocorre um incidente, exposição indevida ou outro problema envolvendo dados e é necessário orientar quem deve participar.',
+        'Você não sabe resolver sozinho, mas identifica quem pode apoiar — por exemplo, Jurídico, TI, RH, gestão ou outra área.'
+      ]
+    }
   },
   {
-    id: 'D1.2',
-    code: 'Pergunta 2',
-    title: 'Como as providências avançam',
+    id: 'D1.2', code: 'Pergunta 2', title: 'Avanço das providências',
     essentialQuestion: 'Quando você precisa que outra pessoa ou área adote uma providência relacionada à proteção de dados, como isso costuma acontecer?',
-    objective: 'Observar o esforço necessário para a atuação institucional: fluidez, orientação, cobrança, demora, urgência e reconhecimento dos caminhos.',
+    objective: 'Observar o esforço necessário para que uma providência avance: compreensão, orientação, acompanhamento, cobrança, demora, urgência e reconhecimento dos caminhos.',
     focusAreas: ['Fluidez', 'Esforço', 'Insistência', 'Urgência', 'Caminhos conhecidos'],
-    internalLenses: ['C2_FLUIDEZ']
+    internalLenses: ['C2_FLUIDEZ'],
+    contextualHelp: {
+      scopeExplanation: 'Considere qualquer situação em que o andamento dependa de outra pessoa ou área. Se ainda não houve experiência suficiente, isso também é uma informação válida.',
+      practicalSituations: [
+        'Pedir a uma área uma informação necessária para responder uma demanda.',
+        'Solicitar uma correção ou providência relacionada ao uso de dados pessoais.',
+        'Orientar alguém sobre como tratar uma situação e acompanhar se ela avançou.',
+        'Precisar cobrar uma resposta, explicar novamente o pedido ou lidar com demora.',
+        'Descobrir quem é a pessoa ou área responsável porque o caminho ainda não está claro.'
+      ]
+    }
   },
   {
-    id: 'D1.3',
-    code: 'Pergunta 3',
-    title: 'Escalonamento Institucional',
+    id: 'D1.3', code: 'Pergunta 3', title: 'Apoio e decisões da gestão',
     essentialQuestion: 'Quando uma questão de proteção de dados depende de decisão, autorização, priorização ou recurso da gestão, como isso costuma acontecer?',
-    objective: 'Compreender se questões que ultrapassam a governabilidade do Encarregado conseguem alcançar a instância competente.',
-    focusAreas: ['Caminho de escalonamento', 'Acesso à instância competente', 'Esforço necessário'],
-    internalLenses: ['C3_ESCALONAMENTO']
+    objective: 'Compreender se questões que ultrapassam a atuação direta do Encarregado conseguem chegar a quem pode orientar, autorizar, priorizar ou decidir.',
+    focusAreas: ['Caminho até a gestão', 'Acesso a quem decide', 'Apoio institucional', 'Esforço necessário'],
+    internalLenses: ['C3_ESCALONAMENTO'],
+    contextualHelp: {
+      scopeExplanation: 'Pense em situações que o Encarregado não consegue resolver sozinho e que precisam chegar a alguém com competência para decidir ou viabilizar uma providência.',
+      practicalSituations: [
+        'Levar uma questão à Presidência, Mesa Diretora, Diretoria ou outra instância de gestão.',
+        'Buscar apoio do Jurídico, TI, RH, Ouvidoria, Controle Interno ou outra área que participe do assunto.',
+        'Solicitar autorização, prioridade, recurso, contratação ou mudança que depende da gestão.',
+        'Não haver um caminho formal, mas existir acesso direto a quem pode analisar ou decidir.',
+        'Ainda não ter surgido situação desse tipo desde a sua designação.'
+      ]
+    }
   },
   {
-    id: 'D1.4',
-    code: 'Pergunta 4',
-    title: 'Gestão do Conhecimento e Sustentação',
+    id: 'D1.4', code: 'Pergunta 4', title: 'Recuperação das informações',
     essentialQuestion: 'Quando uma questão de proteção de dados já foi tratada, você consegue recuperar o que foi feito, decidido ou orientado para utilizar como referência posteriormente?',
     adaptedQuestion: 'Quando precisa recuperar essas informações, você sabe onde procurar e consegue acessar o que precisa?',
-    objective: 'Compreender se o conhecimento distribuído pode ser localizado, recuperado, acessado, relacionado e reutilizado.',
+    objective: 'Compreender se informações e registros podem ser localizados, recuperados, acessados, relacionados e reutilizados.',
     focusAreas: ['Recuperabilidade', 'Localização', 'Acesso', 'Memória institucional', 'Fontes de conhecimento'],
-    internalLenses: ['C4_CONHECIMENTO']
+    internalLenses: ['C4_CONHECIMENTO'],
+    contextualHelp: {
+      scopeExplanation: 'Considere onde ficam as informações que ajudam a lembrar o que já aconteceu e a reutilizar decisões ou orientações anteriores.',
+      practicalSituations: [
+        'Localizar uma portaria, parecer, e-mail, ata, processo administrativo ou registro em sistema.',
+        'Recuperar uma orientação dada anteriormente para utilizar em situação semelhante.',
+        'Encontrar informações que estão com outra pessoa ou área.',
+        'Saber onde procurar mesmo quando os registros estão distribuídos em locais diferentes.',
+        'Perceber que determinada informação existe, mas é difícil localizá-la ou acessá-la.'
+      ]
+    }
   },
   {
-    id: 'D1.5',
-    code: 'Pergunta 5',
-    title: 'Acompanhamento da Governança',
+    id: 'D1.5', code: 'Pergunta 5', title: 'Acompanhamento das mudanças',
     essentialQuestion: 'Hoje, como você acompanha se a forma como a Câmara trata privacidade e proteção de dados continua adequada ou se alguma coisa precisa ser revista?',
-    objective: 'Identificar como a governança é acompanhada e quais mudanças internas ou externas provocam revisão.',
-    focusAreas: ['Acompanhamento contínuo', 'Mudanças normativas', 'Mudanças internas', 'Controles', 'Retroalimentação'],
-    internalLenses: ['C5_ACOMPANHAMENTO']
+    objective: 'Identificar como mudanças, dificuldades, ocorrências ou novas orientações são percebidas e levam à análise da forma de atuação.',
+    focusAreas: ['Acompanhamento', 'Mudanças normativas', 'Mudanças internas', 'Controles', 'Sinais de revisão'],
+    internalLenses: ['C5_ACOMPANHAMENTO'],
+    contextualHelp: {
+      scopeExplanation: 'A revisão não precisa acontecer por uma rotina formal ou periódica. Queremos compreender o que faz você perceber que algo pode precisar ser analisado novamente.',
+      practicalSituations: [
+        'Surge nova lei, norma, orientação ou manifestação da ANPD.',
+        'A Câmara muda um sistema, processo, serviço, fornecedor ou forma de utilizar dados.',
+        'Começa um novo tratamento ou passam a ser utilizados novos tipos de dados.',
+        'Ocorre incidente, reclamação, demanda de titular ou dificuldade na rotina.',
+        'Uma análise, controle ou experiência anterior mostra que algo pode ser melhorado.'
+      ]
+    }
   },
   {
-    id: 'D1.6',
-    code: 'Pergunta 6',
-    title: 'Evolução e Retroalimentação',
+    id: 'D1.6', code: 'Pergunta 6', title: 'Providências e melhorias',
     essentialQuestion: 'Quando você identifica algo que pode exigir uma mudança, o que normalmente acontece?',
-    objective: 'Compreender como necessidades identificadas produzem análise, orientação, proposta, articulação, escalonamento ou acompanhamento.',
-    focusAreas: ['Análise', 'Ajuste', 'Proposição', 'Encaminhamento', 'Reavaliação'],
-    internalLenses: ['C5_EVOLUCAO']
+    objective: 'Compreender o caminho entre perceber uma necessidade e analisar, propor, encaminhar, implementar ou acompanhar uma mudança, sem presumir que todas essas etapas ocorram.',
+    focusAreas: ['Análise', 'Proposição', 'Encaminhamento', 'Implementação', 'Acompanhamento'],
+    internalLenses: ['C5_EVOLUCAO'],
+    contextualHelp: {
+      scopeExplanation: 'Pense no que acontece depois que uma necessidade de mudança é percebida. Queremos entender até onde você acompanha esse caminho e quem participa dele.',
+      practicalSituations: [
+        'A situação é analisada antes de decidir se alguma mudança é necessária.',
+        'Uma orientação ou proposta de melhoria é preparada e encaminhada.',
+        'Outra pessoa, área ou a gestão precisa decidir ou executar a providência.',
+        'A mudança é implementada e existe alguma forma de acompanhar o que aconteceu.',
+        'A necessidade é reconhecida, mas a implementação ainda depende de tempo, recurso, contratação, decisão ou outra condição.'
+      ]
+    }
   }
 ];
 
