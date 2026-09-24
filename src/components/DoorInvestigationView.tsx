@@ -42,6 +42,7 @@ export const DoorInvestigationView: React.FC = () => {
     addInformationUnit,
     addOriginalResponse,
     addRetificationResponse,
+    addComplementResponse,
     recordDontKnow,
     dontKnowRecords,
     probings,
@@ -98,6 +99,7 @@ export const DoorInvestigationView: React.FC = () => {
   // Estados locais para inputs
   const [inputText, setInputText] = useState('');
   const [retifyingResponseId, setRetifyingResponseId] = useState<string | null>(null);
+  const [complementingResponseId, setComplementingResponseId] = useState<string | null>(null);
 
   // Apoio contextual e visualização metodológica (Ajustes 2 e 8)
   const [showContextualHelp, setShowContextualHelp] = useState(false);
@@ -305,6 +307,14 @@ export const DoorInvestigationView: React.FC = () => {
         message: 'Retificação formal registrada e vinculada à fala anterior.',
         location: `Histórico imutável da Pergunta ${activeDoor.code.replace('Pergunta ', '')}.`,
         nextStep: 'Continue a investigação ou avalie a conclusão da pergunta.'
+      });
+    } else if (complementingResponseId) {
+      addComplementResponse(complementingResponseId, inputText);
+      setComplementingResponseId(null);
+      setActionFeedback({
+        message: 'Complemento registrado sem alterar a resposta anterior.',
+        location: `Histórico da Pergunta ${activeDoor.code.replace('Pergunta ', '')}.`,
+        nextStep: 'A pergunta pode permanecer concluída; complemente novamente apenas se surgir informação nova.'
       });
     } else {
       const interviewRespondent = isFacilitator && currentOrg
@@ -528,6 +538,20 @@ export const DoorInvestigationView: React.FC = () => {
           >
             ✕
           </button>
+        </div>
+      )}
+
+      {/* Contexto permanente da entrevista */}
+      {currentOrg && (
+        <div className="bg-gradient-to-r from-emerald-50 via-white to-slate-50 border border-emerald-200 rounded-xl px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs shadow-2xs">
+          <div>
+            <span className="text-slate-500">Instituição</span>
+            <p className="font-bold text-slate-900">{currentOrg.name}</p>
+          </div>
+          <div className="sm:text-right">
+            <span className="text-slate-500">Interlocutor(a)</span>
+            <p className="font-semibold text-slate-800">{currentOrg.mainInterlocutorName || 'Não informado'} <span className="font-normal text-slate-500">· {currentOrg.mainInterlocutorRole || 'papel não informado'}</span></p>
+          </div>
         </div>
       )}
 
@@ -763,7 +787,7 @@ export const DoorInvestigationView: React.FC = () => {
               className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Send className="w-3.5 h-3.5" />
-              {retifyingResponseId ? 'Salvar Retificação Relacionada' : 'Salvar resposta'}
+              {retifyingResponseId ? 'Salvar Retificação Relacionada' : complementingResponseId ? 'Salvar complemento' : 'Salvar resposta'}
             </button>
             </div>
           </div>
@@ -1077,6 +1101,11 @@ export const DoorInvestigationView: React.FC = () => {
                         Retificação da resposta anterior
                       </span>
                     )}
+                    {resp.isComplementOfResponseId && (
+                      <span className="bg-blue-100 text-blue-800 text-[10px] px-1.5 py-0.2 rounded font-bold">
+                        Complemento da resposta
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 text-[11px]">
                     <span className="font-mono text-slate-400">{resp.id}</span>
@@ -1092,6 +1121,16 @@ export const DoorInvestigationView: React.FC = () => {
                 <div className="flex items-center justify-between pt-2 mt-2 text-xs">
                   <span className="text-[11px] text-slate-400">Modalidade: {resp.modality.replace('_', ' ')}</span>
                   <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => {
+                        setComplementingResponseId(resp.id);
+                        setRetifyingResponseId(null);
+                        setInputText('');
+                      }}
+                      className="text-blue-700 hover:text-blue-800 font-medium text-[11px] underline cursor-pointer"
+                    >
+                      Adicionar complemento
+                    </button>
                     <button
                       onClick={() => {
                         setRetifyingResponseId(resp.id);
