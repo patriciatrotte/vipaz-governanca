@@ -69,7 +69,7 @@ const AppContent: React.FC = () => {
         };
       case 'INTERVIEW':
         return {
-          title: isInterlocutor ? 'Diagnóstico Institucional' : 'Investigação fática • 6 Portas D1',
+          title: isInterlocutor ? 'Diagnóstico Institucional' : 'Entrevista • Dimensão D1',
           subtitle: 'Apuração e descoberta fática das rotinas de governança e privacidade',
           icon: <Layers className="w-4 h-4 text-emerald-600" />
         };
