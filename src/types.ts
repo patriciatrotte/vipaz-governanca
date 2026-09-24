@@ -125,6 +125,7 @@ export interface OriginalResponse {
   timestamp: string;
   modality: 'ORAL_GRAVADA' | 'TEXTO_DIRETO' | 'SESSAO_CONDUZIDA';
   isRetificationOfResponseId?: string; // se for retificação de resposta anterior
+  isComplementOfResponseId?: string; // se apenas amplia uma resposta anterior, sem corrigi-la
 }
 
 // Tratamento do "Não sei"
