@@ -75,10 +75,10 @@ const AppContent: React.FC = () => {
         };
       case 'DISTRIBUTED':
         return {
-          title: isParticipant ? 'Minhas Contribuições' : 'Investigação Distribuída',
+          title: isParticipant ? 'Minhas Contribuições' : 'Verificações com outras áreas',
           subtitle: isParticipant
-            ? 'Demandas de preenchimento direcionadas especificamente ao seu setor'
-            : 'Coleta setorial descentralizada e acompanhamento de servidores',
+            ? 'Informações solicitadas ao seu setor para complementar a investigação'
+            : 'Informações que precisam ser confirmadas ou complementadas por outra pessoa ou área',
           icon: <GitPullRequest className="w-4 h-4 text-sky-600" />
         };
       case 'EVIDENCES':
