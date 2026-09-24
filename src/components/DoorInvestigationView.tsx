@@ -991,10 +991,10 @@ export const DoorInvestigationView: React.FC = () => {
       {doorResponses.length > 0 && (
         <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
           <div className="space-y-2">
-            <p className="text-xs font-bold text-slate-800">Complemente somente se necessário</p>
+            <p className="text-xs font-bold text-slate-800">Registros adicionais</p>
             <div className="flex flex-wrap items-center gap-2">
               <button type="button" onClick={() => setShowProbingModal(true)} className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-blue-600" /> + Perguntou algo a mais? Registre aqui
+                <Sparkles className="w-3.5 h-3.5 text-blue-600" /> + Pergunta adicional
               </button>
               <button type="button" onClick={() => setShowEvidenceModal(true)} className="px-3 py-1.5 text-xs font-medium rounded-md bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 flex items-center gap-1.5">
                 <FileText className="w-3.5 h-3.5 text-slate-600" /> Indicar documento ou evidência
@@ -1119,7 +1119,7 @@ export const DoorInvestigationView: React.FC = () => {
                     <span className="text-[11px] text-slate-500">({resp.respondentRole})</span>
                     {resp.isRetificationOfResponseId && (
                       <span className="bg-amber-200 text-amber-900 text-[10px] px-1.5 py-0.2 rounded font-bold">
-                        Retificação da resposta anterior
+                        Correção da informação anterior
                       </span>
                     )}
                     {resp.isComplementOfResponseId && (
@@ -1150,16 +1150,17 @@ export const DoorInvestigationView: React.FC = () => {
                       }}
                       className="text-blue-700 hover:text-blue-800 font-medium text-[11px] underline cursor-pointer"
                     >
-                      Adicionar complemento
+                      Adicionar informação
                     </button>
                     <button
                       onClick={() => {
                         setRetifyingResponseId(resp.id);
+                        setComplementingResponseId(null);
                         setInputText(resp.originalText);
                       }}
                       className="text-amber-700 hover:text-amber-800 font-medium text-[11px] underline cursor-pointer"
                     >
-                      Registrar Retificação Formal
+                      Corrigir informação
                     </button>
                   </div>
                 </div>
