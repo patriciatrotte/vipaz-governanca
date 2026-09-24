@@ -709,7 +709,7 @@ export const DoorInvestigationView: React.FC = () => {
               )}
             </span>
             <div className="flex items-center gap-2">
-              {!retifyingResponseId && (
+              {!retifyingResponseId && activeDoorId !== 'D1.1' && (
                 <button
                   type="button"
                   onClick={() => setShowDontKnowModal(true)}
