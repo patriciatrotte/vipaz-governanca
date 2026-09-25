@@ -63,7 +63,7 @@ import {
   SEED_TELEMETRY
 } from '../data/seedData';
 
-import { DOORS_DEFINITIONS } from '../data/methodologyConstants';
+import { DOORS_DEFINITIONS, METHODOLOGY_VERSION } from '../data/methodologyConstants';
 
 export type AppView = 
   | 'CENTRAL'
@@ -632,6 +632,75 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     activeDoorId
   ]);
 
+  // Sincronização central: Supabase é a fonte compartilhada; localStorage permanece como contingência.
+  useEffect(() => {
+    let cancelled = false;
+
+    const syncCentralCatalog = async () => {
+      try {
+        const [orgResponse, cycleResponse] = await Promise.all([
+          fetch('/api/data/organizations'),
+          fetch('/api/data/cycles')
+        ]);
+        if (!orgResponse.ok || !cycleResponse.ok) return;
+
+        const remoteOrgs = await orgResponse.json();
+        const remoteCycles = await cycleResponse.json();
+        if (cancelled) return;
+
+        setOrganizations(current => {
+          const remoteMapped: Organization[] = remoteOrgs.map((row: any) => ({
+            id: row.legacy_id,
+            name: row.name,
+            type: row.organization_type || 'CAMARA_MUNICIPAL',
+            vertical: row.vertical,
+            municipality: row.municipality || 'Município não informado',
+            state: row.state || 'UF',
+            cycleId: '',
+            activeCycleName: '',
+            methodologyVersion: METHODOLOGY_VERSION,
+            createdAt: row.created_at,
+            isDemo: Boolean(row.is_demo),
+            cycleIds: [],
+            mainInterlocutorName: row.main_interlocutor_name || undefined,
+            mainInterlocutorRole: row.main_interlocutor_role || undefined,
+            mainInterlocutorEmail: row.main_interlocutor_email || undefined
+          }));
+          const byId = new Map(current.map(org => [org.id, org]));
+          remoteMapped.forEach(org => byId.set(org.id, { ...(byId.get(org.id) || {} as Organization), ...org }));
+          const merged = Array.from(byId.values());
+          localStorage.setItem('PILOTO_ORGANIZATIONS', JSON.stringify(merged));
+          return merged;
+        });
+
+        setCycles(current => {
+          const remoteMapped: EvaluationCycle[] = remoteCycles.map((row: any) => ({
+            id: row.legacy_id,
+            organizationId: row.organizations?.legacy_id,
+            dimension: row.dimension || 'D1',
+            methodologyVersion: row.methodology_version,
+            name: row.name,
+            cycleType: row.cycle_type || 'INITIAL_ASSESSMENT',
+            status: row.status || 'NAO_INICIADO',
+            createdAt: row.created_at,
+            updatedAt: row.updated_at || row.created_at,
+            interviewCompletedAt: row.interview_completed_at || undefined
+          }));
+          const byId = new Map(current.map(cycle => [cycle.id, cycle]));
+          remoteMapped.forEach(cycle => byId.set(cycle.id, { ...(byId.get(cycle.id) || {} as EvaluationCycle), ...cycle }));
+          const merged = Array.from(byId.values());
+          localStorage.setItem('PILOTO_CYCLES', JSON.stringify(merged));
+          return merged;
+        });
+      } catch (error) {
+        console.warn('Base central indisponível; mantendo contingência local.', error);
+      }
+    };
+
+    syncCentralCatalog();
+    return () => { cancelled = true; };
+  }, []);
+
   // Transição de contexto: Selecionar Organização
   const selectOrganization = (orgId: string) => {
     if (currentOrgId && currentOrgId !== orgId) {
@@ -726,7 +795,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       state: data.state || 'UF',
       cycleId: '',
       activeCycleName: 'Ciclo D1 Inicial 2026.1',
-      methodologyVersion: 'D1 v1.0',
+      methodologyVersion: METHODOLOGY_VERSION,
       createdAt: now,
       isDemo: false,
       cycleIds: [],
@@ -743,6 +812,23 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.warn('Erro ao salvar organizacoes:', e);
     }
 
+    fetch('/api/data/organizations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        legacyId: newOrg.id,
+        name: newOrg.name,
+        type: newOrg.type,
+        vertical: newOrg.vertical,
+        municipality: newOrg.municipality,
+        state: newOrg.state,
+        isDemo: newOrg.isDemo,
+        mainInterlocutorName: newOrg.mainInterlocutorName,
+        mainInterlocutorRole: newOrg.mainInterlocutorRole,
+        mainInterlocutorEmail: newOrg.mainInterlocutorEmail
+      })
+    }).catch(error => console.warn('Organização preservada localmente; sincronização central pendente.', error));
+
     return newOrg;
   };
 
@@ -756,7 +842,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       id: newCycleId,
       organizationId,
       dimension: 'D1',
-      methodologyVersion: 'D1 v1.0',
+      methodologyVersion: METHODOLOGY_VERSION,
       name: `Ciclo D1 Inicial ${new Date().getFullYear()}.${new Date().getMonth() < 6 ? '1' : '2'}`,
       cycleType: 'INITIAL_ASSESSMENT',
       status: 'NAO_INICIADO',
@@ -789,6 +875,20 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch (e) {
       console.warn('Erro ao atualizar organizacoes com novo ciclo:', e);
     }
+
+    fetch('/api/data/cycles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        legacyId: newCycle.id,
+        organizationLegacyId: organizationId,
+        dimension: newCycle.dimension,
+        methodologyVersion: newCycle.methodologyVersion,
+        name: newCycle.name,
+        cycleType: newCycle.cycleType,
+        status: newCycle.status
+      })
+    }).catch(error => console.warn('Ciclo preservado localmente; sincronização central pendente.', error));
 
     // Inicializa estado limpo isolado para essa nova organização/ciclo
     const emptyState = getEmptyOrgState(organizationId, newCycleId);
