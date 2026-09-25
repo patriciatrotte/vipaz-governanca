@@ -35,6 +35,37 @@ app.get('/api/health', (req: Request, res: Response) => {
   });
 });
 
+// Supabase server-side connectivity check.
+// The privileged key stays on the server and is never sent to the browser.
+app.get('/api/db/health', async (_req: Request, res: Response) => {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
+
+  if (!supabaseUrl || !supabaseSecretKey) {
+    return res.status(503).json({ status: 'unavailable', database: 'not_configured', configured: false });
+  }
+
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/organizations?select=id&limit=1`, {
+      headers: {
+        apikey: supabaseSecretKey,
+        Authorization: `Bearer ${supabaseSecretKey}`
+      }
+    });
+
+    if (!response.ok) {
+      const details = await response.text();
+      console.error('Supabase health check failed:', response.status, details);
+      return res.status(502).json({ status: 'error', database: 'unreachable', configured: true });
+    }
+
+    return res.json({ status: 'ok', database: 'connected', configured: true });
+  } catch (error) {
+    console.error('Supabase health check error:', error);
+    return res.status(502).json({ status: 'error', database: 'unreachable', configured: true });
+  }
+});
+
 // Endpoint: AI Probing Suggestion (Neutral, non-leading)
 app.post('/api/ai/probe', async (req: Request, res: Response) => {
   try {
