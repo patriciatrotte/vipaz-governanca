@@ -773,6 +773,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     mainInterlocutorRole?: string;
     mainInterlocutorEmail?: string;
   }): Promise<Organization> => {
+    return (async () => {
     const slug = data.name
       .toLowerCase()
       .normalize('NFD')
@@ -838,6 +839,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.warn('Organização preservada localmente; sincronização central pendente.', error);
       throw error;
     }
+    })();
   };
 
   // Iniciar primeiro ciclo D1 de uma organização
