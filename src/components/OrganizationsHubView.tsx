@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { CycleStatusBadge } from './MethodologyBadges';
 import { SimulationExperienceModal } from './SimulationExperienceModal';
+import { METHODOLOGY_VERSION } from '../data/methodologyConstants';
 
 export const OrganizationsHubView: React.FC = () => {
   const { 
@@ -477,7 +478,7 @@ export const OrganizationsHubView: React.FC = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Versão Metodológica:</span>
-                  <span className="font-mono font-bold text-slate-900">D1 v1.0</span>
+                  <span className="font-mono font-bold text-slate-900">{METHODOLOGY_VERSION}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Status Inicial:</span>
