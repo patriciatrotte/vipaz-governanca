@@ -28,8 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       state: body.state,
       is_demo: Boolean(body.isDemo),
       main_interlocutor_name: body.mainInterlocutorName || null,
-      main_interlocutor_role: body.mainInterlocutorRole || null,
-      main_interlocutor_email: body.mainInterlocutorEmail || null
+      main_interlocutor_role: body.mainInterlocutorRole || null
     };
     const r = await fetch(`${url}/rest/v1/organizations?select=*`, {
       method: 'POST',
