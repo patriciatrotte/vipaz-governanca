@@ -57,25 +57,29 @@ export const OrganizationsHubView: React.FC = () => {
   };
 
   // Salvar Organização (Tela 2 -> Tela 3)
-  const handleSaveOrganization = (e: React.FormEvent) => {
+  const handleSaveOrganization = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!orgName.trim()) {
       setFormError('Informe o nome oficial da organização.');
       return;
     }
 
-    const newOrg = createOrganization({
-      name: orgName.trim(),
-      vertical: 'Poder Público Municipal — Câmara Municipal',
-      municipality: municipality.trim() || undefined,
-      state: stateUf.trim().toUpperCase() || undefined,
-      mainInterlocutorName: interlocutorName.trim() || undefined,
-      mainInterlocutorRole: interlocutorRole.trim() || undefined,
-      mainInterlocutorEmail: undefined
-    });
+    try {
+      const newOrg = await createOrganization({
+        name: orgName.trim(),
+        vertical: 'Poder Público Municipal — Câmara Municipal',
+        municipality: municipality.trim() || undefined,
+        state: stateUf.trim().toUpperCase() || undefined,
+        mainInterlocutorName: interlocutorName.trim() || undefined,
+        mainInterlocutorRole: interlocutorRole.trim() || undefined,
+        mainInterlocutorEmail: undefined
+      });
 
-    setCreatedOrgTemp(newOrg);
-    setModalMode('START_CYCLE');
+      setCreatedOrgTemp(newOrg);
+      setModalMode('START_CYCLE');
+    } catch {
+      setFormError('A organização foi preservada neste navegador, mas ainda não foi confirmada na base central. Tente novamente antes de iniciar o ciclo.');
+    }
   };
 
   // Iniciar Ciclo D1 (Tela 3)
@@ -93,7 +97,7 @@ export const OrganizationsHubView: React.FC = () => {
         <div className="space-y-3 max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-medium">
             <Building2 className="w-3.5 h-3.5 text-emerald-400" />
-            Metodologia de Maturidade e Evolução em Governança de Privacidade · D1 v1.0
+            Metodologia de Maturidade e Evolução em Governança de Privacidade · {METHODOLOGY_VERSION}
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
