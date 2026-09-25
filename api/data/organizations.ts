@@ -36,7 +36,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       headers: { ...headers(key), Prefer: 'return=representation,resolution=merge-duplicates' },
       body: JSON.stringify(payload)
     });
-    if (!r.ok) return res.status(502).json({ error: 'organization_write_failed', details: await r.text() });
+    if (!r.ok) {
+      const details = await r.text();
+      console.error('Supabase organization write failed:', r.status, details);
+      return res.status(502).json({ error: 'organization_write_failed', details });
+    }
     const rows = await r.json();
     return res.status(200).json(rows[0] || null);
   }
