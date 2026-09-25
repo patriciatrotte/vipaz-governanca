@@ -122,7 +122,7 @@ interface PilotContextType {
     mainInterlocutorName?: string;
     mainInterlocutorRole?: string;
     mainInterlocutorEmail?: string;
-  }) => Organization;
+  }) => Promise<Organization>;
   startD1Cycle: (organizationId: string) => EvaluationCycle;
   completeInterview: () => void;
   getOrganizationSummary: (orgId: string) => {
@@ -772,7 +772,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     mainInterlocutorName?: string;
     mainInterlocutorRole?: string;
     mainInterlocutorEmail?: string;
-  }): Organization => {
+  }): Promise<Organization> => {
     const slug = data.name
       .toLowerCase()
       .normalize('NFD')
@@ -812,24 +812,32 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.warn('Erro ao salvar organizacoes:', e);
     }
 
-    fetch('/api/data/organizations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        legacyId: newOrg.id,
-        name: newOrg.name,
-        type: newOrg.type,
-        vertical: newOrg.vertical,
-        municipality: newOrg.municipality,
-        state: newOrg.state,
-        isDemo: newOrg.isDemo,
-        mainInterlocutorName: newOrg.mainInterlocutorName,
-        mainInterlocutorRole: newOrg.mainInterlocutorRole,
-        mainInterlocutorEmail: newOrg.mainInterlocutorEmail
-      })
-    }).catch(error => console.warn('Organização preservada localmente; sincronização central pendente.', error));
-
-    return newOrg;
+    try {
+      const response = await fetch('/api/data/organizations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          legacyId: newOrg.id,
+          name: newOrg.name,
+          type: newOrg.type,
+          vertical: newOrg.vertical,
+          municipality: newOrg.municipality,
+          state: newOrg.state,
+          isDemo: newOrg.isDemo,
+          mainInterlocutorName: newOrg.mainInterlocutorName,
+          mainInterlocutorRole: newOrg.mainInterlocutorRole,
+          mainInterlocutorEmail: newOrg.mainInterlocutorEmail
+        })
+      });
+      if (!response.ok) {
+        const details = await response.text();
+        throw new Error(`Falha ao confirmar organização na base central: ${details}`);
+      }
+      return newOrg;
+    } catch (error) {
+      console.warn('Organização preservada localmente; sincronização central pendente.', error);
+      throw error;
+    }
   };
 
   // Iniciar primeiro ciclo D1 de uma organização
