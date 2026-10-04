@@ -30,6 +30,28 @@ export const T1ExperimentalReportView: React.FC<{ cycleId: string }> = ({ cycleI
   const inputs = portrait?.interpretation?.inputs || [];
   const coverage = portrait?.investigationCoverage || {};
 
+  // T1: primeira interpretação assistida do ciclo real de Nilo, produzida a partir dos
+  // dados recuperados acima. É uma síntese interpretativa pendente de confirmação humana;
+  // não aplica regra de maturidade e não converte informação validada em conclusão automática.
+  const niloT1Interpretation = data.cycle?.id === '1eef9712-a6ef-4a63-8612-79b1b5431a9f' ? {
+    status: 'PENDING_HUMAN_CONFIRMATION',
+    synthesis: 'A investigação indica uma governança de privacidade em processo de institucionalização. Há atuação prática atribuída à Encarregada e percepção de proximidade com áreas de gestão, além de práticas relatadas de acompanhamento e recuperação de informações. Ao mesmo tempo, parte relevante dessa atuação ainda parece depender de experiências pontuais, conhecimento pessoal e caminhos que nem sempre estão previamente estabelecidos.',
+    demonstratedSignals: [
+      'A Encarregada relata atuação em orientação, encaminhamento e tratamento de questões de proteção de dados.',
+      'Há percepção de apoio e proximidade com Presidência, RH, TI e Procuradoria para temas que dependem de outras áreas.',
+      'Foi relatada facilidade para recuperar informações anteriormente tratadas e uma cultura favorável ao compartilhamento de conhecimento.',
+      'Existem práticas de acompanhamento envolvendo autorizações, inventários, dados e reuniões com diferentes áreas.'
+    ],
+    attentionPoints: [
+      'A experiência prática da Encarregada ainda é insuficiente para avaliar com segurança como providências dependentes de outras pessoas ou áreas fluem na rotina.',
+      'Alguns caminhos institucionais ainda precisam ser descobertos caso a caso, o que pode indicar dependência de articulação informal.',
+      'As manifestações sobre apoio da gestão, recuperação de conhecimento e reação a mudanças ainda não possuem unidades estruturadas persistidas neste ciclo; por isso devem ser tratadas como informações relatadas, não como capacidades demonstradas.',
+      'Não há evidências documentais vinculadas neste ciclo que permitam elevar os relatos a comprovação institucional.'
+    ],
+    nextState: 'Tornar mais explícitos e recuperáveis os caminhos de atuação, decisão, articulação e acompanhamento da governança de privacidade, reduzindo dependência de conhecimento pessoal ou de respostas pontuais e produzindo evidências institucionais das práticas já relatadas.',
+    limitations: 'Esta interpretação é experimental e utiliza exclusivamente as respostas e unidades de informação disponíveis no ciclo histórico. Ela ainda requer confirmação humana e não determina, por si só, nível de maturidade ou gap validado.'
+  } : null;
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6 print:p-0">
       <header className="border-b border-slate-300 pb-5">
@@ -77,6 +99,40 @@ export const T1ExperimentalReportView: React.FC<{ cycleId: string }> = ({ cycleI
           </div>
         </div>
       </section>
+
+      {niloT1Interpretation && (
+        <section className="border border-emerald-200 bg-white rounded-2xl p-5 sm:p-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+            <div>
+              <div className="text-xs font-bold tracking-[0.16em] uppercase text-emerald-700">Interpretação assistida • experimental</div>
+              <h2 className="text-xl font-bold text-slate-950 mt-1">Retrato institucional</h2>
+            </div>
+            <span className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-full px-3 py-1">Pendente de confirmação humana</span>
+          </div>
+          <p className="text-sm sm:text-base text-slate-700 leading-relaxed mt-4">{niloT1Interpretation.synthesis}</p>
+
+          <div className="grid md:grid-cols-2 gap-5 mt-6">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Sinais institucionais identificados</h3>
+              <ul className="mt-2 space-y-2 text-sm text-slate-700">
+                {niloT1Interpretation.demonstratedSignals.map((x: string) => <li key={x} className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" /><span>{x}</span></li>)}
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Pontos que exigem atenção ou comprovação</h3>
+              <ul className="mt-2 space-y-2 text-sm text-slate-700">
+                {niloT1Interpretation.attentionPoints.map((x: string) => <li key={x} className="flex gap-2"><AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" /><span>{x}</span></li>)}
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-6 border-t border-slate-200 pt-4">
+            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Próximo estado sugerido para análise</div>
+            <p className="text-sm text-slate-800 leading-relaxed mt-1">{niloT1Interpretation.nextState}</p>
+          </div>
+          <p className="text-xs text-slate-500 leading-relaxed mt-4">{niloT1Interpretation.limitations}</p>
+        </section>
+      )}
 
       <section>
         <div className="flex items-center gap-2 mb-3">
