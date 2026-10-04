@@ -138,172 +138,51 @@ export const OrganizationsHubView: React.FC = () => {
         </div>
       </div>
 
-      {/* MODO DE SIMULAÇÃO — AMBIENTE DE TESTE */}
-      <div className="bg-amber-50/80 border border-amber-200/90 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
-        <div className="flex items-start gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-800 text-lg shrink-0">
-            🧪
+      {/* CENTRAL T2 — LISTA COMPACTA E MODULAR */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+        {['Visão Geral', 'Diagnóstico', 'Evidências', 'Jornada de Evolução', 'Conhecimento', 'Relatórios'].map((module, index) => (
+          <div key={module} className={`rounded-xl border px-3 py-3 text-xs font-semibold ${index < 3 || index === 5 ? 'bg-white border-slate-200 text-slate-800' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
+            <span className="block text-[10px] font-mono text-slate-400 mb-1">MÓDULO {String(index + 1).padStart(2, '0')}</span>
+            {module}
           </div>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono text-[10px] uppercase font-bold tracking-wider bg-amber-200 text-amber-900 px-2 py-0.5 rounded border border-amber-300">
-                Modo de Simulação
-              </span>
-              <span className="text-xs font-semibold text-slate-700">
-                Ambiente de Demonstração e Teste
-              </span>
-            </div>
-            <p className="text-xs text-slate-600 font-serif leading-relaxed">
-              Ambiente de teste — a troca de perfil simula experiências de usuários com diferentes responsabilidades. Na versão de produção, o usuário será autenticado e terá acesso exclusivo ao seu papel.
-            </p>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => {
-            setPendingOrgIdForSimulation('org-camara-vila-esperanca-01');
-            setSimulationModalOpen(true);
-          }}
-          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-bold text-xs shadow-xs transition-all shrink-0 cursor-pointer"
-        >
-          <UserCheck className="w-4 h-4" />
-          <span>Escolha a experiência que deseja simular</span>
-        </button>
+        ))}
       </div>
 
-      {/* SEÇÃO: ORGANIZAÇÕES */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Organizações</h2>
-            <p className="text-xs text-slate-500">
-              Selecione uma organização para acessar seu ciclo de avaliação e evolução.
-            </p>
+            <h2 className="text-lg font-bold text-slate-900">Organizações e ciclos</h2>
+            <p className="text-xs text-slate-500">Retome uma jornada institucional ou inicie uma nova aplicação.</p>
           </div>
-          <span className="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
-            {organizations.length} {organizations.length === 1 ? 'organização' : 'organizações'}
-          </span>
+          <span className="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">{organizations.length} {organizations.length === 1 ? 'organização' : 'organizações'}</span>
         </div>
 
-        {/* Grid de Cards de Organizações (2 colunas desktop, 1 coluna telas menores) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="overflow-hidden bg-white border border-slate-200 rounded-xl shadow-sm divide-y divide-slate-100">
           {organizations.map(org => {
             const summary = getOrganizationSummary(org.id);
-            const isCompleted = summary.cycleStatus === 'CONCLUIDO_VALIDADO';
-            const actionLabel = isCompleted ? 'Consultar' : 'Continuar';
-
             return (
-              <div 
-                key={org.id}
-                className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:border-slate-300 transition-all flex flex-col justify-between space-y-4 relative"
-              >
-                {/* Linha Superior: Nome e Badges */}
-                <div className="space-y-2">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                        org.isDemo 
-                          ? 'bg-amber-100 text-amber-800' 
-                          : 'bg-emerald-100 text-emerald-800'
-                      }`}>
-                        <Building2 className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-bold text-slate-900 text-base leading-snug">
-                            {org.name}
-                          </h3>
-                          {org.isDemo && (
-                            <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.2 rounded">
-                              Demonstração / Teste
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-xs text-slate-500 block">
-                          {summary.vertical}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="shrink-0">
-                      <CycleStatusBadge status={summary.cycleStatus} />
-                    </div>
+              <button key={org.id} type="button" onClick={() => selectOrganization(org.id)} className="w-full text-left px-4 py-3.5 hover:bg-slate-50 transition-colors flex items-center gap-4">
+                <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0"><Building2 className="w-4 h-4" /></div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-sm text-slate-900 truncate">{org.name}</span>
+                    {org.isDemo && <span className="text-[9px] uppercase tracking-wider font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">demonstração</span>}
                   </div>
-
-                  {/* Informações Metodológicas do Ciclo */}
-                  <div className="pt-2 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">
-                        Dimensão / Ciclo Atual
-                      </span>
-                      <span className="font-medium text-slate-800 block truncate" title={summary.cycleName}>
-                        {summary.cycleName}
-                      </span>
-                      <span className="text-[11px] text-slate-500 font-mono">
-                        Versão {summary.methodologyVersion}
-                      </span>
-                    </div>
-
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-slate-400 block">
-                        Última Atividade
-                      </span>
-                      <span className="font-medium text-slate-800 flex items-center gap-1">
-                        <Calendar className="w-3 h-3 text-slate-400" />
-                        {summary.lastActivityDate || 'Em aberto'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Pendências Bloqueantes (quando houver) */}
-                  <div className="pt-2">
-                    {summary.blockingPendingCount > 0 ? (
-                      <div className="flex items-center gap-1.5 text-xs text-rose-700 bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200">
-                        <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                        <span className="font-semibold">
-                          {summary.blockingPendingCount} {summary.blockingPendingCount === 1 ? 'pendência bloqueante ativa' : 'pendências bloqueantes ativas'}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">
-                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <span>Nenhuma pendência bloqueante no momento</span>
-                      </div>
-                    )}
+                  <div className="mt-1 flex items-center gap-x-4 gap-y-1 flex-wrap text-[11px] text-slate-500">
+                    <span>{summary.cycleName || 'Ciclo ainda não iniciado'}</span>
+                    <span className="font-mono">{summary.methodologyVersion || METHODOLOGY_VERSION}</span>
+                    <span>{summary.lastActivityDate ? `Última atividade: ${summary.lastActivityDate}` : 'Sem atividade registrada'}</span>
                   </div>
                 </div>
-
-                {/* Rodapé do Card com Ação */}
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPendingOrgIdForSimulation(org.id);
-                      setSimulationModalOpen(true);
-                    }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300/80 transition-colors cursor-pointer"
-                    title="Simular com um perfil específico (Encarregado, Gestor, Facilitador, Participante)"
-                  >
-                    <UserCheck className="w-3.5 h-3.5 text-amber-700" />
-                    <span>Simular experiência</span>
-                  </button>
-
-                  <button
-                    onClick={() => selectOrganization(org.id)}
-                    className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      isCompleted 
-                        ? 'bg-slate-800 hover:bg-slate-900 text-white' 
-                        : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
-                    }`}
-                  >
-                    <span>{actionLabel}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
+                <div className="hidden sm:block shrink-0"><CycleStatusBadge status={summary.cycleStatus} /></div>
+                <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+              </button>
             );
           })}
+        </div>
+
+        <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs text-sky-900">
+          <strong>Marco T2:</strong> a central já reflete a arquitetura modular da VIPAZ. Jornada de Evolução e Conhecimento permanecem sinalizados como módulos da plataforma, sem antecipar funcionalidades ainda não implementadas neste marco.
         </div>
       </div>
 
