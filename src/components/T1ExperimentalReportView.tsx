@@ -81,34 +81,18 @@ export const T1ExperimentalReportView: React.FC<{ cycleId: string }> = ({ cycleI
       <header className="border-b border-slate-300 pb-5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="text-xs font-bold tracking-[0.18em] uppercase text-emerald-700">VIPAZ • Marco T1</div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-950 mt-1">Retrato Institucional Experimental</h1>
+            <div className="text-xs font-bold tracking-[0.18em] uppercase text-emerald-700">VIPAZ</div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-950 mt-1">Retrato Institucional</h1>
             <p className="text-sm text-slate-600 mt-2">{data.organization?.name}</p>
           </div>
           <button onClick={() => window.print()} className="no-print inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-700">
             <Printer className="w-4 h-4" /> Imprimir
           </button>
         </div>
-        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500">
+        <div className="mt-4 text-xs text-slate-500">
           <span>Ciclo: <strong className="text-slate-700">{data.cycle?.name}</strong></span>
-          <span>Metodologia histórica: <strong className="text-slate-700">{data.cycle?.methodologyCode} {data.cycle?.methodologyVersion}</strong></span>
-          <span>Modelo do relatório: <strong className="text-slate-700">{data.reportModelVersion}</strong></span>
         </div>
       </header>
-
-      <section className="grid sm:grid-cols-4 gap-3">
-        {[
-          ['Portas investigadas', coverage.questionsInvestigated ?? 0],
-          ['Com informação estruturada', coverage.questionsWithStructuredInformation ?? 0],
-          ['Aguardando estruturação', coverage.questionsAwaitingStructuring ?? 0],
-          ['Unidades validadas', coverage.validatedInformationUnits ?? 0]
-        ].map(([label,value]) => (
-          <div key={String(label)} className="border border-slate-200 rounded-xl p-4 bg-white">
-            <div className="text-2xl font-bold text-slate-900">{value}</div>
-            <div className="text-xs text-slate-500 mt-1">{label}</div>
-          </div>
-        ))}
-      </section>
 
       <div className="no-print flex items-center gap-2 border-b border-slate-200">
         <button onClick={() => setActiveOutput('EXECUTIVE')} className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-colors ${activeOutput === 'EXECUTIVE' ? 'border-emerald-600 text-emerald-800' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>Retrato Executivo</button>
@@ -117,28 +101,11 @@ export const T1ExperimentalReportView: React.FC<{ cycleId: string }> = ({ cycleI
 
       {activeOutput === 'EXECUTIVE' && (
       <>
-      <section className="border border-amber-200 bg-amber-50 rounded-xl p-4">
-        <div className="flex gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-          <div>
-            <h2 className="font-bold text-amber-950">Estado metodológico do retrato</h2>
-            <p className="text-sm text-amber-900 mt-1 leading-relaxed">
-              A interpretação assistida experimental foi executada e está pendente de confirmação humana.
-              Maturidade e gaps permanecem não concluídos. O próximo estado apresentado abaixo é uma orientação interpretativa
-              para análise, não uma conclusão metodológica validada. Informação validada não equivale, isoladamente, a capacidade institucional demonstrada.
-            </p>
-          </div>
-        </div>
-      </section>
-
       {niloT1Interpretation && (
         <section className="border border-emerald-200 bg-white rounded-2xl p-5 sm:p-6 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-            <div>
-              <div className="text-xs font-bold tracking-[0.16em] uppercase text-emerald-700">Interpretação assistida • experimental</div>
-              <h2 className="text-xl font-bold text-slate-950 mt-1">Retrato institucional</h2>
-            </div>
-            <span className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-full px-3 py-1">Pendente de confirmação humana</span>
+          <div>
+            <div className="text-xs font-bold tracking-[0.16em] uppercase text-emerald-700">Leitura institucional</div>
+            <h2 className="text-xl font-bold text-slate-950 mt-1">Como a governança se apresenta hoje</h2>
           </div>
           <p className="text-sm sm:text-base text-slate-700 leading-relaxed mt-4">{niloT1Interpretation.synthesis}</p>
 
@@ -150,7 +117,7 @@ export const T1ExperimentalReportView: React.FC<{ cycleId: string }> = ({ cycleI
               </ul>
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Pontos que exigem atenção ou comprovação</h3>
+              <h3 className="text-sm font-bold text-slate-900">Pontos de atenção</h3>
               <ul className="mt-2 space-y-2 text-sm text-slate-700">
                 {niloT1Interpretation.attentionPoints.map((x: string) => <li key={x} className="flex gap-2"><AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" /><span>{x}</span></li>)}
               </ul>
@@ -158,21 +125,16 @@ export const T1ExperimentalReportView: React.FC<{ cycleId: string }> = ({ cycleI
           </div>
 
           <div className="mt-6 border-t border-slate-200 pt-4">
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Próximo estado sugerido para análise</div>
+            <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Próximo estado</div>
             <p className="text-sm text-slate-800 leading-relaxed mt-1">{niloT1Interpretation.nextState}</p>
           </div>
           <div className="mt-6 border-t border-slate-200 pt-5">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
-              <div>
-                <div className="text-xs font-bold uppercase tracking-wider text-emerald-700">Direcionamento para evolução</div>
-                <h3 className="text-base font-bold text-slate-950 mt-1">Ações sugeridas para validação</h3>
-              </div>
-              <span className="text-[11px] text-slate-500">Responsáveis e prazos: a pactuar após validação</span>
+            <div>
+              <div className="text-xs font-bold uppercase tracking-wider text-emerald-700">Direcionamento para evolução</div>
+              <h3 className="text-base font-bold text-slate-950 mt-1">Possibilidades de avanço</h3>
             </div>
             <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-              As ações abaixo traduzem o próximo estado sugerido em possibilidades de avanço. Ainda não constituem plano de ação validado:
-              após a confirmação humana, deverão ser vinculadas aos gaps efetivamente reconhecidos e então receber responsável, prazo, prioridade pactuada,
-              critério de sucesso e acompanhamento.
+              Estes caminhos traduzem o próximo estado em movimentos possíveis para fortalecer a governança institucional.
             </p>
             <div className="mt-4 grid gap-3">
               {niloT1Interpretation.suggestedActions.map((action: any, index: number) => (
@@ -201,7 +163,6 @@ export const T1ExperimentalReportView: React.FC<{ cycleId: string }> = ({ cycleI
               ))}
             </div>
           </div>
-          <p className="text-xs text-slate-500 leading-relaxed mt-4">{niloT1Interpretation.limitations}</p>
         </section>
       )}
 
@@ -210,6 +171,21 @@ export const T1ExperimentalReportView: React.FC<{ cycleId: string }> = ({ cycleI
 
       {activeOutput === 'TRACEABILITY' && (
       <section>
+        <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 mb-5">
+          <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Controle técnico do ciclo</div>
+          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-600">
+            <span>Metodologia histórica: <strong>{data.cycle?.methodologyCode} {data.cycle?.methodologyVersion}</strong></span>
+            <span>Modelo: <strong>{data.reportModelVersion}</strong></span>
+            <span>Interpretação: <strong>pendente de confirmação humana</strong></span>
+          </div>
+          <div className="mt-3 grid sm:grid-cols-4 gap-2 text-xs text-slate-600">
+            <span>{coverage.questionsInvestigated ?? 0} portas investigadas</span>
+            <span>{coverage.questionsWithStructuredInformation ?? 0} com informação estruturada</span>
+            <span>{coverage.questionsAwaitingStructuring ?? 0} aguardando estruturação</span>
+            <span>{coverage.validatedInformationUnits ?? 0} unidades validadas</span>
+          </div>
+          <p className="text-xs text-slate-500 mt-3 leading-relaxed">{niloT1Interpretation?.limitations}</p>
+        </div>
         <div className="flex items-center gap-2 mb-3">
           <FileText className="w-5 h-5 text-slate-700" />
           <div><h2 className="text-lg font-bold text-slate-900">Rastreabilidade Técnica da Investigação</h2><p className="text-xs text-slate-500 mt-1">Camada técnica que preserva perguntas, manifestações registradas e unidades estruturadas utilizadas como insumos da interpretação.</p></div>
@@ -243,7 +219,7 @@ export const T1ExperimentalReportView: React.FC<{ cycleId: string }> = ({ cycleI
       </section>
       )}
 
-      {activeOutput === 'EXECUTIVE' && (
+      {activeOutput === 'TRACEABILITY' && (
       <section className="border border-slate-200 rounded-xl p-5 bg-slate-50">
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-5 h-5 text-emerald-700" />
@@ -252,16 +228,16 @@ export const T1ExperimentalReportView: React.FC<{ cycleId: string }> = ({ cycleI
         <div className="mt-3 grid sm:grid-cols-3 gap-3 text-sm">
           <div><span className="font-semibold">Maturidade:</span> não concluída</div>
           <div><span className="font-semibold">Gaps:</span> não concluídos</div>
-          <div><span className="font-semibold">Próximo estado:</span> não concluído</div>
+          <div><span className="font-semibold">Próximo estado validado:</span> não concluído</div>
         </div>
         <p className="text-xs text-slate-500 mt-3">
-          Este relatório experimental preserva o ciclo histórico e não aplica retroativamente regras da metodologia de trabalho atual.
+          O ciclo histórico permanece preservado. Informação validada não equivale, isoladamente, a capacidade institucional demonstrada, e regras metodológicas atuais não são aplicadas retroativamente.
         </p>
       </section>
       )}
 
       <footer className="text-[11px] text-slate-400 pt-2 border-t border-slate-200">
-        VIPAZ • Relatório experimental do Marco T1 • dados recuperados do ciclo persistido
+        VIPAZ • Retrato institucional do ciclo
       </footer>
     </div>
   );
