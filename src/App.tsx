@@ -12,6 +12,7 @@ import { SnapshotView } from './components/SnapshotView';
 import { EvolutionPlanView } from './components/EvolutionPlanView';
 import { ExperimentalIndicatorView } from './components/ExperimentalIndicatorView';
 import { OutputsView } from './components/OutputsView';
+import { T1ExperimentalReportView } from './components/T1ExperimentalReportView';
 import { MethodologicalDiaryView } from './components/MethodologicalDiaryView';
 import { TestsHarnessView } from './components/TestsHarnessView';
 import { BackupView } from './components/BackupView';
@@ -36,6 +37,7 @@ import {
 } from 'lucide-react';
 
 const AppContent: React.FC = () => {
+  const t1CycleId = new URLSearchParams(window.location.search).get('t1CycleId');
   const { currentView, currentOrg, currentUser, setCurrentView } = usePilot();
   const mainContentRef = useRef<HTMLElement>(null);
   const previousViewRef = useRef<string>(currentView);
@@ -153,6 +155,10 @@ const AppContent: React.FC = () => {
   };
 
   const contextInfo = getContextualViewInfo();
+
+  if (t1CycleId) {
+    return <T1ExperimentalReportView cycleId={t1CycleId} />;
+  }
 
   // Reposicionamento suave no início do conteúdo principal ao trocar de view
   useEffect(() => {
