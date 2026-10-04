@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { LoginView } from './components/LoginView';
 import { PilotProvider, usePilot } from './context/PilotContext';
 import { Navbar } from './components/Navbar';
 import { HomeView } from './components/HomeView';
@@ -318,6 +319,8 @@ const AppContent: React.FC = () => {
 };
 
 export default function App() {
+  const [authToken, setAuthToken] = useState<string | null>(() => localStorage.getItem('VIPAZ_AUTH_TOKEN'));
+  if (!authToken) return <LoginView onAuthenticated={setAuthToken} />;
   return (
     <PilotProvider>
       <AppContent />
