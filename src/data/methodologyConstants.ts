@@ -1,10 +1,10 @@
 import { CapacityDefinition, DoorDefinition, MaturityLevel } from '../types';
 
-export const METHODOLOGY_VERSION = 'D1 v1.2';
+export const METHODOLOGY_VERSION = 'VIPAZ-D1 / 2.0 / DRAFT';
 export const VERTICAL_NAME = 'Poder Público Municipal — Câmaras Municipais';
 
 export const MOTHER_QUESTION =
-  '“A organização possui capacidade institucional para conduzir a governança de privacidade, mobilizar a atuação necessária, alcançar as instâncias competentes, preservar e conectar conhecimento e manter essa governança em evolução?”';
+  '“A organização demonstra capacidades institucionais suficientes para sustentar a governança de privacidade e proteção de dados no contexto avaliado?”';
 
 export const DOORS_DEFINITIONS: DoorDefinition[] = [
   {
