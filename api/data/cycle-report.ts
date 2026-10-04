@@ -117,6 +117,62 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ).length
     };
 
+    const validatedUnits = cycleInformationUnits.filter(
+      (unit: any) => unit.validation_status === 'VALIDADO'
+    );
+
+    const executivePortrait = {
+      status: 'EXPERIMENTAL',
+      basis: {
+        methodologyCode: cycle.methodology_code,
+        methodologyVersion: cycle.methodology_version,
+        cycleStatus: cycle.status
+      },
+      investigationCoverage: {
+        questionsInvestigated: allQuestions.length,
+        questionsWithStructuredInformation: coverage.structuredInformationAvailable,
+        questionsAwaitingStructuring: coverage.responseWithoutStructuredInformation,
+        questionsWithoutInformation: coverage.insufficientInformation,
+        structuredInformationUnits: cycleInformationUnits.length,
+        validatedInformationUnits: validatedUnits.length
+      },
+      supportedFindings: validatedUnits.map((unit: any) => ({
+        id: unit.id,
+        questionInstanceId: unit.question_instance_id,
+        dimensionCode: unit.dimension_code,
+        capacityCode: unit.capacity_code,
+        statement: unit.statement,
+        value: unit.value,
+        scope: unit.scope,
+        validationStatus: unit.validation_status,
+        sourceName: unit.source_name
+      })),
+      conclusions: {
+        maturity: {
+          status: 'NOT_CONCLUDED',
+          reason: 'Maturidade não é calculada automaticamente a partir de respostas ou unidades de informação.'
+        },
+        gaps: {
+          status: 'NOT_CONCLUDED',
+          reason: 'Gap requer regra de avaliação e sustentação adequada; não é inferido de resposta negativa ou ausência de experiência.'
+        },
+        nextState: {
+          status: 'NOT_CONCLUDED',
+          reason: 'O próximo estado depende de conclusão metodológica validada sobre o estado demonstrado.'
+        }
+      },
+      limitations: [
+        ...(coverage.responseWithoutStructuredInformation > 0
+          ? [`${coverage.responseWithoutStructuredInformation} porta(s) possuem resposta, mas ainda não possuem informação estruturada persistida.`]
+          : []),
+        ...(coverage.insufficientInformation > 0
+          ? [`${coverage.insufficientInformation} porta(s) não possuem informação suficiente registrada.`]
+          : []),
+        'Unidades de informação validadas sustentam achados descritivos, mas não equivalem, isoladamente, a capacidade institucional demonstrada.',
+        'Este retrato experimental preserva a versão metodológica histórica do ciclo e não aplica retroativamente a metodologia de trabalho atual.'
+      ]
+    };
+
     return res.status(200).json({
       reportModelVersion: 'T1-EXPERIMENTAL-01',
       organization: cycle.organizations,
@@ -143,6 +199,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         },
         coverage
       },
+      executivePortrait,
       safeguards: {
         maturityAutomaticallyCalculated: false,
         validatedInformationDoesNotMeanDemonstratedCapability: true,
