@@ -7,9 +7,7 @@ const dbHeaders = (key: string) => ({
 
 async function readJson(endpoint: string, key: string) {
   const response = await fetch(endpoint, { headers: dbHeaders(key) });
-  if (!response.ok) {
-    throw new Error(await response.text());
-  }
+  if (!response.ok) throw new Error(await response.text());
   return response.json();
 }
 
@@ -21,20 +19,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY;
-
   if (!url || !key) {
     return res.status(503).json({ error: 'database_not_configured' });
   }
 
-  const cycleId = Array.isArray(req.query.cycleId)
-    ? req.query.cycleId[0]
-    : req.query.cycleId;
-
+  const cycleId = Array.isArray(req.query.cycleId) ? req.query.cycleId[0] : req.query.cycleId;
   if (!cycleId) {
-    return res.status(400).json({
-      error: 'missing_cycle_id',
-      details: 'Informe cycleId.'
-    });
+    return res.status(400).json({ error: 'missing_cycle_id', details: 'Informe cycleId.' });
   }
 
   try {
@@ -44,14 +35,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     );
 
     const cycle = cycles[0];
-    if (!cycle) {
-      return res.status(404).json({ error: 'cycle_not_found' });
-    }
+    if (!cycle) return res.status(404).json({ error: 'cycle_not_found' });
 
-    const sessions = await readJson(
-      `${url}/rest/v1/investigation_sessions?cycle_id=eq.${encodeURIComponent(cycle.id)}&select=id,legacy_id,modality,facilitator_name,started_at,completed_at,created_at&order=created_at.asc`,
-      key
-    );
+    const [sessions, cycleInformationUnits] = await Promise.all([
+      readJson(
+        `${url}/rest/v1/investigation_sessions?cycle_id=eq.${encodeURIComponent(cycle.id)}&select=id,legacy_id,modality,facilitator_name,started_at,completed_at,created_at&order=created_at.asc`,
+        key
+      ),
+      readJson(
+        `${url}/rest/v1/information_units?cycle_id=eq.${encodeURIComponent(cycle.id)}&select=id,legacy_id,question_instance_id,response_id,dimension_code,capacity_code,statement,value,scope,validation_status,source_name,extracted_by,created_at&order=created_at.asc`,
+        key
+      )
+    ]);
+
+    const unitsByQuestion = new Map<string, any[]>();
+    for (const unit of cycleInformationUnits) {
+      if (!unit.question_instance_id) continue;
+      const current = unitsByQuestion.get(unit.question_instance_id) || [];
+      current.push(unit);
+      unitsByQuestion.set(unit.question_instance_id, current);
+    }
 
     const investigationSessions = [];
 
@@ -69,6 +72,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           key
         );
 
+        const informationUnits = unitsByQuestion.get(question.id) || [];
+        const interpretationState =
+          informationUnits.length > 0
+            ? 'STRUCTURED_INFORMATION_AVAILABLE'
+            : responses.length > 0
+              ? 'RESPONSE_WITHOUT_STRUCTURED_INFORMATION'
+              : 'INSUFFICIENT_INFORMATION';
+
         questionModels.push({
           id: question.id,
           legacyId: question.legacy_id,
@@ -76,7 +87,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           textSnapshot: question.question_text_snapshot,
           status: question.status,
           concludedAt: question.concluded_at,
-          responses
+          responses,
+          informationUnits,
+          interpretationState
         });
       }
 
@@ -90,6 +103,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         questions: questionModels
       });
     }
+
+    const allQuestions = investigationSessions.flatMap((session: any) => session.questions);
+    const coverage = {
+      structuredInformationAvailable: allQuestions.filter(
+        (question: any) => question.interpretationState === 'STRUCTURED_INFORMATION_AVAILABLE'
+      ).length,
+      responseWithoutStructuredInformation: allQuestions.filter(
+        (question: any) => question.interpretationState === 'RESPONSE_WITHOUT_STRUCTURED_INFORMATION'
+      ).length,
+      insufficientInformation: allQuestions.filter(
+        (question: any) => question.interpretationState === 'INSUFFICIENT_INFORMATION'
+      ).length
+    };
 
     return res.status(200).json({
       reportModelVersion: 'T1-EXPERIMENTAL-01',
@@ -108,21 +134,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         sessions: investigationSessions,
         totals: {
           sessions: investigationSessions.length,
-          questions: investigationSessions.reduce(
-            (total, session) => total + session.questions.length,
+          questions: allQuestions.length,
+          responses: allQuestions.reduce(
+            (total: number, question: any) => total + question.responses.length,
             0
           ),
-          responses: investigationSessions.reduce(
-            (total, session) =>
-              total +
-              session.questions.reduce(
-                (questionTotal: number, question: any) =>
-                  questionTotal + question.responses.length,
-                0
-              ),
-            0
-          )
-        }
+          informationUnits: cycleInformationUnits.length
+        },
+        coverage
+      },
+      safeguards: {
+        maturityAutomaticallyCalculated: false,
+        validatedInformationDoesNotMeanDemonstratedCapability: true,
+        incompleteInterpretationBlocksAutomaticMaturityConclusion: true
       }
     });
   } catch (error) {
