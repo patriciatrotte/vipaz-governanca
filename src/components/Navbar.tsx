@@ -92,13 +92,13 @@ export const Navbar: React.FC = () => {
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className="font-bold text-slate-100 text-xs sm:text-base truncate">Piloto Dimensional D1</span>
+                <span className="font-bold text-slate-100 text-xs sm:text-base truncate">VIPAZ • D1</span>
                 <span className="text-[10px] sm:text-[11px] bg-emerald-950 text-emerald-300 px-1.5 sm:px-2 py-0.5 rounded border border-emerald-800 font-mono shrink-0">
                   D1 v1.0
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 hidden sm:block truncate">
-                Central de Organizações &amp; Aplicações • Governança de Privacidade em Câmaras Municipais
+                Central de Organizações &amp; Ciclos • Governança de Privacidade
               </p>
             </div>
           </div>
@@ -293,7 +293,7 @@ export const Navbar: React.FC = () => {
                       ? 'bg-slate-800 text-emerald-400 font-bold'
                       : 'text-slate-300 hover:text-white hover:bg-slate-800'
                   }`}
-                  title="Acessar Diagnóstico das 6 Portas D1"
+                  title="Acessar investigação institucional D1"
                 >
                   <Layers className="w-3.5 h-3.5 text-emerald-400" />
                   <span>Investigação</span>
@@ -332,7 +332,7 @@ export const Navbar: React.FC = () => {
                     >
                       <div className="flex items-center gap-2">
                         <Layers className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>6 Portas D1</span>
+                        <span>Investigação D1</span>
                       </div>
                     </button>
                     <button
