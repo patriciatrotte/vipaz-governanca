@@ -97,11 +97,11 @@ export const OrganizationsHubView: React.FC = () => {
         <div className="space-y-3 max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-medium">
             <Building2 className="w-3.5 h-3.5 text-emerald-400" />
-            Metodologia de Maturidade e Evolução em Governança de Privacidade · {METHODOLOGY_VERSION}
+            Evolução Contínua da Governança de Privacidade · {METHODOLOGY_VERSION}
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            Piloto Dimensional — Governança de Privacidade
+            VIPAZ — Governança de Privacidade
           </h1>
           <p className="text-sm text-slate-300 leading-relaxed font-serif">
             Selecione uma organização para continuar sua jornada ou inicie uma nova aplicação.
@@ -124,15 +124,15 @@ export const OrganizationsHubView: React.FC = () => {
           <div className="space-y-2 text-xs font-mono">
             <div className="flex items-center gap-2 text-sky-300">
               <Sparkles className="w-4 h-4 text-sky-400" />
-              <span className="font-semibold">IA RECOMENDA</span>
+              <span className="font-semibold">IA INTERPRETA</span>
             </div>
             <div className="flex items-center gap-2 text-purple-300">
               <FileCheck className="w-4 h-4 text-purple-400" />
-              <span className="font-semibold">EVIDÊNCIA COMPROVA</span>
+              <span className="font-semibold">EVIDÊNCIA SUSTENTA</span>
             </div>
             <div className="flex items-center gap-2 text-emerald-300">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span className="font-semibold">HUMANO VALIDA</span>
+              <span className="font-semibold">HUMANO CONFIRMA</span>
             </div>
           </div>
         </div>
