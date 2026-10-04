@@ -56,21 +56,21 @@ export const T1ExperimentalReportView: React.FC<{ cycleId: string }> = ({ cycleI
         rationale: 'Reduzir a necessidade de descobrir caso a caso quem deve atuar, decidir ou apoiar as providências de privacidade.',
         expectedResult: 'Caminhos de atuação, decisão e articulação identificáveis e recuperáveis pela instituição.',
         expectedEvidence: 'Fluxo, procedimento, matriz de responsabilidades ou registro institucional equivalente.',
-        priority: 'Prioridade sugerida: alta'
+        priority: null
       },
       {
         title: 'Organizar a memória institucional da governança de privacidade',
         rationale: 'Transformar conhecimento hoje recuperável principalmente pela experiência das pessoas em conhecimento institucional preservado.',
         expectedResult: 'Registros de decisões, orientações e providências localizáveis e reutilizáveis.',
         expectedEvidence: 'Repositório, registros de decisões, atas, orientações ou mecanismo institucional equivalente.',
-        priority: 'Prioridade sugerida: alta'
+        priority: null
       },
       {
         title: 'Estruturar o acompanhamento das providências e mudanças',
         rationale: 'Dar continuidade e visibilidade às práticas de acompanhamento já relatadas no ciclo.',
         expectedResult: 'Providências, mudanças e necessidades de evolução acompanhadas de forma recorrente e verificável.',
         expectedEvidence: 'Registro de acompanhamento, pauta periódica, controle de providências ou mecanismo institucional equivalente.',
-        priority: 'Prioridade sugerida: média'
+        priority: null
       }
     ],
     limitations: 'Esta interpretação é experimental e utiliza exclusivamente as respostas e unidades de informação disponíveis no ciclo histórico. Ela ainda requer confirmação humana e não determina, por si só, nível de maturidade ou gap validado.'
@@ -147,7 +147,7 @@ export const T1ExperimentalReportView: React.FC<{ cycleId: string }> = ({ cycleI
                         <p className="text-xs text-slate-600 mt-1 leading-relaxed">{action.rationale}</p>
                       </div>
                     </div>
-                    <span className="text-[11px] font-semibold text-slate-600 bg-white border border-slate-200 rounded-full px-2.5 py-1 whitespace-nowrap">{action.priority}</span>
+                    {action.priority && <span className="text-[11px] font-semibold text-slate-600 bg-white border border-slate-200 rounded-full px-2.5 py-1 whitespace-nowrap">{action.priority}</span>}
                   </div>
                   <div className="grid sm:grid-cols-2 gap-3 mt-3 pl-9">
                     <div>
