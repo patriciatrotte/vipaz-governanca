@@ -12,6 +12,7 @@ const stateLabel: Record<string, string> = {
 export const T1ExperimentalReportView: React.FC<{ cycleId: string }> = ({ cycleId }) => {
   const [data, setData] = useState<ReportData | null>(null);
   const [error, setError] = useState('');
+  const [activeOutput, setActiveOutput] = useState<'EXECUTIVE' | 'TRACEABILITY'>('EXECUTIVE');
 
   useEffect(() => {
     fetch(`/api/data/cycle-report?cycleId=${encodeURIComponent(cycleId)}`)
@@ -86,15 +87,22 @@ export const T1ExperimentalReportView: React.FC<{ cycleId: string }> = ({ cycleI
         ))}
       </section>
 
+      <div className="no-print flex items-center gap-2 border-b border-slate-200">
+        <button onClick={() => setActiveOutput('EXECUTIVE')} className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-colors ${activeOutput === 'EXECUTIVE' ? 'border-emerald-600 text-emerald-800' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>Retrato Executivo</button>
+        <button onClick={() => setActiveOutput('TRACEABILITY')} className={`px-4 py-2.5 text-sm font-bold border-b-2 transition-colors ${activeOutput === 'TRACEABILITY' ? 'border-emerald-600 text-emerald-800' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>Rastreabilidade Técnica</button>
+      </div>
+
+      {activeOutput === 'EXECUTIVE' && (
+      <>
       <section className="border border-amber-200 bg-amber-50 rounded-xl p-4">
         <div className="flex gap-3">
           <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
           <div>
             <h2 className="font-bold text-amber-950">Estado metodológico do retrato</h2>
             <p className="text-sm text-amber-900 mt-1 leading-relaxed">
-              A investigação foi recuperada e organizada, mas a interpretação assistida ainda não foi executada.
-              Por isso, maturidade, gaps e próximo estado permanecem não concluídos. Informação validada não equivale,
-              isoladamente, a capacidade institucional demonstrada.
+              A interpretação assistida experimental foi executada e está pendente de confirmação humana.
+              Maturidade e gaps permanecem não concluídos. O próximo estado apresentado abaixo é uma orientação interpretativa
+              para análise, não uma conclusão metodológica validada. Informação validada não equivale, isoladamente, a capacidade institucional demonstrada.
             </p>
           </div>
         </div>
@@ -134,10 +142,14 @@ export const T1ExperimentalReportView: React.FC<{ cycleId: string }> = ({ cycleI
         </section>
       )}
 
+      </>
+      )}
+
+      {activeOutput === 'TRACEABILITY' && (
       <section>
         <div className="flex items-center gap-2 mb-3">
           <FileText className="w-5 h-5 text-slate-700" />
-          <h2 className="text-lg font-bold text-slate-900">Leitura da investigação</h2>
+          <div><h2 className="text-lg font-bold text-slate-900">Rastreabilidade Técnica da Investigação</h2><p className="text-xs text-slate-500 mt-1">Camada técnica que preserva perguntas, manifestações registradas e unidades estruturadas utilizadas como insumos da interpretação.</p></div>
         </div>
         <div className="border-y border-slate-200 divide-y divide-slate-200 bg-white">
           {inputs.map((item: any) => (
@@ -166,7 +178,9 @@ export const T1ExperimentalReportView: React.FC<{ cycleId: string }> = ({ cycleI
           ))}
         </div>
       </section>
+      )}
 
+      {activeOutput === 'EXECUTIVE' && (
       <section className="border border-slate-200 rounded-xl p-5 bg-slate-50">
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-5 h-5 text-emerald-700" />
@@ -181,6 +195,7 @@ export const T1ExperimentalReportView: React.FC<{ cycleId: string }> = ({ cycleI
           Este relatório experimental preserva o ciclo histórico e não aplica retroativamente regras da metodologia de trabalho atual.
         </p>
       </section>
+      )}
 
       <footer className="text-[11px] text-slate-400 pt-2 border-t border-slate-200">
         VIPAZ • Relatório experimental do Marco T1 • dados recuperados do ciclo persistido
