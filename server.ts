@@ -66,6 +66,34 @@ app.get('/api/db/health', async (_req: Request, res: Response) => {
   }
 });
 
+// One-time T2 administrator bootstrap. Server-only; privileged key never reaches the browser.
+app.post('/api/auth/bootstrap-admins', async (req: Request, res: Response) => {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
+  const bootstrapKey = process.env.VIPAZ_BOOTSTRAP_KEY;
+  if (!supabaseUrl || !supabaseSecretKey || !bootstrapKey) return res.status(503).json({ error: 'Bootstrap não configurado.' });
+  if (req.headers['x-vipaz-bootstrap-key'] !== bootstrapKey) return res.status(403).json({ error: 'Não autorizado.' });
+
+  const { email, password, displayName } = req.body || {};
+  if (!email || !password || password.length < 12) return res.status(400).json({ error: 'E-mail e senha temporária forte são obrigatórios.' });
+
+  const create = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
+    method: 'POST',
+    headers: { apikey: supabaseSecretKey, Authorization: `Bearer ${supabaseSecretKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, email_confirm: true, user_metadata: { display_name: displayName || email, must_change_password: true } })
+  });
+  const user:any = await create.json();
+  if (!create.ok) return res.status(create.status).json({ error: user?.msg || user?.message || 'Falha ao criar usuário.' });
+
+  const headers = { apikey: supabaseSecretKey, Authorization: `Bearer ${supabaseSecretKey}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' };
+  const profile = await fetch(`${supabaseUrl}/rest/v1/profiles`, { method:'POST', headers, body:JSON.stringify({ user_id:user.id, display_name:displayName || email }) });
+  if (!profile.ok) return res.status(500).json({ error:'Usuário criado, mas o perfil não pôde ser associado.', userId:user.id });
+  const role = await fetch(`${supabaseUrl}/rest/v1/global_user_roles`, { method:'POST', headers, body:JSON.stringify({ user_id:user.id, role_code:'ADMIN_VIPAZ', active:true }) });
+  if (!role.ok) return res.status(500).json({ error:'Usuário e perfil criados, mas ADMIN_VIPAZ não pôde ser associado.', userId:user.id });
+
+  return res.status(201).json({ ok:true, userId:user.id, email:user.email, mustChangePassword:true, role:'ADMIN_VIPAZ' });
+});
+
 // Endpoint: AI Probing Suggestion (Neutral, non-leading)
 app.post('/api/ai/probe', async (req: Request, res: Response) => {
   try {
