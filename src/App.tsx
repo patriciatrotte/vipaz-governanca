@@ -101,26 +101,26 @@ const AppContent: React.FC = () => {
         };
       case 'INTEGRATION':
         return {
-          title: 'Matriz de Integração Dimensional C1–C6',
-          subtitle: 'Consolidação das capacidades, cálculo de maturidade e validação humana',
+          title: 'Síntese das Capacidades Institucionais',
+          subtitle: 'Interpretação assistida, aplicação das regras e confirmação humana',
           icon: <Sparkles className="w-4 h-4 text-sky-600" />
         };
       case 'SNAPSHOT':
         return {
-          title: 'Snapshot D1 (Registro Imutável)',
+          title: 'Retrato D1 (Registro Imutável)',
           subtitle: 'Marco temporal auditável e histórico formal do ciclo de privacidade',
           icon: <Award className="w-4 h-4 text-emerald-600" />
         };
       case 'ACTION_PLAN':
         return {
           title: isGestor ? 'Prioridades da Gestão' : 'Plano de Evolução D1',
-          subtitle: 'Ações pactuadas, prazos e responsabilidades estruturantes',
+          subtitle: 'Espaço de evolução institucional — habilitado conforme conclusões reconhecidas',
           icon: <Target className="w-4 h-4 text-teal-600" />
         };
       case 'INDICATOR':
         return {
-          title: 'Acompanhamento & Tração Institucional',
-          subtitle: 'Indicador experimental de continuidade e maturidade sustentada',
+          title: 'Acompanhamento Institucional',
+          subtitle: 'Acompanhamento de estados reconhecidos e mudanças institucionais relevantes',
           icon: <BarChart3 className="w-4 h-4 text-indigo-600" />
         };
       case 'OUTPUTS':
@@ -292,24 +292,24 @@ const AppContent: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-slate-300">
             <Compass className="w-4 h-4 text-emerald-400" />
-            <span className="font-semibold text-white">Piloto Dimensional D1</span>
-            <span>• Governança e Responsabilidades ({currentOrg?.methodologyVersion || 'D1 v1.0'})</span>
+            <span className="font-semibold text-white">VIPAZ • Governança de Privacidade</span>
+            <span>• D1 — Governança Institucional ({currentOrg?.methodologyVersion || 'VIPAZ-D1 / 2.0'})</span>
           </div>
 
           <div className="flex items-center gap-4 text-slate-400 text-[11px] font-mono">
             <span className="flex items-center gap-1 text-sky-400">
-              <Sparkles className="w-3 h-3" /> IA Recomenda
+              <Sparkles className="w-3 h-3" /> IA Interpreta
             </span>
             <span className="flex items-center gap-1 text-purple-400">
-              <FileCheck className="w-3 h-3" /> Evidência Comprova
+              <FileCheck className="w-3 h-3" /> Evidência Sustenta
             </span>
             <span className="flex items-center gap-1 text-emerald-400">
-              <ShieldCheck className="w-3 h-3" /> Humano Valida
+              <ShieldCheck className="w-3 h-3" /> Humano Confirma
             </span>
           </div>
 
           <div className="text-slate-500 text-[11px]">
-            Desenvolvido para Câmaras Municipais • Sem pontuação cega ou automação sem validação
+            O nível localiza; o gap explica; o próximo estado orienta.
           </div>
         </div>
       </footer>
