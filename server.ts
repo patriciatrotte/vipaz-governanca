@@ -258,6 +258,7 @@ Retorne JSON:
 
 // Endpoint: Maturity Suggestion with 4 mandatory questions
 app.post('/api/ai/suggest-integration', async (req: Request, res: Response) => {
+  return res.status(410).json({ error: 'Função legada indisponível no marco T2.', code: 'LEGACY_DISABLED' });
   try {
     const { capacitiesSummary, blockingPendingCount } = req.body;
     const ai = getGeminiClient();
