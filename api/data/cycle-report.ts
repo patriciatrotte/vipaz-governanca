@@ -121,6 +121,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       (unit: any) => unit.validation_status === 'VALIDADO'
     );
 
+    const interpretationInputs = allQuestions.map((question: any) => {
+      const validatedQuestionUnits = question.informationUnits.filter(
+        (unit: any) => unit.validation_status === 'VALIDADO'
+      );
+
+      return {
+        questionInstanceId: question.id,
+        questionCode: question.code,
+        questionTextSnapshot: question.textSnapshot,
+        sourceState: question.interpretationState,
+        responses: question.responses.map((response: any) => ({
+          id: response.id,
+          responseText: response.response_text,
+          sourceName: response.source_name,
+          sourceRole: response.source_role,
+          modality: response.modality
+        })),
+        validatedInformationUnits: validatedQuestionUnits.map((unit: any) => ({
+          id: unit.id,
+          responseId: unit.response_id,
+          dimensionCode: unit.dimension_code,
+          legacyCapacityCode: unit.capacity_code,
+          statement: unit.statement,
+          value: unit.value,
+          scope: unit.scope,
+          sourceName: unit.source_name,
+          extractedBy: unit.extracted_by
+        })),
+        interpretation: {
+          status: 'NOT_PERFORMED',
+          category: null,
+          summary: null,
+          signalsOfCapability: [],
+          potentialGaps: [],
+          suggestedProbes: [],
+          humanValidation: {
+            status: 'PENDING',
+            notes: null
+          }
+        }
+      };
+    });
+
     const executivePortrait = {
       status: 'EXPERIMENTAL',
       basis: {
@@ -136,17 +179,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         structuredInformationUnits: cycleInformationUnits.length,
         validatedInformationUnits: validatedUnits.length
       },
-      supportedFindings: validatedUnits.map((unit: any) => ({
-        id: unit.id,
-        questionInstanceId: unit.question_instance_id,
-        dimensionCode: unit.dimension_code,
-        capacityCode: unit.capacity_code,
-        statement: unit.statement,
-        value: unit.value,
-        scope: unit.scope,
-        validationStatus: unit.validation_status,
-        sourceName: unit.source_name
-      })),
+      interpretation: {
+        status: 'NOT_PERFORMED',
+        inputs: interpretationInputs,
+        note: 'Respostas e unidades validadas são insumos da interpretação. Não constituem, isoladamente, achados, gaps, capacidades demonstradas ou nível de maturidade.'
+      },
       conclusions: {
         maturity: {
           status: 'NOT_CONCLUDED',
@@ -154,7 +191,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         },
         gaps: {
           status: 'NOT_CONCLUDED',
-          reason: 'Gap requer regra de avaliação e sustentação adequada; não é inferido de resposta negativa ou ausência de experiência.'
+          reason: 'Gap requer interpretação validada e regra de avaliação aplicável; não é inferido de resposta negativa, ausência de experiência ou ausência de unidade estruturada.'
         },
         nextState: {
           status: 'NOT_CONCLUDED',
@@ -168,13 +205,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ...(coverage.insufficientInformation > 0
           ? [`${coverage.insufficientInformation} porta(s) não possuem informação suficiente registrada.`]
           : []),
-        'Unidades de informação validadas sustentam achados descritivos, mas não equivalem, isoladamente, a capacidade institucional demonstrada.',
+        'A interpretação assistida ainda não foi executada neste modelo T1.',
+        'Informação validada significa informação confirmada, não capacidade institucional demonstrada.',
+        'Códigos históricos de capacidade são preservados apenas como proveniência do ciclo e não são aplicados como taxonomia metodológica atual.',
         'Este retrato experimental preserva a versão metodológica histórica do ciclo e não aplica retroativamente a metodologia de trabalho atual.'
       ]
     };
 
     return res.status(200).json({
-      reportModelVersion: 'T1-EXPERIMENTAL-01',
+      reportModelVersion: 'T1-EXPERIMENTAL-02',
       organization: cycle.organizations,
       cycle: {
         id: cycle.id,
@@ -203,7 +242,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       safeguards: {
         maturityAutomaticallyCalculated: false,
         validatedInformationDoesNotMeanDemonstratedCapability: true,
-        incompleteInterpretationBlocksAutomaticMaturityConclusion: true
+        incompleteInterpretationBlocksAutomaticMaturityConclusion: true,
+        historicalCapacityCodesAreProvenanceOnly: true
       }
     });
   } catch (error) {
