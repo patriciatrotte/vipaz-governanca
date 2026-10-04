@@ -50,6 +50,29 @@ export const T1ExperimentalReportView: React.FC<{ cycleId: string }> = ({ cycleI
       'Não há evidências documentais vinculadas neste ciclo que permitam elevar os relatos a comprovação institucional.'
     ],
     nextState: 'Tornar mais explícitos e recuperáveis os caminhos de atuação, decisão, articulação e acompanhamento da governança de privacidade, reduzindo dependência de conhecimento pessoal ou de respostas pontuais e produzindo evidências institucionais das práticas já relatadas.',
+    suggestedActions: [
+      {
+        title: 'Explicitar os fluxos de atuação e escalonamento',
+        rationale: 'Reduzir a necessidade de descobrir caso a caso quem deve atuar, decidir ou apoiar as providências de privacidade.',
+        expectedResult: 'Caminhos de atuação, decisão e articulação identificáveis e recuperáveis pela instituição.',
+        expectedEvidence: 'Fluxo, procedimento, matriz de responsabilidades ou registro institucional equivalente.',
+        priority: 'Prioridade sugerida: alta'
+      },
+      {
+        title: 'Organizar a memória institucional da governança de privacidade',
+        rationale: 'Transformar conhecimento hoje recuperável principalmente pela experiência das pessoas em conhecimento institucional preservado.',
+        expectedResult: 'Registros de decisões, orientações e providências localizáveis e reutilizáveis.',
+        expectedEvidence: 'Repositório, registros de decisões, atas, orientações ou mecanismo institucional equivalente.',
+        priority: 'Prioridade sugerida: alta'
+      },
+      {
+        title: 'Estruturar o acompanhamento das providências e mudanças',
+        rationale: 'Dar continuidade e visibilidade às práticas de acompanhamento já relatadas no ciclo.',
+        expectedResult: 'Providências, mudanças e necessidades de evolução acompanhadas de forma recorrente e verificável.',
+        expectedEvidence: 'Registro de acompanhamento, pauta periódica, controle de providências ou mecanismo institucional equivalente.',
+        priority: 'Prioridade sugerida: média'
+      }
+    ],
     limitations: 'Esta interpretação é experimental e utiliza exclusivamente as respostas e unidades de informação disponíveis no ciclo histórico. Ela ainda requer confirmação humana e não determina, por si só, nível de maturidade ou gap validado.'
   } : null;
 
@@ -137,6 +160,46 @@ export const T1ExperimentalReportView: React.FC<{ cycleId: string }> = ({ cycleI
           <div className="mt-6 border-t border-slate-200 pt-4">
             <div className="text-xs font-bold uppercase tracking-wider text-slate-500">Próximo estado sugerido para análise</div>
             <p className="text-sm text-slate-800 leading-relaxed mt-1">{niloT1Interpretation.nextState}</p>
+          </div>
+          <div className="mt-6 border-t border-slate-200 pt-5">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2">
+              <div>
+                <div className="text-xs font-bold uppercase tracking-wider text-emerald-700">Direcionamento para evolução</div>
+                <h3 className="text-base font-bold text-slate-950 mt-1">Ações sugeridas para validação</h3>
+              </div>
+              <span className="text-[11px] text-slate-500">Responsáveis e prazos: a pactuar após validação</span>
+            </div>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              As ações abaixo traduzem o próximo estado sugerido em possibilidades de avanço. Ainda não constituem plano de ação validado:
+              após a confirmação humana, deverão ser vinculadas aos gaps efetivamente reconhecidos e então receber responsável, prazo, prioridade pactuada,
+              critério de sucesso e acompanhamento.
+            </p>
+            <div className="mt-4 grid gap-3">
+              {niloT1Interpretation.suggestedActions.map((action: any, index: number) => (
+                <article key={action.title} className="border border-slate-200 rounded-xl p-4 bg-slate-50">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                    <div className="flex gap-3">
+                      <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center justify-center shrink-0">{index + 1}</span>
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900">{action.title}</h4>
+                        <p className="text-xs text-slate-600 mt-1 leading-relaxed">{action.rationale}</p>
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-semibold text-slate-600 bg-white border border-slate-200 rounded-full px-2.5 py-1 whitespace-nowrap">{action.priority}</span>
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-3 mt-3 pl-9">
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Resultado esperado</div>
+                      <p className="text-xs text-slate-700 mt-1">{action.expectedResult}</p>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Evidência esperada</div>
+                      <p className="text-xs text-slate-700 mt-1">{action.expectedEvidence}</p>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
           </div>
           <p className="text-xs text-slate-500 leading-relaxed mt-4">{niloT1Interpretation.limitations}</p>
         </section>
