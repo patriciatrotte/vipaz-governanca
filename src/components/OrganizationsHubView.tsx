@@ -19,7 +19,6 @@ import {
   UserCheck
 } from 'lucide-react';
 import { CycleStatusBadge } from './MethodologyBadges';
-import { SimulationExperienceModal } from './SimulationExperienceModal';
 import { METHODOLOGY_VERSION } from '../data/methodologyConstants';
 
 export const OrganizationsHubView: React.FC = () => {
@@ -34,8 +33,6 @@ export const OrganizationsHubView: React.FC = () => {
   // Estados de navegação interna do Hub
   const [modalMode, setModalMode] = useState<'NONE' | 'CREATE_ORG' | 'START_CYCLE'>('NONE');
   const [createdOrgTemp, setCreatedOrgTemp] = useState<Organization | null>(null);
-  const [simulationModalOpen, setSimulationModalOpen] = useState(false);
-  const [pendingOrgIdForSimulation, setPendingOrgIdForSimulation] = useState<string | null>(null);
 
   // Formulário de Nova Organização (Tela 2)
   const [orgName, setOrgName] = useState('');
@@ -109,8 +106,8 @@ export const OrganizationsHubView: React.FC = () => {
 
           <div className="pt-2">
             <button
-              onClick={handleOpenCreate}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-sm shadow-md transition-all hover:shadow-lg active:scale-[0.98]"
+              onClick={handleOpenCreate} disabled
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-slate-700 text-slate-300 font-bold text-sm cursor-not-allowed"
             >
               <Plus className="w-4 h-4 text-white" />
               Nova organização
@@ -157,28 +154,14 @@ export const OrganizationsHubView: React.FC = () => {
           <span className="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">{organizations.length} {organizations.length === 1 ? 'organização' : 'organizações'}</span>
         </div>
 
-        <div className="overflow-hidden bg-white border border-slate-200 rounded-xl shadow-sm divide-y divide-slate-100">
-          {organizations.map(org => {
-            const summary = getOrganizationSummary(org.id);
-            return (
-              <button key={org.id} type="button" onClick={() => selectOrganization(org.id)} className="w-full text-left px-4 py-3.5 hover:bg-slate-50 transition-colors flex items-center gap-4">
-                <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0"><Building2 className="w-4 h-4" /></div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-sm text-slate-900 truncate">{org.name}</span>
-                    {org.isDemo && <span className="text-[9px] uppercase tracking-wider font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">demonstração</span>}
-                  </div>
-                  <div className="mt-1 flex items-center gap-x-4 gap-y-1 flex-wrap text-[11px] text-slate-500">
-                    <span>{summary.cycleName || 'Ciclo ainda não iniciado'}</span>
-                    <span className="font-mono">{summary.methodologyVersion || METHODOLOGY_VERSION}</span>
-                    <span>{summary.lastActivityDate ? `Última atividade: ${summary.lastActivityDate}` : 'Sem atividade registrada'}</span>
-                  </div>
-                </div>
-                <div className="hidden sm:block shrink-0"><CycleStatusBadge status={summary.cycleStatus} /></div>
-                <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
-              </button>
-            );
-          })}
+        <div className="overflow-hidden bg-white border border-slate-200 rounded-xl shadow-sm">
+          <div className="px-5 py-5 flex items-center justify-between gap-4">
+            <div>
+              <div className="font-bold text-sm text-slate-900">Ambiente T2 — arquitetura em validação</div>
+              <p className="mt-1 text-xs text-slate-500">Os registros dos pilotos históricos permanecem preservados, mas estão isolados desta experiência para não misturar versões metodológicas.</p>
+            </div>
+            <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2 py-1">isolamento ativo</span>
+          </div>
         </div>
 
         <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs text-sky-900">
@@ -399,20 +382,6 @@ export const OrganizationsHubView: React.FC = () => {
         </div>
       )}
 
-      {/* Modal de Escolha de Experiência no Modo de Simulação */}
-      <SimulationExperienceModal 
-        isOpen={simulationModalOpen} 
-        onClose={() => {
-          setSimulationModalOpen(false);
-          setPendingOrgIdForSimulation(null);
-        }}
-        onSelectExperience={(_role, _user) => {
-          if (pendingOrgIdForSimulation) {
-            selectOrganization(pendingOrgIdForSimulation);
-            setPendingOrgIdForSimulation(null);
-          }
-        }}
-      />
     </div>
   );
 };
