@@ -199,7 +199,7 @@ export const HomeView: React.FC = () => {
       {/* 1. CONTEXTO FIXO E COMPACTO (Section 3 & 13 do Prompt)                */}
       {/* Organização, Dimensão D1, Usuário/Perfil e Recursos Sob Demanda       */}
       {/* ===================================================================== */}
-      <header className="bg-slate-900 border border-slate-700/90 rounded-2xl p-3.5 sm:p-4 text-white shadow-xs">
+      <header className="bg-emerald-950 border border-emerald-800/90 rounded-2xl p-3.5 sm:p-4 text-white shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
@@ -217,7 +217,7 @@ export const HomeView: React.FC = () => {
 
           <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto shrink-0">
             {/* Tag do Perfil do Usuário */}
-            <div className="bg-slate-800/95 border border-slate-700 px-3 py-1 rounded-xl text-xs flex items-center gap-1.5 shadow-2xs">
+            <div className="bg-emerald-950/80 border border-emerald-800 px-3 py-1 rounded-xl text-xs flex items-center gap-1.5 shadow-2xs">
               <span className="text-[10px] uppercase font-bold text-slate-400">Perfil:</span>
               <span className="font-bold text-slate-100">{currentUser.name}</span>
               <span className="text-emerald-400 font-mono text-[10px] font-semibold">({formatUserRole(currentUser.role)})</span>
@@ -231,7 +231,7 @@ export const HomeView: React.FC = () => {
                 className={`text-[11px] px-2.5 py-1 rounded-lg border font-semibold flex items-center gap-1 cursor-pointer transition-colors ${
                   showHowItWorks 
                     ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' 
-                    : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+                    : 'bg-emerald-950/80 hover:bg-emerald-900 text-emerald-50 border-emerald-800'
                 }`}
                 title="Conhecer o fluxo da jornada"
               >
@@ -245,7 +245,7 @@ export const HomeView: React.FC = () => {
                 className={`text-[11px] px-2.5 py-1 rounded-lg border font-semibold flex items-center gap-1 cursor-pointer transition-colors ${
                   showFourQuestions 
                     ? 'bg-sky-500/20 text-sky-300 border-sky-500/40' 
-                    : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+                    : 'bg-emerald-950/80 hover:bg-emerald-900 text-emerald-50 border-emerald-800'
                 }`}
                 title="Onde estou e o que faço agora"
               >
