@@ -1,3 +1,4 @@
+import { loadHistoricalPilot } from '../utils/historicalHydration';
 import React, { useEffect, useState } from 'react';
 import { usePilot } from '../context/PilotContext';
 import { DOORS_DEFINITIONS, PEDAGOGICAL_CONCEPTS } from '../data/methodologyConstants';
@@ -292,7 +293,13 @@ export const DoorInvestigationView: React.FC = () => {
   }, [draftKey, inputText]);
 
   // Respostas da pergunta ativa
-  const doorResponses = originalResponses.filter(r => r.doorId === activeDoorId);
+  const [historicalResponses, setHistoricalResponses] = React.useState<OriginalResponse[]>([]);
+  React.useEffect(() => {
+    if (!currentOrg?.id || currentOrg.id === 'org-camara-vila-esperanca-01') { setHistoricalResponses([]); return; }
+    loadHistoricalPilot(currentOrg.id).then(h => setHistoricalResponses(h?.responses || [])).catch(() => setHistoricalResponses([]));
+  }, [currentOrg?.id]);
+  const effectiveResponses = historicalResponses.length ? historicalResponses : originalResponses;
+  const doorResponses = effectiveResponses.filter(r => r.doorId === activeDoorId);
   const doorProbings = probings.filter(p => p.doorId === activeDoorId);
   const doorPedagogical = pedagogicalInterventions.filter(p => p.doorId === activeDoorId);
   const doorDontKnows = dontKnowRecords.filter(d => d.doorId === activeDoorId);
@@ -1633,7 +1640,7 @@ export const DoorInvestigationView: React.FC = () => {
               </span>
               <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 text-xs overflow-hidden">
                 {DOORS_DEFINITIONS.map(door => {
-                  const responsesCount = originalResponses.filter(r => r.doorId === door.id).length;
+                  const responsesCount = effectiveResponses.filter(r => r.doorId === door.id).length;
                   const status = doorStatuses[door.id];
                   return (
                     <div key={door.id} className="p-3 flex items-center justify-between bg-white hover:bg-slate-50">
@@ -1657,7 +1664,7 @@ export const DoorInvestigationView: React.FC = () => {
             <div className="grid grid-cols-3 gap-2 text-center text-xs">
               <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
                 <span className="text-[10px] text-slate-500 block uppercase">Falas Registradas</span>
-                <span className="text-sm font-bold text-slate-800">{originalResponses.length}</span>
+                <span className="text-sm font-bold text-slate-800">{effectiveResponses.length}</span>
               </div>
               <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
                 <span className="text-[10px] text-slate-500 block uppercase">Evidências Citadas</span>
