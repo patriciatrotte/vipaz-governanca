@@ -91,10 +91,21 @@ export default function App() {
         history.replaceState(null,'',window.location.pathname);
         return recovered;
       }
+      const query=new URLSearchParams(window.location.search);
+      const code=query.get('code');
+      if(code) {
+        sessionStorage.setItem('VIPAZ_RECOVERY_CODE',code);
+      }
       return null;
     } catch { return null; }
   });
   const [mustChangePassword,setMustChangePassword]=useState(()=>sessionStorage.getItem('VIPAZ_MUST_CHANGE_PASSWORD')==='true');
+  useEffect(()=>{ const code=sessionStorage.getItem('VIPAZ_RECOVERY_CODE'); if(!code||session)return; sessionStorage.removeItem('VIPAZ_RECOVERY_CODE');
+    const exchange=async()=>{ try{const url=import.meta.env.VITE_SUPABASE_URL,key=import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;if(!url||!key)throw new Error();
+      const r=await fetch(`${url}/auth/v1/token?grant_type=pkce`,{method:'POST',headers:{apikey:key,'Content-Type':'application/json'},body:JSON.stringify({auth_code:code,code_verifier:sessionStorage.getItem('VIPAZ_PKCE_VERIFIER')||''})});
+      const d=await r.json(); if(!r.ok||!d.access_token)return;
+      const recovered={accessToken:d.access_token,refreshToken:d.refresh_token||'',userId:d.user?.id||''}; sessionStorage.setItem('VIPAZ_SESSION',JSON.stringify(recovered));sessionStorage.setItem('VIPAZ_MUST_CHANGE_PASSWORD','true');history.replaceState(null,'',window.location.pathname);setSession(recovered);setMustChangePassword(true);
+    }catch{}}; exchange(); },[]);
   const [checkingSession,setCheckingSession]=useState(!!session);
   const clearLocalSession=()=>{ sessionStorage.removeItem('VIPAZ_SESSION'); sessionStorage.removeItem('VIPAZ_MUST_CHANGE_PASSWORD'); setSession(null); setMustChangePassword(false); };
   useEffect(()=>{ if(!session){setCheckingSession(false);return;} let cancelled=false;
