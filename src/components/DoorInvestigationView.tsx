@@ -237,29 +237,9 @@ export const DoorInvestigationView: React.FC = () => {
     setMultiValidation([]);
   }, [activeDoorId]);
 
-  const effectiveStructuredUnits = historicalStructured.length ? historicalStructured : informationUnits;
-  const activeStructuredUnits = React.useMemo(
-    () => effectiveStructuredUnits.filter((u:any) => u.doorId === activeDoorId && u.statement?.startsWith('[VALIDACAO_ESTRUTURADA]')),
-    [effectiveStructuredUnits, activeDoorId]
+  const structuredAlreadySaved = informationUnits.some(
+    u => u.doorId === activeDoorId && u.statement.startsWith('[VALIDACAO_ESTRUTURADA]')
   );
-  const structuredAlreadySaved = activeStructuredUnits.length > 0;
-
-  useEffect(() => {
-    if (!activeStructuredUnits.length) { setC1Validation({}); setMultiValidation([]); return; }
-    if (activeDoorId === 'D1.1') {
-      const next: Record<string,string> = {};
-      activeStructuredUnits.forEach((u:any) => {
-        const raw=String(u.statement).replace('[VALIDACAO_ESTRUTURADA] ','');
-        const item=C1_ITEMS.find(i=>raw.startsWith(i.label+': '));
-        if(item) next[item.id]=raw.slice(item.label.length+2);
-      });
-      setC1Validation(next);
-    } else {
-      const items=activeDoorId === 'D1.2' ? C2_ITEMS : C5_ITEMS;
-      const selected=items.filter(i=>activeStructuredUnits.some((u:any)=>String(u.statement).replace('[VALIDACAO_ESTRUTURADA] ','')===i.label)).map(i=>i.id);
-      setMultiValidation(selected);
-    }
-  }, [activeDoorId, activeStructuredUnits]);
 
   const handleSaveStructuredValidation = () => {
     const lastResponse = doorResponses.slice(-1)[0];
@@ -314,11 +294,10 @@ export const DoorInvestigationView: React.FC = () => {
 
   // Respostas da pergunta ativa
   const [historicalResponses, setHistoricalResponses] = React.useState<OriginalResponse[]>([]);
-  const [historicalStructured, setHistoricalStructured] = React.useState<any[]>([]);
   const [historyLoadState, setHistoryLoadState] = React.useState('aguardando');
   React.useEffect(() => {
     if (!currentOrg?.id || currentOrg.id === 'org-camara-vila-esperanca-01') { setHistoricalResponses([]); return; }
-    setHistoryLoadState('carregando'); loadHistoricalPilot(currentOrg.id).then(h => { setHistoricalResponses(h?.responses || []); setHistoricalStructured(h?.structuredInformationUnits || []); setHistoryLoadState(h ? `ok:${h.responses.length}` : 'sem-retorno'); }).catch(e => { setHistoricalResponses([]); setHistoricalStructured([]); setHistoryLoadState('erro:'+String(e)); });
+    setHistoryLoadState('carregando'); loadHistoricalPilot(currentOrg.id).then(h => { setHistoricalResponses(h?.responses || []); setHistoryLoadState(h ? `ok:${h.responses.length}` : 'sem-retorno'); }).catch(e => { setHistoricalResponses([]); setHistoryLoadState('erro:'+String(e)); });
   }, [currentOrg?.id]);
   const effectiveResponses = historicalResponses.length ? historicalResponses : originalResponses;
   console.info('[VIPAZ historical]', currentOrg?.id, historyLoadState, historicalResponses.length);
