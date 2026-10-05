@@ -681,7 +681,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             methodologyVersion: row.methodology_version,
             name: row.name,
             cycleType: row.cycle_type || 'INITIAL_ASSESSMENT',
-            status: row.status || 'NAO_INICIADO',
+            status: row.status === 'IN_PROGRESS' ? 'EM_ANDAMENTO' : row.status === 'COMPLETED' ? 'CONCLUIDO_VALIDADO' : row.status || 'NAO_INICIADO',
             createdAt: row.created_at,
             updatedAt: row.updated_at || row.created_at,
             interviewCompletedAt: row.interview_completed_at || undefined
