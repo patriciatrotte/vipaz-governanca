@@ -294,11 +294,13 @@ export const DoorInvestigationView: React.FC = () => {
 
   // Respostas da pergunta ativa
   const [historicalResponses, setHistoricalResponses] = React.useState<OriginalResponse[]>([]);
+  const [historyLoadState, setHistoryLoadState] = React.useState('aguardando');
   React.useEffect(() => {
     if (!currentOrg?.id || currentOrg.id === 'org-camara-vila-esperanca-01') { setHistoricalResponses([]); return; }
-    loadHistoricalPilot(currentOrg.id).then(h => setHistoricalResponses(h?.responses || [])).catch(() => setHistoricalResponses([]));
+    setHistoryLoadState('carregando'); loadHistoricalPilot(currentOrg.id).then(h => { setHistoricalResponses(h?.responses || []); setHistoryLoadState(h ? `ok:${h.responses.length}` : 'sem-retorno'); }).catch(e => { setHistoricalResponses([]); setHistoryLoadState('erro:'+String(e)); });
   }, [currentOrg?.id]);
   const effectiveResponses = historicalResponses.length ? historicalResponses : originalResponses;
+  console.info('[VIPAZ historical]', currentOrg?.id, historyLoadState, historicalResponses.length);
   const doorResponses = effectiveResponses.filter(r => r.doorId === activeDoorId);
   const doorProbings = probings.filter(p => p.doorId === activeDoorId);
   const doorPedagogical = pedagogicalInterventions.filter(p => p.doorId === activeDoorId);
