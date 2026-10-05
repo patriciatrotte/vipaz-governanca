@@ -320,7 +320,20 @@ const AppContent: React.FC = () => {
 
 export default function App() {
   const [session, setSession] = useState<VipazSession | null>(() => {
-    try { const raw=sessionStorage.getItem('VIPAZ_SESSION'); return raw ? JSON.parse(raw) : null; } catch { return null; }
+    try {
+      const raw=sessionStorage.getItem('VIPAZ_SESSION');
+      if(raw) return JSON.parse(raw);
+      const hash=new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      const accessToken=hash.get('access_token'), refreshToken=hash.get('refresh_token'), type=hash.get('type');
+      if(accessToken && type==='recovery') {
+        const recovered={accessToken,refreshToken:refreshToken||'',userId:''};
+        sessionStorage.setItem('VIPAZ_SESSION',JSON.stringify(recovered));
+        sessionStorage.setItem('VIPAZ_MUST_CHANGE_PASSWORD','true');
+        history.replaceState(null,'',window.location.pathname);
+        return recovered;
+      }
+      return null;
+    } catch { return null; }
   });
   const [mustChangePassword,setMustChangePassword]=useState(()=>sessionStorage.getItem('VIPAZ_MUST_CHANGE_PASSWORD')==='true');
   const logout=()=>{ sessionStorage.removeItem('VIPAZ_SESSION'); sessionStorage.removeItem('VIPAZ_MUST_CHANGE_PASSWORD'); setSession(null); setMustChangePassword(false); };
