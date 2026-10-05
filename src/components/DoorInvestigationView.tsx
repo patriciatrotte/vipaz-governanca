@@ -238,7 +238,10 @@ export const DoorInvestigationView: React.FC = () => {
   }, [activeDoorId]);
 
   const effectiveStructuredUnits = historicalStructured.length ? historicalStructured : informationUnits;
-  const activeStructuredUnits = effectiveStructuredUnits.filter((u:any) => u.doorId === activeDoorId && u.statement?.startsWith('[VALIDACAO_ESTRUTURADA]'));
+  const activeStructuredUnits = React.useMemo(
+    () => effectiveStructuredUnits.filter((u:any) => u.doorId === activeDoorId && u.statement?.startsWith('[VALIDACAO_ESTRUTURADA]')),
+    [effectiveStructuredUnits, activeDoorId]
+  );
   const structuredAlreadySaved = activeStructuredUnits.length > 0;
 
   useEffect(() => {
@@ -256,7 +259,7 @@ export const DoorInvestigationView: React.FC = () => {
       const selected=items.filter(i=>activeStructuredUnits.some((u:any)=>String(u.statement).replace('[VALIDACAO_ESTRUTURADA] ','')===i.label)).map(i=>i.id);
       setMultiValidation(selected);
     }
-  }, [activeDoorId, historicalStructured.length, informationUnits.length]);
+  }, [activeDoorId, activeStructuredUnits]);
 
   const handleSaveStructuredValidation = () => {
     const lastResponse = doorResponses.slice(-1)[0];
