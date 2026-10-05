@@ -90,14 +90,17 @@ export const StageWorkspaceView: React.FC<StageWorkspaceViewProps> = ({
   // Estados sob demanda por etapa
   const { evidenceLinks, currentCycle } = usePilot();
   const [historicalDoorIds, setHistoricalDoorIds] = useState<DoorId[]>([]);
+  const [historyDiagnostic, setHistoryDiagnostic] = useState<string>('aguardando');
   useEffect(() => {
     let cancelled = false;
-    if (!currentOrg?.id || currentOrg.id === 'org-camara-vila-esperanca-01') { setHistoricalDoorIds([]); return; }
+    if (!currentOrg?.id || currentOrg.id === 'org-camara-vila-esperanca-01') { setHistoricalDoorIds([]); setHistoryDiagnostic('não aplicável'); return; }
+    setHistoryDiagnostic('carregando');
     loadHistoricalPilot(currentOrg.id).then(h => {
       if (cancelled) return;
       const ids = Array.from(new Set((h?.responses || []).map(r => r.doorId))) as DoorId[];
       setHistoricalDoorIds(ids);
-    }).catch(() => { if (!cancelled) setHistoricalDoorIds([]); });
+      setHistoryDiagnostic(`ok:${(h?.responses || []).length} respostas / ${ids.length} portas`);
+    }).catch((e) => { if (!cancelled) { setHistoricalDoorIds([]); setHistoryDiagnostic(`erro: ${String(e?.message || e)}`); } });
     return () => { cancelled = true; };
   }, [currentOrg?.id]);
   const [linkingEvidence, setLinkingEvidence] = useState<EvidenceRecord | null>(null);
@@ -191,7 +194,13 @@ export const StageWorkspaceView: React.FC<StageWorkspaceViewProps> = ({
           </div>
         </div>
 
-        {/* Notificação de Conclusão da Coleta Fática */}
+        {historyDiagnostic.startsWith('erro:') && (
+          <div className="bg-amber-50 border border-amber-300 rounded-xl px-4 py-3 text-xs text-amber-950">
+            <strong>Diagnóstico técnico temporário — histórico migrado:</strong> {historyDiagnostic}
+          </div>
+        )}
+
+                {/* Notificação de Conclusão da Coleta Fática */}
         {isInterviewFinished && (
           <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4.5 flex items-start gap-3.5 shadow-2xs">
             <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
