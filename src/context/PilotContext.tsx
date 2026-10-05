@@ -752,6 +752,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCurrentOrgId(orgId);
     setCurrentCycleId(activeCycle?.id || null);
     setCurrentView('HOME');
+    if (orgId !== 'org-camara-vila-esperanca-01') loadHistoricalPilot(orgId).then(h => { if (!h) return; if (h.questions.length) setQuestionInstances(h.questions); if (h.responses.length) { setOriginalResponses(h.responses); setDoorStatuses(p => ({ ...p, ...h.doorStatuses })); } });
   };
 
   // Transição de contexto: Voltar à Central
