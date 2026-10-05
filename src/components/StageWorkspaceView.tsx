@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { loadHistoricalPilot } from '../utils/historicalHydration';
 import { 
   DoorId, 
   DoorStatus, 
@@ -88,6 +89,17 @@ export const StageWorkspaceView: React.FC<StageWorkspaceViewProps> = ({
 }) => {
   // Estados sob demanda por etapa
   const { evidenceLinks, currentCycle } = usePilot();
+  const [historicalDoorIds, setHistoricalDoorIds] = useState<DoorId[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    if (!currentOrg?.id || currentOrg.id === 'org-camara-vila-esperanca-01') { setHistoricalDoorIds([]); return; }
+    loadHistoricalPilot(currentOrg.id).then(h => {
+      if (cancelled) return;
+      const ids = Array.from(new Set((h?.responses || []).map(r => r.doorId))) as DoorId[];
+      setHistoricalDoorIds(ids);
+    }).catch(() => { if (!cancelled) setHistoricalDoorIds([]); });
+    return () => { cancelled = true; };
+  }, [currentOrg?.id]);
   const [linkingEvidence, setLinkingEvidence] = useState<EvidenceRecord | null>(null);
   const [showAllDoorsModal, setShowAllDoorsModal] = useState<boolean>(false);
   const [showMotherQuestionModal, setShowMotherQuestionModal] = useState<boolean>(false);
@@ -115,7 +127,12 @@ export const StageWorkspaceView: React.FC<StageWorkspaceViewProps> = ({
     doorStatuses[d] === 'SUFICIENTEMENTE_EXPLORADA_COMPROVACAO_PENDENTE'
   ).length;
 
-  const isInterviewFinished = Boolean(currentCycle?.interviewCompletedAt) || exploredDoorsCount === 6;
+  const investigatedDoorIds = Array.from(new Set([
+    ...doorsArray.filter(d => doorStatuses[d] !== 'NAO_INICIADA'),
+    ...historicalDoorIds
+  ]));
+  const investigatedDoorsCount = investigatedDoorIds.length;
+  const isInterviewFinished = Boolean(currentCycle?.interviewCompletedAt) || investigatedDoorsCount === 6;
 
   const blockingPending = pendingItems.filter(p => p.impact === 'BLOQUEANTE' && p.status !== 'RESOLVIDA');
   const activeDivergences = divergences.filter(d => d.status !== 'EXPLICADA');
@@ -165,7 +182,7 @@ export const StageWorkspaceView: React.FC<StageWorkspaceViewProps> = ({
                 Situação da Investigação
               </span>
               <div className="text-2xl font-black text-emerald-400 mt-0.5 font-mono">
-                {exploredDoorsCount} / 6
+                {investigatedDoorsCount} / 6
               </div>
               <span className="text-[11px] text-slate-300 font-medium">
                 {isInterviewFinished ? 'coleta concluída' : 'portas investigadas'}
@@ -235,10 +252,10 @@ export const StageWorkspaceView: React.FC<StageWorkspaceViewProps> = ({
                     Coleta fática concluída: <strong>Todas as 6 portas</strong> foram percorridas. Fase de escuta presencial finalizada.
                   </span>
                 </div>
-              ) : exploredDoorsCount === 0 ? (
+              ) : investigatedDoorsCount === 0 ? (
                 <span>A entrevista percorrerá <strong>6 portas de investigação</strong> (D1.1 a D1.6), com perguntas abertas e foco prático.</span>
               ) : (
-                <span>Investigação em andamento: <strong>{exploredDoorsCount} de 6 portas</strong> com registros de suficiência.</span>
+                <span>Investigação em andamento: <strong>{investigatedDoorsCount} de 6 portas</strong> já percorridas.</span>
               )}
             </div>
 
@@ -257,8 +274,8 @@ export const StageWorkspaceView: React.FC<StageWorkspaceViewProps> = ({
               >
                 <span>
                   {isInterviewFinished
-                    ? 'Revisar falas das 6 Portas'
-                    : exploredDoorsCount === 0
+                    ? 'Visualizar respostas'
+                    : investigatedDoorsCount === 0
                     ? 'Iniciar entrevista'
                     : `Continuar entrevista na Porta ${attentionDoor.code}`}
                 </span>
@@ -276,7 +293,7 @@ export const StageWorkspaceView: React.FC<StageWorkspaceViewProps> = ({
             className="text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
           >
             <Layers className="w-3.5 h-3.5 text-emerald-600" />
-            <span>{showAllDoorsModal ? 'Ocultar matriz das 6 Portas' : `Ver todas as 6 Portas (${exploredDoorsCount}/6)`}</span>
+            <span>{showAllDoorsModal ? 'Ocultar matriz das 6 Portas' : `Ver todas as 6 Portas (${investigatedDoorsCount}/6)`}</span>
             {showAllDoorsModal ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
 
