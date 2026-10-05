@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { LoginView } from './components/LoginView';
+import { ChangePasswordView, LoginView, VipazSession } from './components/LoginView';
 import { PilotProvider, usePilot } from './context/PilotContext';
 import { Navbar } from './components/Navbar';
 import { HomeView } from './components/HomeView';
@@ -319,11 +319,12 @@ const AppContent: React.FC = () => {
 };
 
 export default function App() {
-  const [authToken, setAuthToken] = useState<string | null>(() => localStorage.getItem('VIPAZ_AUTH_TOKEN'));
-  if (!authToken) return <LoginView onAuthenticated={setAuthToken} />;
-  return (
-    <PilotProvider>
-      <AppContent />
-    </PilotProvider>
-  );
+  const [session, setSession] = useState<VipazSession | null>(() => {
+    try { const raw=sessionStorage.getItem('VIPAZ_SESSION'); return raw ? JSON.parse(raw) : null; } catch { return null; }
+  });
+  const [mustChangePassword,setMustChangePassword]=useState(()=>sessionStorage.getItem('VIPAZ_MUST_CHANGE_PASSWORD')==='true');
+  const logout=()=>{ sessionStorage.removeItem('VIPAZ_SESSION'); sessionStorage.removeItem('VIPAZ_MUST_CHANGE_PASSWORD'); setSession(null); setMustChangePassword(false); };
+  if(!session) return <LoginView onAuthenticated={(s)=>{setSession(s);setMustChangePassword(sessionStorage.getItem('VIPAZ_MUST_CHANGE_PASSWORD')==='true');}}/>;
+  if(mustChangePassword) return <ChangePasswordView session={session} onDone={()=>setMustChangePassword(false)} onLogout={logout}/>;
+  return <PilotProvider><AppContent /></PilotProvider>;
 }
