@@ -237,19 +237,6 @@ export const DoorInvestigationView: React.FC = () => {
     setMultiValidation([]);
   }, [activeDoorId]);
 
-  const historicalStructuredForDoor = historicalStructured.filter((u:any) => u.doorId === activeDoorId);
-  const historicalC1Values: Record<string,string> = {};
-  if (activeDoorId === 'D1.1') {
-    historicalStructuredForDoor.forEach((u:any) => {
-      const raw=String(u.statement||'').replace('[VALIDACAO_ESTRUTURADA] ','');
-      const item=C1_ITEMS.find(i=>raw.startsWith(i.label+': '));
-      if(item) historicalC1Values[item.id]=raw.slice(item.label.length+2);
-    });
-  }
-  const historicalMultiIds = (activeDoorId === 'D1.2' ? C2_ITEMS : activeDoorId === 'D1.5' ? C5_ITEMS : [])
-    .filter(i=>historicalStructuredForDoor.some((u:any)=>String(u.statement||'').replace('[VALIDACAO_ESTRUTURADA] ','')===i.label)).map(i=>i.id);
-  const hasHistoricalStructured = historicalStructuredForDoor.length > 0;
-
   const structuredAlreadySaved = informationUnits.some(
     u => u.doorId === activeDoorId && u.statement.startsWith('[VALIDACAO_ESTRUTURADA]')
   );
@@ -308,10 +295,9 @@ export const DoorInvestigationView: React.FC = () => {
   // Respostas da pergunta ativa
   const [historicalResponses, setHistoricalResponses] = React.useState<OriginalResponse[]>([]);
   const [historyLoadState, setHistoryLoadState] = React.useState('aguardando');
-  const [historicalStructured, setHistoricalStructured] = React.useState<any[]>([]);
   React.useEffect(() => {
     if (!currentOrg?.id || currentOrg.id === 'org-camara-vila-esperanca-01') { setHistoricalResponses([]); return; }
-    setHistoryLoadState('carregando'); loadHistoricalPilot(currentOrg.id).then(h => { setHistoricalResponses(h?.responses || []); setHistoricalStructured(h?.structuredInformationUnits || []); setHistoryLoadState(h ? `ok:${h.responses.length}` : 'sem-retorno'); }).catch(e => { setHistoricalResponses([]); setHistoricalStructured([]); setHistoryLoadState('erro:'+String(e)); });
+    setHistoryLoadState('carregando'); loadHistoricalPilot(currentOrg.id).then(h => { setHistoricalResponses(h?.responses || []); setHistoryLoadState(h ? `ok:${h.responses.length}` : 'sem-retorno'); }).catch(e => { setHistoricalResponses([]); setHistoryLoadState('erro:'+String(e)); });
   }, [currentOrg?.id]);
   const effectiveResponses = historicalResponses.length ? historicalResponses : originalResponses;
   console.info('[VIPAZ historical]', currentOrg?.id, historyLoadState, historicalResponses.length);
@@ -978,9 +964,9 @@ export const DoorInvestigationView: React.FC = () => {
                   <span className="text-xs text-slate-700">{item.label}</span>
                   <div className="flex flex-wrap gap-1.5">
                     {['Sim', 'Em parte', 'Não', 'Ainda não vivenciou'].map(value => (
-                      <button key={value} type="button" disabled={structuredAlreadySaved || hasHistoricalStructured}
+                      <button key={value} type="button" disabled={structuredAlreadySaved}
                         onClick={() => setC1Validation(prev => ({...prev, [item.id]: value}))}
-                        className={`px-2.5 py-1.5 rounded-md text-[11px] border ${(hasHistoricalStructured ? historicalC1Values[item.id] : c1Validation[item.id]) === value ? 'bg-emerald-100 border-emerald-400 text-emerald-900 font-semibold' : 'bg-white border-slate-200 text-slate-600'} disabled:opacity-60`}>
+                        className={`px-2.5 py-1.5 rounded-md text-[11px] border ${c1Validation[item.id] === value ? 'bg-emerald-100 border-emerald-400 text-emerald-900 font-semibold' : 'bg-white border-slate-200 text-slate-600'} disabled:opacity-60`}>
                         {value}
                       </button>
                     ))}
@@ -992,8 +978,8 @@ export const DoorInvestigationView: React.FC = () => {
             <div className="space-y-2">
               {(activeDoorId === 'D1.2' ? C2_ITEMS : C5_ITEMS).map(item => (
                 <label key={item.id} className="flex items-start gap-2.5 border border-slate-200 rounded-lg p-3 text-xs text-slate-700 cursor-pointer">
-                  <input type="checkbox" disabled={structuredAlreadySaved || hasHistoricalStructured}
-                    checked={(hasHistoricalStructured ? historicalMultiIds : multiValidation).includes(item.id)}
+                  <input type="checkbox" disabled={structuredAlreadySaved}
+                    checked={multiValidation.includes(item.id)}
                     onChange={() => setMultiValidation(prev => prev.includes(item.id) ? prev.filter(x => x !== item.id) : [...prev, item.id])}
                     className="mt-0.5 accent-emerald-600" />
                   <span>{item.label}</span>
@@ -1003,9 +989,9 @@ export const DoorInvestigationView: React.FC = () => {
           )}
 
           <div className="flex justify-end">
-            <button type="button" onClick={handleSaveStructuredValidation} disabled={structuredAlreadySaved || hasHistoricalStructured || (activeDoorId === 'D1.1' ? Object.keys(c1Validation).length === 0 : multiValidation.length === 0)}
+            <button type="button" onClick={handleSaveStructuredValidation} disabled={structuredAlreadySaved || (activeDoorId === 'D1.1' ? Object.keys(c1Validation).length === 0 : multiValidation.length === 0)}
               className="px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-40">
-              {(structuredAlreadySaved || hasHistoricalStructured) ? 'Fatos validados e registrados' : 'Registrar fatos validados'}
+              {structuredAlreadySaved ? 'Fatos validados e registrados' : 'Registrar fatos validados'}
             </button>
           </div>
         </div>
