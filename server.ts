@@ -66,6 +66,46 @@ app.get('/api/db/health', async (_req: Request, res: Response) => {
   }
 });
 
+// Completes the first-access/recovery password flow without granting browser UPDATE on profiles.
+// Identity is derived exclusively from the authenticated Supabase bearer token.
+app.post('/api/auth/complete-password-change', async (req: Request, res: Response) => {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const secret = process.env.SUPABASE_SECRET_KEY;
+  const authorization = req.header('authorization') || '';
+  const token = authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+  if (!supabaseUrl || !secret) return res.status(503).json({ error: 'Autenticação do servidor não configurada.' });
+  if (!token) return res.status(401).json({ error: 'Sessão autenticada obrigatória.' });
+  try {
+    const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, { headers: { apikey: secret, Authorization: `Bearer ${token}` } });
+    const user = await userResponse.json();
+    if (!userResponse.ok || !user?.id) return res.status(401).json({ error: 'Sessão inválida ou expirada.' });
+
+    const roleResponse = await fetch(`${supabaseUrl}/rest/v1/global_user_roles?select=id&user_id=eq.${encodeURIComponent(user.id)}&role_code=eq.ADMIN_VIPAZ&status=eq.ACTIVE&limit=1`, {
+      headers: { apikey: secret, Authorization: `Bearer ${secret}` }
+    });
+    const roles = await roleResponse.json();
+    if (!roleResponse.ok || !Array.isArray(roles) || roles.length === 0) return res.status(403).json({ error: 'Autorização ADMIN_VIPAZ ativa não localizada.' });
+
+    const profileResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?select=metadata,status&user_id=eq.${encodeURIComponent(user.id)}&limit=1`, {
+      headers: { apikey: secret, Authorization: `Bearer ${secret}` }
+    });
+    const profiles = await profileResponse.json();
+    if (!profileResponse.ok || !Array.isArray(profiles) || profiles.length === 0 || profiles[0].status !== 'ACTIVE') return res.status(403).json({ error: 'Perfil VIPAZ ativo não localizado.' });
+
+    const metadata = { ...(profiles[0].metadata || {}), must_change_password: false };
+    const updateResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?user_id=eq.${encodeURIComponent(user.id)}`, {
+      method: 'PATCH',
+      headers: { apikey: secret, Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ metadata })
+    });
+    if (!updateResponse.ok) throw new Error('profile update failed');
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error('Password-change completion failed:', error);
+    return res.status(500).json({ error: 'Não foi possível concluir a liberação do perfil.' });
+  }
+});
+
 // Endpoint: AI Probing Suggestion (Neutral, non-leading)
 app.post('/api/ai/probe', async (req: Request, res: Response) => {
   try {
