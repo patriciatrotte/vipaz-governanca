@@ -4,7 +4,7 @@ export default async function handler(req:VercelRequest,res:VercelResponse){
  if(req.method!=='GET')return res.status(405).json({error:'Method not allowed'}); res.setHeader('X-Vipaz-History','route-reached'); if(!u||!s||!t)return res.status(401).json({error:'Sessão obrigatória'});
  const ur=await fetch(`${u}/auth/v1/user`,{headers:{apikey:s,Authorization:`Bearer ${t}`}}); if(!ur.ok)return res.status(401).json({error:'Sessão inválida'});
  const legacy=String(req.query.org||''); if(!legacy)return res.status(400).json({error:'Organização obrigatória'});
- const h={apikey:s};
+ const h={apikey:s,Authorization:`Bearer ${s}`};
  const or=await fetch(`${u}/rest/v1/organizations?select=id,legacy_id,name&legacy_id=eq.${encodeURIComponent(legacy)}&limit=1`,{headers:h}); const os:any=await or.json(); if(!or.ok||!os?.length)return res.status(404).json({error:'Organização não localizada'});
  const cr=await fetch(`${u}/rest/v1/governance_cycles?select=id,legacy_id,status,methodology_version,updated_at&organization_id=eq.${os[0].id}&limit=1`,{headers:h}); const cs:any=await cr.json(); if(!cr.ok||!cs?.length)return res.status(404).json({error:'Ciclo não localizado'});
  const sr=await fetch(`${u}/rest/v1/investigation_sessions?select=id,legacy_id,status&cycle_id=eq.${cs[0].id}`,{headers:h}); const ss:any=await sr.json(); if(!sr.ok)return res.status(502).json({error:'Falha ao ler sessão'});
