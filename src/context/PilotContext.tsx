@@ -702,7 +702,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   // Transição de contexto: Selecionar Organização
-  const selectOrganization = (orgId: string) => {
+  const selectOrganization = async (orgId: string) => {
     if (currentOrgId && currentOrgId !== orgId) {
       saveStateForOrg(currentOrgId, getCurrentStateBundle());
     }
@@ -710,7 +710,22 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const org = organizations.find(o => o.id === orgId);
     const orgCycles = cycles.filter(c => c.organizationId === orgId);
     const activeCycle = orgCycles.find(c => c.status !== 'ARQUIVADO') || orgCycles[0];
-    const bundle = loadStateForOrg(orgId, activeCycle?.id);
+    let bundle = loadStateForOrg(orgId, activeCycle?.id);
+    try {
+      const raw=sessionStorage.getItem('VIPAZ_SESSION'); const accessToken=raw?JSON.parse(raw).accessToken:'';
+      if(accessToken){
+        const remote=await fetch(`/api/data/historical-cycle?org=${encodeURIComponent(orgId)}`,{headers:{Authorization:`Bearer ${accessToken}`}});
+        if(remote.ok){
+          const h=await remote.json();
+          const qById=new Map((h.questionInstances||[]).map((q:any)=>[q.id,q]));
+          const migratedResponses=(h.responses||[]).map((r:any)=>{
+            const q:any=qById.get(r.question_instance_id); const match=String(q?.legacy_id||'').match(/qi-(D1\.\d)/);
+            return {id:r.legacy_id||r.id,questionInstanceId:q?.legacy_id||r.question_instance_id,doorId:(match?.[1]||'D1.1'),respondentId:'historical',respondentName:r.source_name||'Respondente do piloto',respondentRole:r.source_role||'Não informado',originalText:r.response_text||'',timestamp:r.created_at,modality:r.modality||'SESSAO_CONDUZIDA',isRetificationOfResponseId:r.response_type==='RETIFICACAO'?r.parent_response_id:undefined,isComplementOfResponseId:r.response_type==='COMPLEMENTO'?r.parent_response_id:undefined};
+          });
+          if(migratedResponses.length) bundle={...bundle,originalResponses:migratedResponses};
+        }
+      }
+    } catch(error){ console.warn('Leitura histórica central indisponível; mantendo contingência local.',error); }
 
     applyStateBundle(bundle);
 
