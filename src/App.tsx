@@ -336,7 +336,27 @@ export default function App() {
     } catch { return null; }
   });
   const [mustChangePassword,setMustChangePassword]=useState(()=>sessionStorage.getItem('VIPAZ_MUST_CHANGE_PASSWORD')==='true');
-  const logout=()=>{ sessionStorage.removeItem('VIPAZ_SESSION'); sessionStorage.removeItem('VIPAZ_MUST_CHANGE_PASSWORD'); setSession(null); setMustChangePassword(false); };
+  const [checkingSession,setCheckingSession]=useState(!!session);
+  const clearLocalSession=()=>{ sessionStorage.removeItem('VIPAZ_SESSION'); sessionStorage.removeItem('VIPAZ_MUST_CHANGE_PASSWORD'); setSession(null); setMustChangePassword(false); };
+  useEffect(()=>{ if(!session){setCheckingSession(false);return;} let cancelled=false;
+    const validate=async()=>{ try{
+      const url=import.meta.env.VITE_SUPABASE_URL as string|undefined, key=import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string|undefined;
+      if(!url||!key) throw new Error('auth config');
+      let active=session;
+      let r=await fetch(`${url}/auth/v1/user`,{headers:{apikey:key,Authorization:`Bearer ${active.accessToken}`}});
+      if(!r.ok && active.refreshToken){
+        const rr=await fetch(`${url}/auth/v1/token?grant_type=refresh_token`,{method:'POST',headers:{apikey:key,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:active.refreshToken})});
+        const rd=await rr.json(); if(!rr.ok||!rd.access_token) throw new Error('expired');
+        active={accessToken:rd.access_token,refreshToken:rd.refresh_token||active.refreshToken,userId:rd.user?.id||active.userId};
+        sessionStorage.setItem('VIPAZ_SESSION',JSON.stringify(active)); if(!cancelled)setSession(active);
+        r=await fetch(`${url}/auth/v1/user`,{headers:{apikey:key,Authorization:`Bearer ${active.accessToken}`}});
+      }
+      if(!r.ok) throw new Error('invalid');
+    }catch{ if(!cancelled)clearLocalSession(); }finally{ if(!cancelled)setCheckingSession(false); }};
+    validate(); return()=>{cancelled=true;};
+  },[]);
+  const logout=async()=>{ const current=session; clearLocalSession(); if(!current)return; try{const url=import.meta.env.VITE_SUPABASE_URL,key=import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;if(url&&key)await fetch(`${url}/auth/v1/logout`,{method:'POST',headers:{apikey:key,Authorization:`Bearer ${current.accessToken}`}});}catch{} };
+  if(checkingSession) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-white text-sm">Validando sessão VIPAZ...</div>;
   if(!session) return <LoginView onAuthenticated={(s)=>{setSession(s);setMustChangePassword(sessionStorage.getItem('VIPAZ_MUST_CHANGE_PASSWORD')==='true');}}/>;
   if(mustChangePassword) return <ChangePasswordView session={session} onDone={()=>setMustChangePassword(false)} onLogout={logout}/>;
   return <PilotProvider><AppContent /></PilotProvider>;
