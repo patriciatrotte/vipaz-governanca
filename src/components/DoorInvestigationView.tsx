@@ -32,6 +32,16 @@ import {
 import { DoorStatusBadge } from './MethodologyBadges';
 import { LocalSaveIndicator } from './LocalSaveIndicator';
 
+type HistoricalStructuredUnit = { id:string; doorId:DoorId; statement:string; responseId?:string; validationStatus?:string };
+const HistoricalStructuredReadOnly: React.FC<{doorId:DoorId; units:HistoricalStructuredUnit[]}> = ({doorId, units}) => {
+  if (!units.length || !['D1.1','D1.2','D1.5'].includes(doorId)) return null;
+  const clean=(s:string)=>String(s||'').replace('[VALIDACAO_ESTRUTURADA] ','');
+  return <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-3">
+    <div><h3 className="text-sm font-bold text-slate-900">Marcações registradas no piloto</h3><p className="text-xs text-slate-500 mt-1">Registro histórico preservado. Estas marcações não podem ser alteradas neste bloco.</p></div>
+    <div className="space-y-2">{units.map(u=><div key={u.id} className="flex items-start gap-2 text-xs text-slate-700"><Lock size={13} className="mt-0.5 shrink-0"/><span>{clean(u.statement)}</span></div>)}</div>
+  </div>;
+};
+
 export const DoorInvestigationView: React.FC = () => {
   const {
     activeDoorId,
@@ -295,9 +305,10 @@ export const DoorInvestigationView: React.FC = () => {
   // Respostas da pergunta ativa
   const [historicalResponses, setHistoricalResponses] = React.useState<OriginalResponse[]>([]);
   const [historyLoadState, setHistoryLoadState] = React.useState('aguardando');
+  const [historicalStructured, setHistoricalStructured] = React.useState<HistoricalStructuredUnit[]>([]);
   React.useEffect(() => {
-    if (!currentOrg?.id || currentOrg.id === 'org-camara-vila-esperanca-01') { setHistoricalResponses([]); return; }
-    setHistoryLoadState('carregando'); loadHistoricalPilot(currentOrg.id).then(h => { setHistoricalResponses(h?.responses || []); setHistoryLoadState(h ? `ok:${h.responses.length}` : 'sem-retorno'); }).catch(e => { setHistoricalResponses([]); setHistoryLoadState('erro:'+String(e)); });
+    if (!currentOrg?.id || currentOrg.id === 'org-camara-vila-esperanca-01') { setHistoricalResponses([]); setHistoricalStructured([]); return; }
+    setHistoryLoadState('carregando'); loadHistoricalPilot(currentOrg.id).then(h => { setHistoricalResponses(h?.responses || []); setHistoricalStructured(h?.structuredInformationUnits || []); setHistoryLoadState(h ? `ok:${h.responses.length}` : 'sem-retorno'); }).catch(e => { setHistoricalResponses([]); setHistoricalStructured([]); setHistoryLoadState('erro:'+String(e)); });
   }, [currentOrg?.id]);
   const effectiveResponses = historicalResponses.length ? historicalResponses : originalResponses;
   console.info('[VIPAZ historical]', currentOrg?.id, historyLoadState, historicalResponses.length);
@@ -946,6 +957,10 @@ export const DoorInvestigationView: React.FC = () => {
             Teste de campo D1.1: este mapa organiza fatos da conversa. Ele não atribui nível de maturidade e não transforma a ausência de uma área em gap.
           </p>
         </div>
+      )}
+
+      {historicalResponses.length > 0 && (
+        <HistoricalStructuredReadOnly doorId={activeDoorId} units={historicalStructured.filter(u => u.doorId === activeDoorId)} />
       )}
 
       {doorResponses.length > 0 && ['D1.1', 'D1.2', 'D1.5'].includes(activeDoorId) && (
