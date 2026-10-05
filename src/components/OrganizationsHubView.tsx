@@ -154,14 +154,23 @@ export const OrganizationsHubView: React.FC = () => {
           <span className="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">{organizations.length} {organizations.length === 1 ? 'organização' : 'organizações'}</span>
         </div>
 
-        <div className="overflow-hidden bg-white border border-slate-200 rounded-xl shadow-sm">
-          <div className="px-5 py-5 flex items-center justify-between gap-4">
-            <div>
-              <div className="font-bold text-sm text-slate-900">Ambiente T2 — arquitetura em validação</div>
-              <p className="mt-1 text-xs text-slate-500">Os registros dos pilotos históricos permanecem preservados, mas estão isolados desta experiência para não misturar versões metodológicas.</p>
-            </div>
-            <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2 py-1">isolamento ativo</span>
-          </div>
+        <div className="overflow-hidden bg-white border border-slate-200 rounded-xl shadow-sm divide-y divide-slate-100">
+          {organizations.map(org => {
+            const summary = getOrganizationSummary(org.id);
+            return (
+              <button key={org.id} type="button" onClick={() => selectOrganization(org.id)}
+                className="w-full px-5 py-4 flex items-center justify-between gap-4 text-left hover:bg-slate-50 transition-colors">
+                <div>
+                  <div className="font-bold text-sm text-slate-900">{org.name}</div>
+                  <p className="mt-1 text-xs text-slate-500">{summary.cycleName} · {summary.methodologyVersion}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <CycleStatusBadge status={summary.cycleStatus} />
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                </div>
+              </button>
+            );
+          })}
         </div>
 
         <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs text-sky-900">
