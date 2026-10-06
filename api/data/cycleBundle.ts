@@ -1,101 +1,257 @@
 import type { Request, Response } from 'express';
-import { buildSupabaseHeaders } from '../../src/services/persistence/supabaseAdapters.js';
 
-export default async function handler(req: Request, res: Response) {
+const getSupabaseConfig = () => {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY;
+
   if (!url || !key) {
-    return res.status(503).json({ error: 'database_not_configured' });
+    throw new Error('Supabase server configuration is missing.');
   }
 
-  if (req.method !== 'GET') {
-    res.setHeader('Allow', 'GET');
-    return res.status(405).json({ error: 'method_not_allowed' });
-  }
-
-  const cycleId = req.query.cycleId as string;
-  if (!cycleId || !cycleId.trim()) {
-    return res.status(400).json({ error: 'missing_cycle_id' });
-  }
-
-  const cleanCycleId = cycleId.trim();
-
-  const fetchTable = async (tableName: string) => {
-    try {
-      const endpoint = `${url}/rest/v1/${tableName}?cycle_id=eq.${encodeURIComponent(cleanCycleId)}&order=created_at.asc`;
-      const r = await fetch(endpoint, { headers: buildSupabaseHeaders(key) });
-      if (!r.ok) {
-        console.warn(`[VIPAZ Backend] Consulta a ${tableName} retornou status ${r.status}`);
-        return [];
-      }
-      const data = await r.json();
-      return Array.isArray(data) ? data : [];
-    } catch (err) {
-      console.warn(`[VIPAZ Backend] Falha na consulta à tabela ${tableName}:`, err);
-      return [];
-    }
+  return {
+    url: url.replace(/\/$/, ''),
+    key,
   };
+};
+
+const buildHeaders = (key: string) => ({
+  apikey: key,
+  'Content-Type': 'application/json',
+});
+
+const fetchRows = async (
+  url: string,
+  key: string,
+  tableName: string,
+  filter: string
+): Promise<any[]> => {
+  const endpoint =
+    `${url}/rest/v1/${tableName}?${filter}` +
+    `&order=created_at.asc`;
+
+  const response = await fetch(endpoint, {
+    headers: buildHeaders(key),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+
+    throw new Error(
+      `Supabase query failed for ${tableName} ` +
+      `(${response.status} ${response.statusText}): ${body}`
+    );
+  }
+
+  const data = await response.json();
+
+  if (!Array.isArray(data)) {
+    throw new Error(
+      `Unexpected Supabase response for ${tableName}: expected an array.`
+    );
+  }
+
+  return data;
+};
+
+const eqFilter = (column: string, value: string) =>
+  `${column}=eq.${encodeURIComponent(value)}`;
+
+const inFilter = (column: string, values: string[]) => {
+  const cleanValues = Array.from(
+    new Set(values.map(String).map(v => v.trim()).filter(Boolean))
+  );
+
+  if (cleanValues.length === 0) {
+    return null;
+  }
+
+  return `${column}=in.(${cleanValues.map(encodeURIComponent).join(',')})`;
+};
+
+export default async function handler(
+  req: Request,
+  res: Response
+) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const cycleIdParam = req.query.cycleId;
+  const cycleId = Array.isArray(cycleIdParam)
+    ? cycleIdParam[0]
+    : cycleIdParam;
+
+  const cleanCycleId = String(cycleId || '').trim();
+
+  if (!cleanCycleId) {
+    return res.status(400).json({ error: 'cycleId is required' });
+  }
 
   try {
-    const [
-      questionInstances,
-      responses,
-      informationUnits,
-      additionalQuestions,
-      evidences,
-      pendingItems
-    ] = await Promise.all([
-      fetchTable('question_instances'),
-      fetchTable('responses'),
-      fetchTable('information_units'),
-      fetchTable('additional_questions'),
-      fetchTable('evidences'),
-      fetchTable('pending_items')
+    const { url, key } = getSupabaseConfig();
+
+    // 1. O ciclo se relaciona diretamente com investigation_sessions.
+    const investigationSessions = await fetchRows(
+      url,
+      key,
+      'investigation_sessions',
+      eqFilter('cycle_id', cleanCycleId)
+    );
+
+    const sessionIds = investigationSessions
+      .map(row => String(row.id || ''))
+      .filter(Boolean);
+
+    // 2. question_instances NÃO possui cycle_id.
+    //    A relação física é question_instances.session_id -> investigation_sessions.id.
+    const sessionFilter = inFilter('session_id', sessionIds);
+
+    const questionInstances = sessionFilter
+      ? await fetchRows(
+          url,
+          key,
+          'question_instances',
+          sessionFilter
+        )
+      : [];
+
+    const questionInstanceIds = questionInstances
+      .map(row => String(row.id || ''))
+      .filter(Boolean);
+
+    // 3. responses e additional_questions NÃO são buscadas por cycle_id.
+    //    Ambas dependem das question_instances do ciclo.
+    const questionInstanceFilter = inFilter(
+      'question_instance_id',
+      questionInstanceIds
+    );
+
+    const [responses, additionalQuestions] = questionInstanceFilter
+      ? await Promise.all([
+          fetchRows(
+            url,
+            key,
+            'responses',
+            questionInstanceFilter
+          ),
+          fetchRows(
+            url,
+            key,
+            'additional_questions',
+            questionInstanceFilter
+          ),
+        ])
+      : [[], []];
+
+    // 4. Estas estruturas possuem cycle_id fisicamente no schema.
+    const [informationUnits, evidences, pendingItems] = await Promise.all([
+      fetchRows(
+        url,
+        key,
+        'information_units',
+        eqFilter('cycle_id', cleanCycleId)
+      ),
+      fetchRows(
+        url,
+        key,
+        'evidences',
+        eqFilter('cycle_id', cleanCycleId)
+      ),
+      fetchRows(
+        url,
+        key,
+        'pending_items',
+        eqFilter('cycle_id', cleanCycleId)
+      ),
     ]);
 
-    // O schema físico de information_units não carrega question_code.
-    // A porta é reconstruída pela cadeia relacional canônica:
-    // information_unit -> response -> question_instance -> question_code.
-    const questionCodeByInstanceId = new Map(
-      questionInstances.map((row: any) => [
-        String(row.id || ''),
-        row.question_code || row.door_id || null
-      ])
-    );
+    // 5. Reidrata question_code nas estruturas que não o armazenam
+    //    fisicamente, para que os adapters consigam reconstruir doorId.
+    const questionCodeByInstanceId = new Map<string, string>();
 
-    const questionCodeByResponseId = new Map(
-      responses.map((row: any) => [
-        String(row.id || ''),
-        row.question_code ||
-          row.door_id ||
-          questionCodeByInstanceId.get(String(row.question_instance_id || '')) ||
-          null
-      ])
-    );
+    for (const row of questionInstances) {
+      const id = String(row.id || '');
+      const questionCode = String(row.question_code || '');
 
-    const informationUnitsWithQuestionCode = informationUnits.map((row: any) => ({
+      if (id && questionCode) {
+        questionCodeByInstanceId.set(id, questionCode);
+      }
+    }
+
+    const responsesWithQuestionCode = responses.map(row => ({
       ...row,
       question_code:
         row.question_code ||
-        row.door_id ||
-        questionCodeByResponseId.get(String(row.response_id || '')) ||
-        null
+        questionCodeByInstanceId.get(
+          String(row.question_instance_id || '')
+        ) ||
+        null,
+    }));
+
+    const questionCodeByResponseId = new Map<string, string>();
+
+    for (const row of responsesWithQuestionCode) {
+      const responseId = String(row.id || '');
+      const questionCode = String(row.question_code || '');
+
+      if (responseId && questionCode) {
+        questionCodeByResponseId.set(responseId, questionCode);
+      }
+    }
+
+    const informationUnitsWithQuestionCode = informationUnits.map(row => ({
+      ...row,
+      question_code:
+        row.question_code ||
+        questionCodeByInstanceId.get(
+          String(row.question_instance_id || '')
+        ) ||
+        questionCodeByResponseId.get(
+          String(row.response_id || '')
+        ) ||
+        null,
+    }));
+
+    const additionalQuestionsWithQuestionCode = additionalQuestions.map(
+      row => ({
+        ...row,
+        question_code:
+          row.question_code ||
+          questionCodeByInstanceId.get(
+            String(row.question_instance_id || '')
+          ) ||
+          null,
+      })
+    );
+
+    const pendingItemsWithQuestionCode = pendingItems.map(row => ({
+      ...row,
+      question_code:
+        row.question_code ||
+        questionCodeByInstanceId.get(
+          String(row.question_instance_id || '')
+        ) ||
+        null,
     }));
 
     return res.status(200).json({
       cycleId: cleanCycleId,
       questionInstances,
-      responses,
+      responses: responsesWithQuestionCode,
       informationUnits: informationUnitsWithQuestionCode,
-      additionalQuestions,
+      additionalQuestions: additionalQuestionsWithQuestionCode,
       evidences,
-      pendingItems
+      pendingItems: pendingItemsWithQuestionCode,
     });
-  } catch (error: any) {
-    console.error('[VIPAZ Backend] Erro fatal ao montar cycle-bundle:', error);
+  } catch (error) {
+    console.error('[cycle-bundle] Central read failed:', error);
+
     return res.status(502).json({
-      error: 'cycle_bundle_fetch_failed',
-      details: String(error?.message || '')
+      error: 'Failed to load central cycle bundle.',
+      detail:
+        error instanceof Error
+          ? error.message
+          : 'Unknown central persistence error.',
     });
   }
 }
