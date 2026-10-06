@@ -31,15 +31,18 @@ export default async function handler(req: Request, res: Response) {
       const orgs = await orgLookup.json();
       if (!orgs[0]) return res.status(404).json({ error: 'organization_not_found' });
 
-      const payload = {
-        legacy_id: body.legacyId,
-        organization_id: orgs[0].id,
-        dimension: body.dimension || 'D1',
-        methodology_version: body.methodologyVersion,
-        name: body.name,
-        cycle_type: body.cycleType || 'INITIAL_ASSESSMENT',
-        status: body.status || 'NAO_INICIADO'
-      };
+const payload = {
+  legacy_id: body.legacyId,
+  organization_id: orgs[0].id,
+  name: body.name,
+  methodology_code: 'VIPAZ-D1',
+  methodology_version: body.methodologyVersion || '1.0',
+  status: body.status === 'EM_ANDAMENTO' ? 'IN_PROGRESS' : 'NOT_STARTED',
+  metadata: {
+    dimension: body.dimension || 'D1',
+    cycle_type: body.cycleType || 'INITIAL_ASSESSMENT'
+  }
+};
       const r = await fetch(`${url}/rest/v1/governance_cycles?select=*`, {
         method: 'POST',
         headers: { ...buildSupabaseHeaders(key), Prefer: 'return=representation,resolution=merge-duplicates' },

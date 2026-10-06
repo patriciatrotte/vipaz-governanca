@@ -996,19 +996,29 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.warn('Erro ao atualizar organizacoes com novo ciclo:', e);
     }
 
-    fetch('/api/data/cycles', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        legacyId: newCycle.id,
-        organizationLegacyId: organizationId,
-        dimension: newCycle.dimension,
-        methodologyVersion: newCycle.methodologyVersion,
-        name: newCycle.name,
-        cycleType: newCycle.cycleType,
-        status: newCycle.status
-      })
-    }).catch(error => console.warn('Ciclo preservado localmente; sincronização central pendente.', error));
+fetch('/api/data/cycles', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    legacyId: newCycle.id,
+    organizationLegacyId: organizationId,
+    dimension: newCycle.dimension,
+    methodologyVersion: newCycle.methodologyVersion,
+    name: newCycle.name,
+    cycleType: newCycle.cycleType,
+    status: newCycle.status
+  })
+})
+  .then(async response => {
+    if (!response.ok) {
+      const details = await response.text();
+      throw new Error(`Falha ao confirmar ciclo na base central: ${details}`);
+    }
+    return response.json();
+  })
+  .catch(error => {
+    console.warn('Ciclo preservado localmente; sincronização central pendente.', error);
+  });
 
     // Inicializa estado limpo isolado para essa nova organização/ciclo
     const emptyState = getEmptyOrgState(organizationId, newCycleId);
