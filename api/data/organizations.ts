@@ -21,10 +21,8 @@ export default async function handler(req: Request, res: Response) {
       vertical: body.vertical,
       municipality: body.municipality,
       state: body.state,
-      is_demo: Boolean(body.isDemo),
-      main_interlocutor_name: body.mainInterlocutorName || null,
-      main_interlocutor_role: body.mainInterlocutorRole || null
-    };
+      is_demo: Boolean(body.isDemo)
+          };
     const r = await fetch(`${url}/rest/v1/organizations?select=*`, {
       method: 'POST',
       headers: { ...buildSupabaseHeaders(key), Prefer: 'return=representation,resolution=merge-duplicates' },
