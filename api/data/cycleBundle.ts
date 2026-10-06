@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { buildSupabaseHeaders } from '../../src/services/persistence/supabaseAdapters';
+import { buildSupabaseHeaders } from '../../src/services/persistence/supabaseAdapters.js';
 
 export default async function handler(req: Request, res: Response) {
   const url = process.env.SUPABASE_URL;
