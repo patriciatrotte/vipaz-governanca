@@ -294,11 +294,12 @@ describe('VIPAZ — Persistência Central Bloco 1', () => {
   // CENÁRIO 9: Maraú D1.2 — Reaparecimento EXATO dos 2 fatos estruturados
   // ==========================================
   it('Cenário 9: Maraú D1.2 reidrata exatamente os dois fatos persistidos no Supabase', () => {
-    // Dados reais persistidos no Supabase de Maraú:
-    const supabaseRowsMarauD1_2 = [
+    // Representa o schema físico real: information_units NÃO possui question_code.
+    // A API cycle-bundle deve enriquecer as linhas pela cadeia
+    // information_unit -> response -> question_instance -> question_code.
+    const physicalInformationUnits = [
       {
         id: 'marau-d1-2-u1',
-        question_code: 'D1.2',
         statement: '[VALIDACAO_ESTRUTURADA] Os caminhos necessários são conhecidos',
         validation_status: 'VALIDADO',
         cycle_id: '75f19c1a-5133-4beb-a3c5-d4b94ad090c9',
@@ -306,16 +307,33 @@ describe('VIPAZ — Persistência Central Bloco 1', () => {
       },
       {
         id: 'marau-d1-2-u2',
-        question_code: 'D1.2',
         statement: '[VALIDACAO_ESTRUTURADA] O encaminhamento é compreendido e tratado sem necessidade de insistência',
         validation_status: 'VALIDADO',
         cycle_id: '75f19c1a-5133-4beb-a3c5-d4b94ad090c9',
         response_id: 'resp-marau-d1-2'
       }
     ];
+    const responseRow = {
+      id: 'resp-marau-d1-2',
+      question_instance_id: 'qi-marau-d1-2'
+    };
+    const questionInstanceRow = {
+      id: 'qi-marau-d1-2',
+      question_code: 'D1.2'
+    };
 
-    // Adaptação:
-    const units = supabaseRowsMarauD1_2.map(mapInformationUnitRowToDomain);
+    const questionCodeByInstanceId = new Map([
+      [questionInstanceRow.id, questionInstanceRow.question_code]
+    ]);
+    const questionCodeByResponseId = new Map([
+      [responseRow.id, questionCodeByInstanceId.get(responseRow.question_instance_id)]
+    ]);
+    const apiInformationUnits = physicalInformationUnits.map(row => ({
+      ...row,
+      question_code: questionCodeByResponseId.get(row.response_id)
+    }));
+
+    const units = apiInformationUnits.map(mapInformationUnitRowToDomain);
     assert.equal(units.length, 2, 'Devem existir exatamente 2 unidades de informação para D1.2');
     assert.equal(units[0].doorId, 'D1.2');
     assert.equal(units[1].doorId, 'D1.2');
