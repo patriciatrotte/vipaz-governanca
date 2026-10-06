@@ -953,82 +953,123 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   // Iniciar primeiro ciclo D1 de uma organização
-  const startD1Cycle = (organizationId: string): EvaluationCycle => {
-    const org = organizations.find(o => o.id === organizationId);
-    const newCycleId = `cycle-d1-${organizationId.replace('org-camara-', '')}-${Date.now().toString(36)}`;
-    const now = new Date().toISOString();
+const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> => {
+  const org = organizations.find(
+    o => o.id === organizationId || o.legacyId === organizationId
+  );
 
-    const newCycle: EvaluationCycle = {
-      id: newCycleId,
-      organizationId,
-      dimension: 'D1',
-      methodologyVersion: METHODOLOGY_VERSION,
-      name: `Ciclo D1 Inicial ${new Date().getFullYear()}.${new Date().getMonth() < 6 ? '1' : '2'}`,
-      cycleType: 'INITIAL_ASSESSMENT',
-      status: 'NAO_INICIADO',
-      createdAt: now,
-      updatedAt: now
-    };
+  if (!org) {
+    throw new Error('Organização não encontrada para iniciar o ciclo D1.');
+  }
 
-    const updatedCycles = [...cycles, newCycle];
-    setCycles(updatedCycles);
-    try {
-      localStorage.setItem('PILOTO_CYCLES', JSON.stringify(updatedCycles));
-    } catch (e) {
-      console.warn('Erro ao salvar ciclos:', e);
-    }
+  const newCycleId =
+    `cycle-d1-${organizationId.replace('org-camara-', '')}-${Date.now().toString(36)}`;
 
-    const updatedOrgs = organizations.map(o => {
-      if (o.id === organizationId) {
-        return {
-          ...o,
-          cycleId: newCycleId,
-          activeCycleName: newCycle.name,
-          cycleIds: [...(o.cycleIds || []), newCycleId]
-        };
-      }
-      return o;
-    });
-    setOrganizations(updatedOrgs);
-    try {
-      localStorage.setItem('PILOTO_ORGANIZATIONS', JSON.stringify(updatedOrgs));
-    } catch (e) {
-      console.warn('Erro ao atualizar organizacoes com novo ciclo:', e);
-    }
+  const now = new Date().toISOString();
 
-fetch('/api/data/cycles', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    legacyId: newCycle.id,
-    organizationLegacyId: organizationId,
-    dimension: newCycle.dimension,
-    methodologyVersion: newCycle.methodologyVersion,
-    name: newCycle.name,
-    cycleType: newCycle.cycleType,
-    status: newCycle.status
-  })
-})
-  .then(async response => {
-    if (!response.ok) {
-      const details = await response.text();
-      throw new Error(`Falha ao confirmar ciclo na base central: ${details}`);
-    }
-    return response.json();
-  })
-  .catch(error => {
-    console.warn('Ciclo preservado localmente; sincronização central pendente.', error);
+  const newCycle: EvaluationCycle = {
+    id: newCycleId,
+    organizationId,
+    dimension: 'D1',
+    methodologyVersion: METHODOLOGY_VERSION,
+    name: `Ciclo D1 Inicial ${new Date().getFullYear()}.${new Date().getMonth() < 6 ? '1' : '2'}`,
+    cycleType: 'INITIAL_ASSESSMENT',
+    status: 'NAO_INICIADO',
+    createdAt: now,
+    updatedAt: now
+  };
+
+  // 1. Confirma primeiro o ciclo na base central.
+  const cycleResponse = await fetch('/api/data/cycles', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      legacyId: newCycle.id,
+      organizationLegacyId: organizationId,
+      dimension: newCycle.dimension,
+      methodologyVersion: newCycle.methodologyVersion,
+      name: newCycle.name,
+      cycleType: newCycle.cycleType,
+      status: newCycle.status
+    })
   });
 
-    // Inicializa estado limpo isolado para essa nova organização/ciclo
-    const emptyState = getEmptyOrgState(organizationId, newCycleId);
-    saveStateForOrg(organizationId, emptyState);
+  if (!cycleResponse.ok) {
+    const details = await cycleResponse.text();
+    throw new Error(
+      `Falha ao confirmar ciclo na base central: ${details}`
+    );
+  }
 
-    // Seleciona e navega para a organização recém-iniciada
-    selectOrganization(organizationId);
+  // 2. Com o ciclo confirmado, cria a sessão investigativa
+  //    e registra o interlocutor como participante.
+  const sessionLegacyId = `session-${newCycle.id}`;
+  const participantLegacyId = `interview-respondent-${organizationId}`;
 
-    return newCycle;
-  };
+  const sessionResponse = await fetch('/api/data/investigation-session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      cycleLegacyId: newCycle.id,
+      sessionLegacyId,
+      participantLegacyId,
+      facilitatorName: 'Dra. Helena Brandão',
+      interlocutorName: org.mainInterlocutorName,
+      interlocutorRole: org.mainInterlocutorRole
+    })
+  });
+
+  if (!sessionResponse.ok) {
+    const details = await sessionResponse.text();
+    throw new Error(
+      `Ciclo confirmado, mas houve falha ao criar a sessão investigativa: ${details}`
+    );
+  }
+
+  // 3. Somente depois das confirmações centrais,
+  //    incorpora o ciclo ao estado operacional local.
+  const updatedCycles = [...cycles, newCycle];
+  setCycles(updatedCycles);
+
+  try {
+    localStorage.setItem('PILOTO_CYCLES', JSON.stringify(updatedCycles));
+  } catch (e) {
+    console.warn('Erro ao salvar ciclos:', e);
+  }
+
+  const updatedOrgs = organizations.map(o => {
+    if (o.id === organizationId) {
+      return {
+        ...o,
+        cycleId: newCycleId,
+        activeCycleName: newCycle.name,
+        cycleIds: [...(o.cycleIds || []), newCycleId]
+      };
+    }
+    return o;
+  });
+
+  setOrganizations(updatedOrgs);
+
+  try {
+    localStorage.setItem(
+      'PILOTO_ORGANIZATIONS',
+      JSON.stringify(updatedOrgs)
+    );
+  } catch (e) {
+    console.warn('Erro ao atualizar organizacoes com novo ciclo:', e);
+  }
+
+  // 4. Inicializa o estado operacional da investigação.
+  const emptyState = getEmptyOrgState(organizationId, newCycleId);
+  saveStateForOrg(organizationId, emptyState);
+
+  // 5. Seleciona a organização somente após a cadeia central
+  //    ciclo -> sessão -> participante estar confirmada.
+  selectOrganization(organizationId);
+
+  return newCycle;
+};
 
   // Transição substantiva do ciclo: sai de NAO_INICIADO para EM_ANDAMENTO mediante o primeiro ato investigativo substantivo persistido
   const ensureCycleInProgress = () => {

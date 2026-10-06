@@ -83,12 +83,20 @@ export const OrganizationsHubView: React.FC = () => {
   };
 
   // Iniciar Ciclo D1 (Tela 3)
-  const handleConfirmStartCycle = () => {
-    if (!createdOrgTemp) return;
-    startD1Cycle(createdOrgTemp.id);
+const handleConfirmStartCycle = async () => {
+  if (!createdOrgTemp) return;
+
+  try {
+    await startD1Cycle(createdOrgTemp.id);
     setModalMode('NONE');
     setCreatedOrgTemp(null);
-  };
+  } catch (error) {
+    console.error('Falha ao iniciar ciclo D1:', error);
+    setFormError(
+      'Não foi possível confirmar o ciclo e a sessão de investigação na base central. Tente novamente.'
+    );
+  }
+};
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-12">
