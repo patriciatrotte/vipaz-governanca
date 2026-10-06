@@ -1,4 +1,4 @@
-import { MaturityLevel, CapacityStatus, UserRole } from '../types';
+import { MaturityLevel, CapacityStatus, UserRole, ActionStatus, VisibleAvancoStatus } from '../types';
 import { MATURITY_LEVELS_INFO } from '../data/methodologyConstants';
 
 /**
@@ -143,3 +143,21 @@ export function cleanPresentationText(text?: string | null): string {
     .replace(/Acervo Probatório/gi, 'Evidências Registradas')
     .replace(/Percorrimento Fático/gi, 'Diagnóstico');
 }
+
+/**
+ * Converte o status operacional técnico de uma ação/avanço (10 status de ActionStatus)
+ * para a experiência de apresentação simplificada de Minha Rota (3 status visíveis).
+ * Conforme Seção 5 da Especificação Minha Rota v0.1:
+ * - A iniciar
+ * - Em andamento
+ * - Concluído
+ * 
+ * Regra de separação: o status visível diz o que aconteceu com a entrega da ação;
+ * o AS IS diz o que sabemos sobre a capacidade institucional consolidada.
+ */
+export function toVisibleAvancoStatus(status?: ActionStatus | null): VisibleAvancoStatus {
+  if (!status || status === 'NAO_INICIADA') return 'A_INICIAR';
+  if (status === 'RESULTADO_VALIDADO') return 'CONCLUIDO';
+  return 'EM_ANDAMENTO';
+}
+

@@ -32,10 +32,17 @@ import {
   CapacityId,
   CapacityStatus,
   MaturityLevel,
-  InfoScope
+  InfoScope,
+  JourneyEventRecord,
+  InstitutionalAsIsRecord
 } from '../types';
 
 import { isViewAllowedForRole, getDefaultViewForRole } from '../utils/rolePermissions';
+import {
+  adaptCycleBundleToDomain,
+  mapOrganizationRowToDomain,
+  mapCycleRowToDomain
+} from '../services/persistence/supabaseAdapters';
 
 import {
   SEED_ORGANIZATION,
@@ -68,6 +75,8 @@ import { DOORS_DEFINITIONS, METHODOLOGY_VERSION } from '../data/methodologyConst
 export type AppView = 
   | 'CENTRAL'
   | 'HOME'
+  | 'DIAGNOSTIC'
+  | 'KNOWLEDGE'
   | 'INTERVIEW'
   | 'FACILITATOR_PANEL'
   | 'DISTRIBUTED'
@@ -104,6 +113,8 @@ export interface PilotOrgData {
   diaryEntries: MethodologicalDiaryEntry[];
   telemetry: MethodologicalTelemetry;
   activeDoorId: DoorId;
+  journeyEvents?: JourneyEventRecord[];
+  asIsHistory?: InstitutionalAsIsRecord[];
 }
 
 interface PilotContextType {
@@ -244,6 +255,12 @@ interface PilotContextType {
   addAction: (action: Omit<EvolutionAction, 'id'>) => void;
   updateActionStatus: (actionId: string, status: EvolutionAction['status'], reason?: string) => void;
 
+  // Minha Rota — Eventos do Percurso e Histórico de AS IS (v0.1)
+  journeyEvents: JourneyEventRecord[];
+  addJourneyEvent: (event: Omit<JourneyEventRecord, 'id' | 'occurredAt'>) => void;
+  asIsHistory: InstitutionalAsIsRecord[];
+  recordAsIsSnapshot: (asIs: Omit<InstitutionalAsIsRecord, 'asIsId' | 'establishedAt' | 'isLockedImmutable'>) => void;
+
   // Indicador Experimental D1
   experimentalIndicator: ExperimentalIndicatorFeedback;
   updateIndicatorFeedback: (data: Partial<ExperimentalIndicatorFeedback>) => void;
@@ -260,6 +277,10 @@ interface PilotContextType {
 
   // Testes Obrigatórios
   runMandatoryTests: () => Record<string, { passed: boolean; message: string }>;
+
+  // Persistência Central (Supabase)
+  isLoadingCentral: boolean;
+  isCentralAvailable: boolean;
 }
 
 const PilotContext = createContext<PilotContextType | null>(null);
@@ -364,7 +385,9 @@ const getEmptyOrgState = (orgId: string, cycleId: string): PilotOrgData => ({
     sufficiencyStatus: 'APROFUNDAMENTO_PENDENTE',
     cycleTimeMinutesApprox: 0
   },
-  activeDoorId: 'D1.1'
+  activeDoorId: 'D1.1',
+  journeyEvents: [],
+  asIsHistory: []
 });
 
 const loadStateForOrg = (orgId: string, cycleId?: string): PilotOrgData => {
@@ -393,7 +416,9 @@ const loadStateForOrg = (orgId: string, cycleId?: string): PilotOrgData => {
     experimentalIndicator: SEED_EXPERIMENTAL_INDICATOR,
     diaryEntries: SEED_DIARY_ENTRIES,
     telemetry: SEED_TELEMETRY,
-    activeDoorId: 'D1.1'
+    activeDoorId: 'D1.1',
+    journeyEvents: [],
+    asIsHistory: []
   };
 
   if (!savedDoors) {
@@ -438,7 +463,9 @@ const loadStateForOrg = (orgId: string, cycleId?: string): PilotOrgData => {
     experimentalIndicator: safeParse('indicator', fallback.experimentalIndicator),
     diaryEntries: safeParse('diary', fallback.diaryEntries),
     telemetry: safeParse('telemetry', fallback.telemetry),
-    activeDoorId: safeParse('activeDoorId', fallback.activeDoorId)
+    activeDoorId: safeParse('activeDoorId', fallback.activeDoorId),
+    journeyEvents: safeParse('journeyevents', fallback.journeyEvents || []),
+    asIsHistory: safeParse('asishistory', fallback.asIsHistory || [])
   };
 };
 
@@ -466,6 +493,8 @@ const saveStateForOrg = (orgId: string, data: PilotOrgData) => {
     localStorage.setItem(`${prefix}_diary`, JSON.stringify(data.diaryEntries));
     localStorage.setItem(`${prefix}_telemetry`, JSON.stringify(data.telemetry));
     localStorage.setItem(`${prefix}_activeDoorId`, JSON.stringify(data.activeDoorId));
+    if (data.journeyEvents) localStorage.setItem(`${prefix}_journeyevents`, JSON.stringify(data.journeyEvents));
+    if (data.asIsHistory) localStorage.setItem(`${prefix}_asishistory`, JSON.stringify(data.asIsHistory));
     localStorage.setItem(`${prefix}_lastActivity`, new Date().toISOString());
   } catch (e) {
     console.warn('LocalStorage save warning:', e);
@@ -503,6 +532,8 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Estado de Organização Ativa e Visualização Inicial (CENTRAL)
   const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
   const [currentCycleId, setCurrentCycleId] = useState<string | null>(null);
+  const [isLoadingCentral, setIsLoadingCentral] = useState<boolean>(false);
+  const [isCentralAvailable, setIsCentralAvailable] = useState<boolean>(false);
   const [currentView, setCurrentViewState] = useState<AppView>('CENTRAL');
   const [activeDoorId, setActiveDoorId] = useState<DoorId>('D1.1');
   const [activeResponseId, setActiveResponseId] = useState<string | null>(null);
@@ -551,6 +582,8 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [experimentalIndicator, setExperimentalIndicator] = useState<ExperimentalIndicatorFeedback>(SEED_EXPERIMENTAL_INDICATOR);
   const [diaryEntries, setDiaryEntries] = useState<MethodologicalDiaryEntry[]>(SEED_DIARY_ENTRIES);
   const [telemetry, setTelemetry] = useState<MethodologicalTelemetry>(SEED_TELEMETRY);
+  const [journeyEvents, setJourneyEvents] = useState<JourneyEventRecord[]>([]);
+  const [asIsHistory, setAsIsHistory] = useState<InstitutionalAsIsRecord[]>([]);
 
   const currentOrg = currentOrgId ? organizations.find(o => o.id === currentOrgId) || null : null;
   const currentCycle = currentCycleId ? cycles.find(c => c.id === currentCycleId) || null : null;
@@ -576,7 +609,9 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     experimentalIndicator,
     diaryEntries,
     telemetry,
-    activeDoorId
+    activeDoorId,
+    journeyEvents,
+    asIsHistory
   });
 
   const applyStateBundle = (bundle: PilotOrgData) => {
@@ -601,14 +636,18 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setDiaryEntries(bundle.diaryEntries);
     setTelemetry(bundle.telemetry);
     setActiveDoorId(bundle.activeDoorId || 'D1.1');
+    setJourneyEvents(bundle.journeyEvents || []);
+    setAsIsHistory(bundle.asIsHistory || []);
   };
 
   // Salva no localStorage quando o estado metodológico de uma organização ativa é modificado
+  // Salvaguarda obrigatória: NUNCA salvar enquanto a carga central estiver ativa (impede race condition)
   useEffect(() => {
-    if (!currentOrgId) return;
+    if (!currentOrgId || isLoadingCentral) return;
     saveStateForOrg(currentOrgId, getCurrentStateBundle());
   }, [
     currentOrgId,
+    isLoadingCentral,
     doorStatuses,
     questionInstances,
     originalResponses,
@@ -629,10 +668,12 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     experimentalIndicator,
     diaryEntries,
     telemetry,
-    activeDoorId
+    activeDoorId,
+    journeyEvents,
+    asIsHistory
   ]);
 
-  // Sincronização central: Supabase é a fonte compartilhada; localStorage permanece como contingência.
+  // Sincronização central de catálogo: Supabase é a fonte autoritativa; localStorage como contingência.
   useEffect(() => {
     let cancelled = false;
 
@@ -642,58 +683,48 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           fetch('/api/data/organizations'),
           fetch('/api/data/cycles')
         ]);
-        if (!orgResponse.ok || !cycleResponse.ok) return;
+        if (!orgResponse.ok || !cycleResponse.ok) {
+          if (orgResponse.status === 503 || cycleResponse.status === 503) {
+            console.warn('[VIPAZ Persistência] Base central não configurada (HTTP 503). Mantendo catálogo em contingência local.');
+          } else {
+            console.warn(`[VIPAZ Persistência] Catálogo central indisponível (HTTP ${orgResponse.status}/${cycleResponse.status}). Mantendo contingência local.`);
+          }
+          return;
+        }
 
         const remoteOrgs = await orgResponse.json();
         const remoteCycles = await cycleResponse.json();
         if (cancelled) return;
 
         setOrganizations(current => {
-          const remoteMapped: Organization[] = remoteOrgs.map((row: any) => ({
-            id: row.legacy_id,
-            name: row.name,
-            type: row.organization_type || 'CAMARA_MUNICIPAL',
-            vertical: row.vertical,
-            municipality: row.municipality || 'Município não informado',
-            state: row.state || 'UF',
-            cycleId: '',
-            activeCycleName: '',
-            methodologyVersion: METHODOLOGY_VERSION,
-            createdAt: row.created_at,
-            isDemo: Boolean(row.is_demo),
-            cycleIds: [],
-            mainInterlocutorName: row.main_interlocutor_name || undefined,
-            mainInterlocutorRole: row.main_interlocutor_role || undefined,
-            mainInterlocutorEmail: row.main_interlocutor_email || undefined
-          }));
+          const remoteMapped: Organization[] = (Array.isArray(remoteOrgs) ? remoteOrgs : []).map(mapOrganizationRowToDomain);
           const byId = new Map(current.map(org => [org.id, org]));
-          remoteMapped.forEach(org => byId.set(org.id, { ...(byId.get(org.id) || {} as Organization), ...org }));
-          const merged = Array.from(byId.values());
+          remoteMapped.forEach(org => {
+            byId.set(org.id, { ...(byId.get(org.id) || {} as Organization), ...org });
+            if (org.legacyId) {
+              byId.set(org.legacyId, { ...(byId.get(org.legacyId) || {} as Organization), ...org });
+            }
+          });
+          const merged = Array.from(new Set(byId.values()));
           localStorage.setItem('PILOTO_ORGANIZATIONS', JSON.stringify(merged));
           return merged;
         });
 
         setCycles(current => {
-          const remoteMapped: EvaluationCycle[] = remoteCycles.map((row: any) => ({
-            id: row.legacy_id,
-            organizationId: row.organizations?.legacy_id,
-            dimension: row.dimension || 'D1',
-            methodologyVersion: row.methodology_version,
-            name: row.name,
-            cycleType: row.cycle_type || 'INITIAL_ASSESSMENT',
-            status: row.status || 'NAO_INICIADO',
-            createdAt: row.created_at,
-            updatedAt: row.updated_at || row.created_at,
-            interviewCompletedAt: row.interview_completed_at || undefined
-          }));
+          const remoteMapped: EvaluationCycle[] = (Array.isArray(remoteCycles) ? remoteCycles : []).map(mapCycleRowToDomain);
           const byId = new Map(current.map(cycle => [cycle.id, cycle]));
-          remoteMapped.forEach(cycle => byId.set(cycle.id, { ...(byId.get(cycle.id) || {} as EvaluationCycle), ...cycle }));
-          const merged = Array.from(byId.values());
+          remoteMapped.forEach(cycle => {
+            byId.set(cycle.id, { ...(byId.get(cycle.id) || {} as EvaluationCycle), ...cycle });
+            if (cycle.legacyId) {
+              byId.set(cycle.legacyId, { ...(byId.get(cycle.legacyId) || {} as EvaluationCycle), ...cycle });
+            }
+          });
+          const merged = Array.from(new Set(byId.values()));
           localStorage.setItem('PILOTO_CYCLES', JSON.stringify(merged));
           return merged;
         });
       } catch (error) {
-        console.warn('Base central indisponível; mantendo contingência local.', error);
+        console.warn('[VIPAZ Persistência] Falha ao sincronizar catálogo central; mantendo contingência local.', error);
       }
     };
 
@@ -701,20 +732,92 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => { cancelled = true; };
   }, []);
 
+  // Reidratação da sessão investigativa central (Bloco 1)
+  const loadCentralInvestigation = async (cycleId: string, orgId: string) => {
+    setIsLoadingCentral(true);
+    try {
+      const res = await fetch(`/api/data/cycle-bundle?cycleId=${encodeURIComponent(cycleId)}`);
+      const contentType = res.headers.get('content-type') || '';
+      const isJson = contentType.includes('application/json');
+
+      if (!isJson) {
+        console.error(
+          `[VIPAZ Persistência] Resposta não-JSON recebida de /api/data/cycle-bundle (Content-Type: "${contentType || 'não informado'}", HTTP ${res.status}). ` +
+          `Possível interceptação por fallback estático/SPA da hospedagem. Acionando contingência de cache local para ciclo ${cycleId}.`
+        );
+      } else if (res.ok) {
+        const rawBundle = await res.json();
+        const adapted = adaptCycleBundleToDomain(rawBundle);
+
+        // Se houver qualquer registro central existente para este ciclo
+        const hasCentralRecords = 
+          adapted.informationUnits.length > 0 ||
+          adapted.originalResponses.length > 0 ||
+          adapted.questionInstances.length > 0 ||
+          adapted.evidences.length > 0 ||
+          adapted.pendingItems.length > 0 ||
+          adapted.probings.length > 0 ||
+          adapted.pedagogicalInterventions.length > 0 ||
+          adapted.distributedRequests.length > 0;
+
+        if (hasCentralRecords) {
+          // Aplica o estado adaptado com autoridade central primária
+          setDoorStatuses(adapted.doorStatuses);
+          setQuestionInstances(adapted.questionInstances);
+          setOriginalResponses(adapted.originalResponses);
+          setInformationUnits(adapted.informationUnits);
+          setProbings(adapted.probings);
+          setPedagogicalInterventions(adapted.pedagogicalInterventions);
+          setDistributedRequests(adapted.distributedRequests);
+          setEvidences(adapted.evidences);
+          setPendingItems(adapted.pendingItems);
+
+          // Atualiza cache local de contingência espelhando o estado central autoritativo
+          saveStateForOrg(orgId, {
+            ...getCurrentStateBundle(),
+            ...adapted
+          });
+
+          setIsCentralAvailable(true);
+          console.info(`[VIPAZ Persistência] Ciclo ${cycleId} reidratado com autoridade central (${adapted.informationUnits.length} fatos da escuta, ${adapted.originalResponses.length} respostas).`);
+          setIsLoadingCentral(false);
+          return;
+        }
+      } else {
+        if (res.status === 503) {
+          console.warn(`[VIPAZ Persistência] Base central não configurada (HTTP 503). Acionando contingência de cache local para ciclo ${cycleId}.`);
+        } else {
+          console.warn(`[VIPAZ Persistência] Base central retornou HTTP ${res.status}. Acionando contingência de cache local para ciclo ${cycleId}.`);
+        }
+      }
+    } catch (err) {
+      console.warn(`[VIPAZ Persistência] Falha de conexão com a base central. Acionando contingência de cache local para ciclo ${cycleId}:`, err);
+    }
+
+    // Contingência observável: carrega do cache local do navegador
+    setIsCentralAvailable(false);
+    const localBundle = loadStateForOrg(orgId, cycleId);
+    applyStateBundle(localBundle);
+    setIsLoadingCentral(false);
+  };
+
   // Transição de contexto: Selecionar Organização
   const selectOrganization = (orgId: string) => {
     if (currentOrgId && currentOrgId !== orgId) {
       saveStateForOrg(currentOrgId, getCurrentStateBundle());
     }
 
-    const org = organizations.find(o => o.id === orgId);
-    const orgCycles = cycles.filter(c => c.organizationId === orgId);
+    const org = organizations.find(o => o.id === orgId || (o.legacyId && o.legacyId === orgId));
+    const effectiveOrgId = org?.id || orgId;
+
+    const orgCycles = cycles.filter(c => 
+      c.organizationId === effectiveOrgId || 
+      (org?.legacyId && c.organizationId === org.legacyId) ||
+      (c.legacyId && c.legacyId === orgId)
+    );
     const activeCycle = orgCycles.find(c => c.status !== 'ARQUIVADO') || orgCycles[0];
-    const bundle = loadStateForOrg(orgId, activeCycle?.id);
 
-    applyStateBundle(bundle);
-
-    if (orgId === 'org-camara-vila-esperanca-01') {
+    if (effectiveOrgId === 'org-camara-vila-esperanca-01') {
       setAvailableUsers(SEED_USERS);
       setCurrentUser(SEED_USERS[0]);
     } else if (org) {
@@ -748,9 +851,16 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setCurrentUser(orgUsers[0]);
     }
 
-    setCurrentOrgId(orgId);
+    setCurrentOrgId(effectiveOrgId);
     setCurrentCycleId(activeCycle?.id || null);
     setCurrentView('HOME');
+
+    if (activeCycle?.id) {
+      loadCentralInvestigation(activeCycle.id, effectiveOrgId);
+    } else {
+      const localBundle = loadStateForOrg(effectiveOrgId);
+      applyStateBundle(localBundle);
+    }
   };
 
   // Transição de contexto: Voltar à Central
@@ -910,6 +1020,27 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return newCycle;
   };
 
+  // Transição substantiva do ciclo: sai de NAO_INICIADO para EM_ANDAMENTO mediante o primeiro ato investigativo substantivo persistido
+  const ensureCycleInProgress = () => {
+    if (!currentCycleId) return;
+    setCycles(prevCycles => {
+      const target = prevCycles.find(c => c.id === currentCycleId);
+      if (!target || target.status !== 'NAO_INICIADO') return prevCycles;
+      const now = new Date().toISOString();
+      const updated = prevCycles.map(c => 
+        c.id === currentCycleId 
+          ? { ...c, status: 'EM_ANDAMENTO' as CycleStatus, updatedAt: now }
+          : c
+      );
+      try {
+        localStorage.setItem('PILOTO_CYCLES', JSON.stringify(updated));
+      } catch (e) {
+        console.warn('Erro ao atualizar status do ciclo para EM_ANDAMENTO:', e);
+      }
+      return updated;
+    });
+  };
+
   // Conclusão formal da etapa de entrevista fática presencial
   const completeInterview = () => {
     const now = new Date().toISOString();
@@ -976,6 +1107,9 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const updateDoorStatus = (doorId: DoorId, status: DoorStatus) => {
     setDoorStatuses(prev => ({ ...prev, [doorId]: status }));
+    if (status !== 'NAO_INICIADA') {
+      ensureCycleInProgress();
+    }
   };
 
   const addOriginalResponse = (doorId: DoorId, text: string, respondent?: UserProfile) => {
@@ -1007,6 +1141,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     setQuestionInstances(prev => [...prev, newQuestionInstance]);
     setOriginalResponses(prev => [...prev, newResponse]);
+    ensureCycleInProgress();
 
     // Atualiza estado da porta para EM_DESCOBERTA se estava NÃO_INICIADA
     if (doorStatuses[doorId] === 'NAO_INICIADA') {
@@ -1032,6 +1167,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     setOriginalResponses(prevResponses => [...prevResponses, newResponse]);
+    ensureCycleInProgress();
   };
 
   const addComplementResponse = (previousResponseId: string, newText: string) => {
@@ -1070,6 +1206,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       timestamp: new Date().toISOString()
     };
     setDontKnowRecords(prev => [...prev, newRecord]);
+    ensureCycleInProgress();
 
     // Telemetria
     setTelemetry(prev => ({
@@ -1089,6 +1226,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       timestamp: unit.timestamp || new Date().toISOString()
     };
     setInformationUnits(prev => [...prev, newUnit]);
+    ensureCycleInProgress();
   };
 
   const updateUnitValidation = (unitId: string, status: InformationUnit['validationStatus']) => {
@@ -1104,6 +1242,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       timestamp: new Date().toISOString()
     };
     setProbings(prev => [...prev, newProbing]);
+    ensureCycleInProgress();
     setTelemetry(prev => ({
       ...prev,
       totalProbes: prev.totalProbes + 1,
@@ -1122,6 +1261,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       timestamp: new Date().toISOString()
     };
     setPedagogicalInterventions(prev => [...prev, newIntervention]);
+    ensureCycleInProgress();
     setTelemetry(prev => ({
       ...prev,
       pedagogicalInterventionsCount: prev.pedagogicalInterventionsCount + 1
@@ -1148,6 +1288,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       createdAt: new Date().toISOString()
     };
     setDistributedRequests(prev => [...prev, newReq]);
+    ensureCycleInProgress();
     setTelemetry(prev => ({
       ...prev,
       distributedRequestsCount: prev.distributedRequestsCount + 1
@@ -1211,6 +1352,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       id: `ev-${Date.now()}`
     };
     setEvidences(prev => [...prev, newEvidence]);
+    ensureCycleInProgress();
   };
 
   const verifyEvidence = (
@@ -1396,7 +1538,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       limitations: integration.limitations,
       validatorName: integration.humanValidation.facilitatorName,
       validatedAt: new Date().toISOString(),
-      scheduledNextReview: new Date(Date.now() + 180 * 24 * 3600 * 1000).toISOString().split('T')[0],
+      scheduledNextReview: snapshot?.scheduledNextReview || '',
       isLockedImmutable: true
     };
 
@@ -1420,19 +1562,74 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setActions(prev => [...prev, newAction]);
   };
 
+  const generateSecureId = (prefix: string): string => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return `${prefix}_${crypto.randomUUID()}`;
+    }
+    const bytes = new Uint8Array(16);
+    if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+      crypto.getRandomValues(bytes);
+    } else {
+      for (let i = 0; i < 16; i++) bytes[i] = Math.floor(Math.random() * 256);
+    }
+    const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    return `${prefix}_${hex}`;
+  };
+
+  const addJourneyEvent = (event: Omit<JourneyEventRecord, 'id' | 'occurredAt'>) => {
+    const newEvent: JourneyEventRecord = {
+      ...event,
+      id: generateSecureId('evt'),
+      occurredAt: new Date().toISOString()
+    };
+    setJourneyEvents(prev => [...prev, newEvent]);
+  };
+
+  const recordAsIsSnapshot = (asIs: Omit<InstitutionalAsIsRecord, 'asIsId' | 'establishedAt' | 'isLockedImmutable'>) => {
+    const newAsIs: InstitutionalAsIsRecord = {
+      ...asIs,
+      asIsId: generateSecureId('asis'),
+      establishedAt: new Date().toISOString(),
+      isLockedImmutable: true
+    };
+    setAsIsHistory(prev => [...prev, newAsIs]);
+  };
+
   const updateActionStatus = (actionId: string, status: EvolutionAction['status'], reason?: string) => {
     setActions(prev =>
-      prev.map(a =>
-        a.id === actionId
-          ? {
-              ...a,
-              status,
-              statusChangeReason: reason || a.statusChangeReason,
-              lastFollowUpDate: new Date().toISOString().split('T')[0]
-            }
-          : a
-      )
+      prev.map(a => {
+        if (a.id !== actionId) return a;
+
+        const isConcluded = status === 'RESULTADO_VALIDADO';
+        const updatedConditions = {
+          ...(a.conditions || {}),
+          // Sinaliza apenas que há entrega disponível para oportuna reavaliação metodológica,
+          // SEM alterar maturidade ou emitir novo AS IS automaticamente.
+          readyForMethodologicalReevaluation: isConcluded ? true : a.conditions?.readyForMethodologicalReevaluation
+        };
+
+        return {
+          ...a,
+          status,
+          statusChangeReason: reason || a.statusChangeReason,
+          lastFollowUpDate: new Date().toISOString().split('T')[0],
+          conditions: updatedConditions
+        };
+      })
     );
+
+    // Registro auditável no log leve de eventos do percurso
+    if (currentOrgId) {
+      const targetAction = actions.find(a => a.id === actionId);
+      addJourneyEvent({
+        organizationId: currentOrgId,
+        actionId,
+        eventType: status === 'RESULTADO_VALIDADO' ? 'AVANCO_CONCLUIDO' : 'SOLUCAO_ADAPTADA',
+        actorUserId: currentUser.id,
+        actorRole: currentUser.role,
+        summary: `Status do avanço "${targetAction?.actionTitle || actionId}" atualizado para ${status}.`
+      });
+    }
   };
 
   const updateIndicatorFeedback = (data: Partial<ExperimentalIndicatorFeedback>) => {
@@ -1476,6 +1673,8 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setExperimentalIndicator(SEED_EXPERIMENTAL_INDICATOR);
       setDiaryEntries(SEED_DIARY_ENTRIES);
       setTelemetry(SEED_TELEMETRY);
+      setJourneyEvents([]);
+      setAsIsHistory([]);
       alert('Simulação do Piloto D1 v1.0 (Vila Esperança) resetada com sucesso para o cenário padrão de testes.');
     } else {
       const empty = getEmptyOrgState(currentOrgId, currentCycleId || 'default');
@@ -1752,6 +1951,10 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         actions,
         addAction,
         updateActionStatus,
+        journeyEvents,
+        addJourneyEvent,
+        asIsHistory,
+        recordAsIsSnapshot,
         experimentalIndicator,
         updateIndicatorFeedback,
         diaryEntries,
@@ -1760,7 +1963,9 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         resetToSimulationSeed,
         exportStructuredBackup,
         importStructuredBackup,
-        runMandatoryTests
+        runMandatoryTests,
+        isLoadingCentral,
+        isCentralAvailable
       }}
     >
       {children}

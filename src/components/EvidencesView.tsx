@@ -19,10 +19,13 @@ export const EvidencesView: React.FC = () => {
   const { 
     evidences, 
     evidenceLinks, 
+    pendingItems,
     addEvidence, 
     verifyEvidence, 
     currentUser 
   } = usePilot();
+
+  const blockingCount = pendingItems.filter(p => p.impact === 'BLOQUEANTE' && p.status !== 'RESOLVIDA').length;
 
   const [selectedEvidence, setSelectedEvidence] = useState<EvidenceRecord | null>(evidences[0] || null);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -97,53 +100,66 @@ export const EvidencesView: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <FileText className="w-5 h-5 text-purple-400" />
-            <h2 className="text-lg font-bold">Gestão Metodológica de Evidências</h2>
+            <h2 className="text-lg font-bold">Evidências</h2>
           </div>
-          <p className="text-xs text-slate-300 mt-1 max-w-2xl">
-            Regra Fundamental do Piloto D1: <strong>Evidência verificada ≠ Evidência suficiente para toda conclusão</strong>. 
-            A verificação atesta que o artefato existe; a suficiência avalia estritamente até onde aquele artefato comprova determinada capacidade ou se possui limitações intrínsecas.
+          <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
+            Registre onde estão as informações e documentos que ajudam a demonstrar as práticas da instituição. 
+            <span className="text-purple-300 ml-1">Referenciar nas fontes de origem sempre que possível; armazenar somente quando estritamente necessário.</span>
           </p>
         </div>
 
         <button
           onClick={() => setIsAdding(true)}
-          className="bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white text-xs font-semibold px-4 py-2.5 rounded-lg transition-colors flex items-center gap-1.5 self-start md:self-auto shrink-0 shadow-xs"
+          className="bg-purple-600 hover:bg-purple-500 active:bg-purple-700 text-white text-xs font-semibold px-4 py-2.5 rounded-lg transition-colors flex items-center gap-1.5 self-start md:self-auto shrink-0 shadow-xs cursor-pointer"
         >
           <Plus className="w-4 h-4 text-purple-200" />
           <span>Cadastrar Evidência</span>
         </button>
       </div>
 
-      {/* Regra de Ouro da Portaria / Designação Formal */}
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3.5 text-xs text-amber-900 flex items-start gap-2.5">
-        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-        <div>
-          <strong>Exemplo Metodológico Central:</strong> Uma <em>Portaria de Designação de Encarregado</em> comprova com suficiência a designação formal (Capacidade C1). 
-          Contudo, a mesma portaria é <strong>insuficiente</strong> para comprovar condições reais de atuação, tempo dedicado, canal ativo com a Mesa ou orçamento (Capacidades C2 e C5). 
-          Cada evidência deve ter seu escopo de suficiência demarcado expressamente.
+      {/* Orientação Metodológica Contextual (Recolhível para não ocupar espaço operacional fixo) */}
+      <details className="group bg-amber-50/70 border border-amber-200 rounded-lg p-3 text-xs text-amber-900 transition-all">
+        <summary className="font-semibold cursor-pointer flex items-center justify-between text-amber-950 select-none">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>Orientação: Suficiência da Evidência e Relação com Capacidades</span>
+          </div>
+          <span className="text-[11px] text-amber-700 underline group-open:hidden">Expandir exemplo</span>
+        </summary>
+        <div className="mt-2.5 pt-2 border-t border-amber-200/80 leading-relaxed text-amber-900 font-sans">
+          <strong>Princípio de Suficiência:</strong> Uma <em>Portaria de Designação de Encarregado</em> comprova com suficiência a designação formal (Capacidade C1). 
+          Contudo, a mesma portaria é <strong>insuficiente</strong> para comprovar condições reais de atuação, tempo dedicado ou orçamento (Capacidades C2 e C5). 
+          Cada evidência possui escopo de suficiência próprio avaliado pelo Facilitador via <strong>EvidenceLink</strong>.
         </div>
-      </div>
+      </details>
 
       {/* Tabela de Evidências */}
       <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-800">
-            Evidências Documentais e Sistêmicas ({evidences.length})
-          </h3>
-          <span className="text-xs text-slate-400">
-            Regra de IA: Dados confidenciais nunca são processados por LLMs
-          </span>
+        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-bold text-slate-800">
+              Evidências &amp; Referências Probatórias
+            </h3>
+            <span className="text-xs font-mono font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+              {evidences.length} {evidences.length === 1 ? 'registrada' : 'registradas'}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-slate-500">
+            <span>Bloqueios ativos: <strong className="text-slate-800">{blockingCount}</strong></span>
+            <span>•</span>
+            <span className="text-slate-400">Proteção de dados: artefatos confidenciais restritos a humanos</span>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 uppercase font-semibold text-[10px] tracking-wider">
               <tr>
-                <th className="py-3 px-4">Evidência</th>
-                <th className="py-3 px-3">Tipo</th>
-                <th className="py-3 px-3">Capacidades</th>
-                <th className="py-3 px-3">Status</th>
-                <th className="py-3 px-3">Suficiência & Limites</th>
+                <th className="py-3 px-4">Evidência / Referência</th>
+                <th className="py-3 px-3">Onde Está</th>
+                <th className="py-3 px-3">Relacionada A</th>
+                <th className="py-3 px-3">Situação</th>
+                <th className="py-3 px-3">Observação / Limites</th>
                 <th className="py-3 px-4 text-right">Ação</th>
               </tr>
             </thead>

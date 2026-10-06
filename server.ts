@@ -26,6 +26,12 @@ function getGeminiClient(): GoogleGenAI | null {
   return geminiClient;
 }
 
+// Import dos handlers centrais de persistência
+import organizationsHandler from './api/data/organizations';
+import cyclesHandler from './api/data/cycles';
+import cycleBundleHandler from './api/data/cycleBundle';
+import dbHealthHandler from './api/db/health';
+
 // Health check
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({
@@ -35,36 +41,14 @@ app.get('/api/health', (req: Request, res: Response) => {
   });
 });
 
-// Supabase server-side connectivity check.
-// The privileged key stays on the server and is never sent to the browser.
-app.get('/api/db/health', async (_req: Request, res: Response) => {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
+// Supabase server-side connectivity check
+app.all('/api/db/health', (req: Request, res: Response) => dbHealthHandler(req, res));
 
-  if (!supabaseUrl || !supabaseSecretKey) {
-    return res.status(503).json({ status: 'unavailable', database: 'not_configured', configured: false });
-  }
-
-  try {
-    const response = await fetch(`${supabaseUrl}/rest/v1/organizations?select=id&limit=1`, {
-      headers: {
-        apikey: supabaseSecretKey,
-        Authorization: `Bearer ${supabaseSecretKey}`
-      }
-    });
-
-    if (!response.ok) {
-      const details = await response.text();
-      console.error('Supabase health check failed:', response.status, details);
-      return res.status(502).json({ status: 'error', database: 'unreachable', configured: true });
-    }
-
-    return res.json({ status: 'ok', database: 'connected', configured: true });
-  } catch (error) {
-    console.error('Supabase health check error:', error);
-    return res.status(502).json({ status: 'error', database: 'unreachable', configured: true });
-  }
-});
+// Endpoints de persistência central (Supabase)
+app.all('/api/data/organizations', (req: Request, res: Response) => organizationsHandler(req, res));
+app.all('/api/data/cycles', (req: Request, res: Response) => cyclesHandler(req, res));
+app.all('/api/data/cycle-bundle', (req: Request, res: Response) => cycleBundleHandler(req, res));
+app.all('/api/data/cycleBundle', (req: Request, res: Response) => cycleBundleHandler(req, res));
 
 // Endpoint: AI Probing Suggestion (Neutral, non-leading)
 app.post('/api/ai/probe', async (req: Request, res: Response) => {
@@ -310,6 +294,11 @@ Retorne JSON:
     console.error('Error in /api/ai/suggest-integration:', error);
     return res.status(500).json({ error: 'Erro ao gerar integração' });
   }
+});
+
+// Salvaguarda: Qualquer rota /api/* não tratada deve responder 404 JSON, NUNCA cair no middleware do Vite
+app.all('/api/*', (req: Request, res: Response) => {
+  res.status(404).json({ error: 'api_route_not_found', path: req.path });
 });
 
 // Vite middleware in dev, static files in production

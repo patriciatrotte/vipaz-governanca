@@ -1,18 +1,13 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { Request, Response } from 'express';
+import { buildSupabaseHeaders } from '../../src/services/persistence/supabaseAdapters';
 
-const headers = (key: string) => ({
-  apikey: key,
-  Authorization: `Bearer ${key}`,
-  'Content-Type': 'application/json'
-});
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: Request, res: Response) {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) return res.status(503).json({ error: 'database_not_configured' });
 
   if (req.method === 'GET') {
-    const r = await fetch(`${url}/rest/v1/organizations?select=*&order=created_at.asc`, { headers: headers(key) });
+    const r = await fetch(`${url}/rest/v1/organizations?select=*&order=created_at.asc`, { headers: buildSupabaseHeaders(key) });
     if (!r.ok) return res.status(502).json({ error: 'organizations_read_failed', details: await r.text() });
     return res.status(200).json(await r.json());
   }
@@ -32,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
     const r = await fetch(`${url}/rest/v1/organizations?select=*`, {
       method: 'POST',
-      headers: { ...headers(key), Prefer: 'return=representation,resolution=merge-duplicates' },
+      headers: { ...buildSupabaseHeaders(key), Prefer: 'return=representation,resolution=merge-duplicates' },
       body: JSON.stringify(payload)
     });
     if (!r.ok) {

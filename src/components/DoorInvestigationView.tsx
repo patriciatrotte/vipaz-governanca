@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { usePilot } from '../context/PilotContext';
 import { DOORS_DEFINITIONS, PEDAGOGICAL_CONCEPTS } from '../data/methodologyConstants';
 import { 
@@ -231,10 +231,46 @@ export const DoorInvestigationView: React.FC = () => {
   const [c1Validation, setC1Validation] = useState<Record<string, string>>({});
   const [multiValidation, setMultiValidation] = useState<string[]>([]);
 
+  const lastActiveDoorRef = useRef<string>(activeDoorId);
+
   useEffect(() => {
-    setC1Validation({});
-    setMultiValidation([]);
-  }, [activeDoorId]);
+    const isDoorChange = lastActiveDoorRef.current !== activeDoorId;
+    lastActiveDoorRef.current = activeDoorId;
+
+    const structuredUnits = informationUnits.filter(
+      u => u.doorId === activeDoorId && u.statement.startsWith('[VALIDACAO_ESTRUTURADA]')
+    );
+
+    if (structuredUnits.length > 0) {
+      if (activeDoorId === 'D1.1') {
+        const rehydratedC1: Record<string, string> = {};
+        C1_ITEMS.forEach(item => {
+          const prefix = `[VALIDACAO_ESTRUTURADA] ${item.label}: `;
+          const matched = structuredUnits.find(u => u.statement.startsWith(prefix));
+          if (matched) {
+            rehydratedC1[item.id] = matched.statement.slice(prefix.length).trim();
+          }
+        });
+        setC1Validation(rehydratedC1);
+        setMultiValidation([]);
+      } else if (activeDoorId === 'D1.2' || activeDoorId === 'D1.5') {
+        const targetItems = activeDoorId === 'D1.2' ? C2_ITEMS : C5_ITEMS;
+        const rehydratedIds = targetItems
+          .filter(item => structuredUnits.some(u => u.statement === `[VALIDACAO_ESTRUTURADA] ${item.label}`))
+          .map(item => item.id);
+        setMultiValidation(rehydratedIds);
+        setC1Validation({});
+      } else {
+        setC1Validation({});
+        setMultiValidation([]);
+      }
+    } else if (isDoorChange) {
+      // Pergunta nova ou sem registros prévios: limpa apenas se houve troca de pergunta.
+      // Se a porta não mudou, preserva seleções em andamento feitas pelo facilitador.
+      setC1Validation({});
+      setMultiValidation([]);
+    }
+  }, [activeDoorId, informationUnits]);
 
   const structuredAlreadySaved = informationUnits.some(
     u => u.doorId === activeDoorId && u.statement.startsWith('[VALIDACAO_ESTRUTURADA]')

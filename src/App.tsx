@@ -1,6 +1,13 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { PilotProvider, usePilot } from './context/PilotContext';
 import { Navbar } from './components/Navbar';
+import { InstitutionalSidebar } from './components/InstitutionalSidebar';
+import { InstitutionalOverviewView } from './components/InstitutionalOverviewView';
+import { DiagnosticModuleView } from './components/DiagnosticModuleView';
+import { KnowledgeModuleView } from './components/KnowledgeModuleView';
+import { EvidencesModuleView } from './components/EvidencesModuleView';
+import { EvolutionModuleView } from './components/EvolutionModuleView';
+import { ReportsModuleView } from './components/ReportsModuleView';
 import { HomeView } from './components/HomeView';
 import { DoorInvestigationView } from './components/DoorInvestigationView';
 import { FacilitatorPanelView } from './components/FacilitatorPanelView';
@@ -32,7 +39,8 @@ import {
   BarChart3,
   BookOpen,
   HelpCircle,
-  Download
+  Download,
+  LayoutDashboard
 } from 'lucide-react';
 
 const AppContent: React.FC = () => {
@@ -40,6 +48,7 @@ const AppContent: React.FC = () => {
   const mainContentRef = useRef<HTMLElement>(null);
   const previousViewRef = useRef<string>(currentView);
   const isInitialMountRef = useRef<boolean>(true);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
 
   // Salvaguarda de permissões: redireciona se a visualização não for permitida para o perfil ativo no Modo de Simulação
   useEffect(() => {
@@ -64,8 +73,14 @@ const AppContent: React.FC = () => {
           title: isParticipant ? 'Orientações da Câmara' : 'Visão Geral',
           subtitle: isParticipant 
             ? 'Guia prático para sua contribuição fática e fornecimento de evidências'
-            : 'Painel situacional focado na sua função institucional no Ciclo D1',
-          icon: <Compass className="w-4 h-4 text-emerald-600" />
+            : 'Painel situacional do ciclo institucional e orientação de próximos passos',
+          icon: <LayoutDashboard className="w-4 h-4 text-emerald-600" />
+        };
+      case 'DIAGNOSTIC':
+        return {
+          title: 'Diagnóstico Institucional • Dimensão D1',
+          subtitle: 'Apuração fática e governança na Câmara Municipal',
+          icon: <Layers className="w-4 h-4 text-emerald-600" />
         };
       case 'INTERVIEW':
         return {
@@ -82,16 +97,17 @@ const AppContent: React.FC = () => {
           icon: <GitPullRequest className="w-4 h-4 text-sky-600" />
         };
       case 'EVIDENCES':
-        return {
-          title: isParticipant ? 'Evidências do Setor' : 'Repositório de Evidências',
-          subtitle: 'Comprovação documental, rastreabilidade e limites probatórios',
-          icon: <FileText className="w-4 h-4 text-purple-600" />
-        };
       case 'PENDING':
         return {
-          title: 'Pendências & Bloqueios Metodológicos',
-          subtitle: 'Gestão de lacunas probatórias e impedimentos de classificação',
-          icon: <Clock className="w-4 h-4 text-rose-600" />
+          title: 'Evidências & Referências Probatórias',
+          subtitle: 'Localização, comprovação documental nas fontes de origem e rastreabilidade',
+          icon: <FileCheck className="w-4 h-4 text-purple-600" />
+        };
+      case 'KNOWLEDGE':
+        return {
+          title: 'Base de Conhecimento',
+          subtitle: 'Orientações interpretativas, notas técnicas e diretrizes da VIPAZ',
+          icon: <BookOpen className="w-4 h-4 text-amber-600" />
         };
       case 'FACILITATOR_PANEL':
         return {
@@ -112,16 +128,11 @@ const AppContent: React.FC = () => {
           icon: <Award className="w-4 h-4 text-emerald-600" />
         };
       case 'ACTION_PLAN':
-        return {
-          title: isGestor ? 'Prioridades da Gestão' : 'Plano de Evolução D1',
-          subtitle: 'Ações pactuadas, prazos e responsabilidades estruturantes',
-          icon: <Target className="w-4 h-4 text-teal-600" />
-        };
       case 'INDICATOR':
         return {
-          title: 'Acompanhamento & Tração Institucional',
-          subtitle: 'Indicador experimental de continuidade e maturidade sustentada',
-          icon: <BarChart3 className="w-4 h-4 text-indigo-600" />
+          title: isGestor ? 'Prioridades da Gestão' : 'Jornada de Evolução',
+          subtitle: 'Plano de evolução, ações estruturantes e acompanhamento de tração',
+          icon: <Target className="w-4 h-4 text-teal-600" />
         };
       case 'OUTPUTS':
         return {
@@ -156,24 +167,21 @@ const AppContent: React.FC = () => {
 
   // Reposicionamento suave no início do conteúdo principal ao trocar de view
   useEffect(() => {
-    // Ignorar montagem inicial para preservar a posição inicial natural
     if (isInitialMountRef.current) {
       isInitialMountRef.current = false;
       previousViewRef.current = currentView;
       return;
     }
 
-    // Se o usuário clicou na view que já está aberta, não provocar novo scroll
     if (previousViewRef.current === currentView) {
       return;
     }
     previousViewRef.current = currentView;
 
-    // Calcular o offset do cabeçalho fixo para que o conteúdo nunca fique oculto atrás do header
     const mainEl = mainContentRef.current;
     if (mainEl) {
       const headerEl = document.querySelector('header');
-      const headerHeight = headerEl ? headerEl.getBoundingClientRect().height : 100;
+      const headerHeight = headerEl ? headerEl.getBoundingClientRect().height : 60;
       const elementPosition = mainEl.getBoundingClientRect().top + window.pageYOffset;
       const targetPosition = Math.max(0, elementPosition - headerHeight - 12);
 
@@ -193,12 +201,16 @@ const AppContent: React.FC = () => {
     if (!isViewAllowedForRole(currentUser.role, currentView)) {
       return currentUser.role === 'PARTICIPANTE' 
         ? <ParticipantContributionView /> 
-        : <HomeView />;
+        : <InstitutionalOverviewView />;
     }
 
     switch (currentView) {
       case 'HOME':
-        return <HomeView />;
+        return <InstitutionalOverviewView />;
+      case 'DIAGNOSTIC':
+        return <DiagnosticModuleView />;
+      case 'KNOWLEDGE':
+        return <KnowledgeModuleView />;
       case 'INTERVIEW':
         return <DoorInvestigationView />;
       case 'FACILITATOR_PANEL':
@@ -208,19 +220,17 @@ const AppContent: React.FC = () => {
           ? <ParticipantContributionView /> 
           : <DistributedInvestigationView />;
       case 'EVIDENCES':
-        return <EvidencesView />;
       case 'PENDING':
-        return <PendingItemsView />;
+        return <EvidencesModuleView />;
       case 'INTEGRATION':
         return <IntegrationView />;
       case 'SNAPSHOT':
-        return <SnapshotView />;
+        return <ReportsModuleView />;
       case 'ACTION_PLAN':
-        return <EvolutionPlanView />;
       case 'INDICATOR':
-        return <ExperimentalIndicatorView />;
+        return <EvolutionModuleView />;
       case 'OUTPUTS':
-        return <OutputsView />;
+        return <ReportsModuleView />;
       case 'DIARY':
         return <MethodologicalDiaryView />;
       case 'TESTS_HARNESS':
@@ -228,72 +238,110 @@ const AppContent: React.FC = () => {
       case 'BACKUP':
         return <BackupView />;
       default:
-        return <HomeView />;
+        return <InstitutionalOverviewView />;
     }
   };
 
-  return (
-    <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-900 antialiased">
-      <Navbar />
+  // Se estiver na Central de Organizações (ou nenhuma selecionada), renderiza sem a Sidebar Institucional
+  if (!currentOrg || currentView === 'CENTRAL') {
+    return (
+      <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-900 antialiased">
+        <Navbar />
+        <main 
+          id="main-content"
+          ref={mainContentRef} 
+          tabIndex={-1}
+          className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-12 outline-none"
+        >
+          <OrganizationsHubView />
+        </main>
 
-      <main 
-        id="main-content"
-        ref={mainContentRef} 
-        tabIndex={-1}
-        className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-12 outline-none"
-      >
-        {/* Barra de Localização e Confirmação de Navegação (Feedback de Transição de View) */}
-        {contextInfo && (
-          <div 
-            key={`context-header-${currentView}`}
-            className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 py-2 sm:py-2.5 px-3.5 sm:px-4 bg-white/95 border border-slate-200/90 rounded-xl shadow-xs transition-all duration-150 animate-in fade-in"
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-                {contextInfo.icon}
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight truncate">
-                    {contextInfo.title}
-                  </h1>
-                  <span className="hidden sm:inline text-slate-300">•</span>
-                  <span className="hidden sm:inline text-[11px] text-slate-500 truncate">
-                    {contextInfo.subtitle}
-                  </span>
-                </div>
-                <p className="text-[10px] text-slate-500 sm:hidden truncate">
-                  {contextInfo.subtitle}
-                </p>
-              </div>
+        <footer className="bg-slate-900 border-t border-slate-800 text-slate-400 py-6 text-xs no-print mt-auto">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-slate-300">
+              <Compass className="w-4 h-4 text-emerald-400" />
+              <span className="font-semibold text-white">VIPAZ</span>
+              <span>• Plataforma de Governança e Proteção de Dados em Câmaras Municipais</span>
             </div>
-
-            <div className="flex items-center gap-1.5 self-start sm:self-auto shrink-0 text-[10px]">
-              {currentOrg && (
-                <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200 font-mono font-medium">
-                  {currentOrg.name}
-                </span>
-              )}
-              <span className="bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-md border border-emerald-200 font-bold uppercase tracking-wider">
-                {currentUser.role.replace('_', ' ')}
-              </span>
+            <div className="text-slate-500 text-[11px]">
+              Desenvolvido para Câmaras Municipais • Sem pontuação cega ou automação sem validação
             </div>
           </div>
-        )}
+        </footer>
+      </div>
+    );
+  }
 
-        {/* View com transição perceptível e feedback visual */}
-        <div key={currentView} className="transition-opacity duration-150 animate-in fade-in">
-          {renderActiveView()}
-        </div>
-      </main>
+  // Ambiente Institucional com Sidebar Lateral Recolhível + Cabeçalho Compacto
+  return (
+    <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-900 antialiased">
+      {/* Cabeçalho Compacto do Ambiente Institucional */}
+      <Navbar onToggleMobileSidebar={() => setMobileSidebarOpen(prev => !prev)} />
+
+      {/* Casca de Layout com Barra Lateral e Conteúdo Central */}
+      <div className="flex-1 flex w-full min-h-[calc(100vh-56px)]">
+        <InstitutionalSidebar 
+          mobileOpen={mobileSidebarOpen} 
+          onCloseMobile={() => setMobileSidebarOpen(false)} 
+        />
+
+        <main 
+          id="main-content"
+          ref={mainContentRef} 
+          tabIndex={-1}
+          className="flex-1 min-w-0 max-w-7xl mx-auto px-3 sm:px-6 pt-4 sm:pt-6 pb-12 outline-none"
+        >
+          {/* Barra de Localização e Confirmação de Navegação */}
+          {contextInfo && (
+            <div 
+              key={`context-header-${currentView}`}
+              className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 py-2 sm:py-2.5 px-3.5 sm:px-4 bg-white/95 border border-slate-200/90 rounded-xl shadow-xs transition-all duration-150 animate-in fade-in"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
+                  {contextInfo.icon}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight truncate">
+                      {contextInfo.title}
+                    </h1>
+                    <span className="hidden sm:inline text-slate-300">•</span>
+                    <span className="hidden sm:inline text-[11px] text-slate-500 truncate">
+                      {contextInfo.subtitle}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 sm:hidden truncate">
+                    {contextInfo.subtitle}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 self-start sm:self-auto shrink-0 text-[10px]">
+                <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200 font-mono font-medium truncate max-w-[140px] sm:max-w-none">
+                  {currentOrg.name}
+                </span>
+                <span className="bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-md border border-emerald-200 font-bold uppercase tracking-wider">
+                  {currentUser.role.replace('_', ' ')}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* View com transição perceptível e feedback visual */}
+          <div key={currentView} className="transition-opacity duration-150 animate-in fade-in">
+            {renderActiveView()}
+          </div>
+        </main>
+      </div>
 
       {/* Rodapé Institucional e Metodológico */}
-      <footer className="bg-slate-900 border-t border-slate-800 text-slate-400 py-6 text-xs no-print mt-auto">
+      <footer className="bg-slate-900 border-t border-slate-800 text-slate-400 py-6 text-xs no-print mt-auto z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-slate-300">
             <Compass className="w-4 h-4 text-emerald-400" />
-            <span className="font-semibold text-white">Piloto Dimensional D1</span>
-            <span>• Governança e Responsabilidades ({currentOrg?.methodologyVersion || 'D1 v1.0'})</span>
+            <span className="font-semibold text-white">VIPAZ</span>
+            <span>• Governança e Proteção de Dados em Câmaras Municipais</span>
           </div>
 
           <div className="flex items-center gap-4 text-slate-400 text-[11px] font-mono">

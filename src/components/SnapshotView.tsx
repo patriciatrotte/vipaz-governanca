@@ -13,10 +13,15 @@ import {
   AlertCircle,
   FileText,
   Printer,
-  ArrowRight
+  ArrowRight,
+  ArrowLeft
 } from 'lucide-react';
 
-export const SnapshotView: React.FC = () => {
+interface SnapshotViewProps {
+  onBackToHub?: () => void;
+}
+
+export const SnapshotView: React.FC<SnapshotViewProps> = ({ onBackToHub }) => {
   const { snapshot, integration, currentOrg, setCurrentView, currentUser } = usePilot();
 
   if (currentUser.role !== 'FACILITADOR') {
@@ -89,10 +94,10 @@ export const SnapshotView: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setCurrentView('OUTPUTS')}
-            className="bg-slate-800 hover:bg-slate-700 text-xs font-semibold px-3 py-2 rounded-lg border border-slate-700 transition-colors flex items-center gap-1.5 text-slate-200 hover:text-white"
+            onClick={onBackToHub || (() => setCurrentView('OUTPUTS'))}
+            className="bg-slate-800 hover:bg-slate-700 text-xs font-semibold px-3 py-2 rounded-lg border border-slate-700 transition-colors flex items-center gap-1.5 text-slate-200 hover:text-white cursor-pointer"
           >
-            <FileText className="w-4 h-4 text-emerald-400" /> Ver Relatórios
+            <ArrowLeft className="w-4 h-4 text-emerald-400" /> Voltar ao Hub
           </button>
           <button
             onClick={handleDownloadJSON}
@@ -213,7 +218,10 @@ export const SnapshotView: React.FC = () => {
             </p>
 
             <div className="pt-3 border-t border-teal-200 text-[11px] text-teal-800">
-              <strong>Previsão de Reavaliação / Novo Ciclo:</strong> {snapshot.scheduledNextReview}
+              <strong>Previsão de Reavaliação / Novo Ciclo:</strong>{' '}
+              {snapshot.scheduledNextReview 
+                ? (snapshot.scheduledNextReview.includes('-') ? new Date(snapshot.scheduledNextReview).toLocaleDateString('pt-BR') : snapshot.scheduledNextReview)
+                : 'A definir conforme pactuação institucional'}
             </div>
           </div>
         </div>

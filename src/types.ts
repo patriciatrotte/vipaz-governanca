@@ -20,11 +20,12 @@ export type CycleType = 'INITIAL_ASSESSMENT' | 'PERIODIC_REVIEW' | 'SPECIAL_ASSE
 export type CycleStatus = 'NAO_INICIADO' | 'EM_ANDAMENTO' | 'CONCLUIDO_VALIDADO' | 'ARQUIVADO';
 
 export interface EvaluationCycle {
-  id: string; // cycle_id
+  id: string; // cycle_id (UUID Canônico)
+  legacyId?: string;
   organizationId: string;
   name: string; // ex: "Ciclo D1 Inicial 2026.1"
   dimension: 'D1';
-  methodologyVersion: 'D1 v1.0';
+  methodologyVersion: string;
   cycleType: CycleType;
   status: CycleStatus;
   createdAt: string;
@@ -35,7 +36,8 @@ export interface EvaluationCycle {
 }
 
 export interface Organization {
-  id: string;
+  id: string; // UUID Canônico ou ID estável
+  legacyId?: string;
   name: string;
   municipality: string;
   state: string;
@@ -46,7 +48,7 @@ export interface Organization {
   mainInterlocutorEmail?: string;
   cycleId: string;
   activeCycleName: string;
-  methodologyVersion: 'D1 v1.0';
+  methodologyVersion: string;
   createdAt: string;
   isDemo?: boolean;
   cycleIds?: string[];
@@ -391,7 +393,7 @@ export interface SnapshotD1 {
   dimensionId: 'D1';
   cycleId: string;
   baseDate: string;
-  methodologyVersion: 'D1 v1.0';
+  methodologyVersion: string;
   validatedLevel: MaturityLevel;
   capacitiesAssessment: Record<CapacityId, CapacityAssessment>;
   demonstratedCapacities: CapacityId[];
@@ -410,7 +412,7 @@ export interface SnapshotD1 {
   limitations: string[];
   validatorName: string;
   validatedAt: string;
-  scheduledNextReview: string;
+  scheduledNextReview?: string;
   isLockedImmutable: true;
 }
 
@@ -449,6 +451,107 @@ export type ActionStatus =
   | 'CANCELADA'
   | 'REFORMULADA';
 
+// ============================================================================
+// MINHA ROTA — TIPOS CANÔNICOS (v0.1)
+// ============================================================================
+
+/** Espaços funcionais da superfície de Minha Rota (Seção 2) */
+export type RouteSpace = 
+  | 'JA_CONSTRUIDO' 
+  | 'AGORA' 
+  | 'QUANDO_PRECISAR' 
+  | 'NO_HORIZONTE';
+
+/** Status de triagem do avanço antes da decisão formal */
+export type RouteTriageStatus = 
+  | 'PENDENTE_DE_TRIAGEM' 
+  | 'TRIADO_AUTOMATICO' 
+  | 'CONFIRMADO_HUMANO';
+
+/** Registro auditável de decisão de rota (Seção 4 e Bloco 2.1) */
+export interface RouteDecisionRecord {
+  decisionId: string; // UUID imutável
+  organizationId: string; // Vínculo institucional onde a decisão ocorreu
+  /**
+   * Rota sugerida como recomendação para apreciação humana.
+   * - No regime ASSISTIDO: preenchido com a recomendação da metodologia/IA.
+   * - No regime DETERMINÍSTICO: ausente/null (a regra produz a conclusão diretamente sem sugestão prévia).
+   * - No regime HUMANO: ausente/null.
+   */
+  suggestedRoute?: RouteSpace | 'ESCLARECER' | null;
+  confirmedRoute: RouteSpace;
+  decidedByUserId?: string; // Opcional em decisões de regime DETERMINÍSTICO originadas por regra
+  decidedByRole?: UserRole; // Opcional em decisões de regime DETERMINÍSTICO
+  decidedByMembershipId?: string; // Vínculo institucional formal futuro
+  decidedAt: string; // ISO 8601
+  overrideReason?: string; // Legado preservado para compatibilidade retroativa
+  divergenceReason?: string; // Campo canônico de semântica de decisão divergente (Bloco 2.4)
+  
+  // Auditoria da autoridade normativa e fundamentação
+  regime?: 'DETERMINISTICO' | 'ASSISTIDO' | 'HUMANO';
+  ruleCode?: string;              // Identificador da regra formal (ex.: "REG_D1_01")
+  routingRuleVersion?: string;     // Versão da regra vigente (ex.: "RULES_D1_v0.3")
+  rationale?: string;             // Fundamentação objetiva da decisão
+}
+
+/** Subcontrato de Decisão de Rota e Triagem */
+export interface EvolutionRouteInfo {
+  currentSpace?: RouteSpace | null; // Opcional/nulo enquanto em PENDENTE_DE_TRIAGEM
+  triageStatus: RouteTriageStatus;
+  decisionHistory: RouteDecisionRecord[]; // Coleção acumulativa sem sobrescrita
+}
+
+/** Subcontrato de Governança Temporal e Prazos (Seção 3) */
+export interface EvolutionPacing {
+  legalOrRegulatoryDeadline?: string;   // Prazo externo improrrogável (ANPD, LAI, Lei Orgânica)
+  institutionalAgreedDeadline?: string; // Prazo pactuado pela gestão da Câmara
+  vipazSuggestedDeadline?: string;      // Horizonte sugerido pela metodologia VIPAZ
+  effectiveDeadline?: string;           // Prazo de referência operacional ativo (opcional)
+  
+  // Condução e Governança da Jornada
+  leadActorName: string;                // Nome do condutor responsável
+  leadActorRole: 'ENCARREGADO' | 'GESTOR_INSTITUCIONAL' | 'RESPONSAVEL_DESIGNADO';
+  leadActorUserId?: string;             // Identidade do condutor
+  contributingActors: string[];         // Servidores, comissões ou setores participantes
+}
+
+/** Menor intervenção suficiente (Seção 3) */
+export type SuggestedInterventionLevel = 
+  | 'MANTER' 
+  | 'APROVEITAR' 
+  | 'ADAPTAR' 
+  | 'INTEGRAR' 
+  | 'CONSTRUIR';
+
+/** Subcontrato de Aprendizagem Contextual e Caminho (Seção 3 e 3.2) */
+export interface EvolutionPedagogy {
+  whereYouAre: string;                  // Síntese curta do AS IS local
+  whereWeAreGoing: string;              // Próximo estado alcançável
+  whyItMatters: string;                 // Microaprendizagem contextual
+  interventionLevel: SuggestedInterventionLevel;
+  suggestedSolution: string;            // Menor intervenção recomendada pela VIPAZ
+  effectivelyAdoptedSolution?: string;  // Solução real quando a Câmara adota caminho próprio
+  vipazSupportTools: string[];          // Modelos, portarias-tipo, checklists vinculados
+}
+
+/** Condições de contorno que não viram novos status visíveis (Seção 5.1) */
+export interface AvancoConditions {
+  isAwaitingDependency?: boolean;
+  dependencyDescription?: string;
+  isDeadlineOverdue?: boolean;
+  isPreexistingStructureDiscovered?: boolean;
+  hasOperationalEvidenceAttached?: boolean;
+  readyForMethodologicalReevaluation?: boolean;
+}
+
+/** Estados visíveis simplificados na experiência do usuário (Seção 5) */
+export type VisibleAvancoStatus = 'A_INICIAR' | 'EM_ANDAMENTO' | 'CONCLUIDO';
+
+/**
+ * Entidade Canônica de Evolução da VIPAZ
+ * Representa o Próximo Avanço (evolução semântica de EvolutionAction).
+ * Preserva compatibilidade integral com dados, snapshots e relatórios legados.
+ */
 export interface EvolutionAction {
   id: string;
   gapId: string;
@@ -460,12 +563,89 @@ export interface EvolutionAction {
   nextImmediateStep: string;
   supportInstrument: string;
   expectedEvidence: string;
+  /**
+   * @deprecated Preservado para retrocompatibilidade nesta fase. 
+   * Marcado para revisão semântica futura; não expressa efetividade institucional final (entrega != efetividade).
+   */
   successCriterion: string;
+  /**
+   * @deprecated Preservado para retrocompatibilidade nesta fase. Candidato à descontinuação futura.
+   */
   relatedIndicatorName: string;
   status: ActionStatus;
   statusChangeReason?: string;
   lastFollowUpDate: string;
   followUpOwner: string;
+
+  // Subcontratos modulares de Minha Rota (v0.1)
+  route?: EvolutionRouteInfo;
+  pacing?: EvolutionPacing;
+  pedagogy?: EvolutionPedagogy;
+  conditions?: AvancoConditions;
+}
+
+// ============================================================================
+// LOG LEVE DE EVENTOS DO PERCURSO (Seção 6.1)
+// ============================================================================
+
+export type JourneyEventType = 
+  | 'ROTA_ATRIBUIDA'
+  | 'AVANCO_INICIADO'
+  | 'PRAZO_REPACTUADO'
+  | 'SOLUCAO_ADAPTADA'
+  | 'EVIDENCIA_VINCULADA'
+  | 'AVANCO_CONCLUIDO'
+  | 'MARCO_REAVALIACAO_SOLICITADO';
+
+export interface JourneyEventRecord {
+  id: string; // UUID imutável
+  organizationId: string; // Contexto institucional da ocorrência
+  actionId: string;
+  eventType: JourneyEventType;
+  occurredAt: string; // ISO 8601
+  actorUserId: string; // Pessoa que praticou o ato
+  actorRole: UserRole; // Papel contextual na organização
+  actorMembershipId?: string; // Vínculo institucional futuro
+  summary: string;
+  metadata?: {
+    previousSpace?: RouteSpace | null;
+    newSpace?: RouteSpace | null;
+    previousDeadline?: string;
+    newDeadline?: string;
+    evidenceId?: string;
+    note?: string;
+    [key: string]: unknown;
+  };
+}
+
+// ============================================================================
+// AS IS HISTÓRICO CONTÍNUO — MARCOS DELIBERADOS (Seção 6.1)
+// ============================================================================
+
+export type AsIsTriggerOrigin = 
+  | 'DIAGNOSTICO_INICIAL_VALIDADO'  // Marco zero (AS IS 0)
+  | 'REAVALIACAO_DE_CAPACIDADE'     // Reconhecimento formal de capacidade evoluída
+  | 'REVISAO_FORMAL_DE_CICLO'       // Fechamento ou repactuação periódica
+  | 'HOMOLOGACAO_EXTERNA'           // Reconhecimento de iniciativa externa à VIPAZ
+  | 'OUTRO_MARCO_METODOLOGICO';
+
+export interface InstitutionalAsIsRecord {
+  asIsId: string; // UUID imutável
+  organizationId: string; // Câmara detentora do AS IS
+  cycleId: string;
+  sequenceNumber: number; // 0, 1, 2, 3... sequencial estrito
+  versionLabel: string; // "AS IS 0", "AS IS 1", etc.
+  triggerOrigin: AsIsTriggerOrigin;
+  establishedAt: string; // ISO 8601
+  validatedByUserId: string; // Identidade autenticada do validador
+  validatedByRole: UserRole; // Papel contextual do validador
+  validatedByMembershipId?: string; // Vínculo institucional futuro
+  methodologyVersion: string; // Ex: "D1 v1.0"
+  demonstratedCapacities: CapacityId[];
+  structuringCapacities: CapacityId[];
+  synthesisSummary: string; // Síntese qualitativa formal do estado institucional
+  evidentialBasisIds: string[]; // Referências probatórias que sustentam o marco
+  isLockedImmutable: true; // Imutabilidade garantida por contrato
 }
 
 // Indicador Experimental D1
@@ -550,3 +730,8 @@ export interface MethodologicalTelemetry {
   sufficiencyStatus: 'SUFICIENTE_PARA_NIVEL' | 'APROFUNDAMENTO_PENDENTE';
   cycleTimeMinutesApprox: number;
 }
+
+// ============================================================================
+// REEXPORTAÇÃO DOS CONTRATOS CANÔNICOS DE ROTEAMENTO (Bloco 2.1)
+// ============================================================================
+export * from './types/routing';

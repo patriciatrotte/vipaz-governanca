@@ -57,20 +57,39 @@ export interface FutureOrganizationMembership {
 }
 
 /**
- * 3. Matriz de Permissões Granulares por Papel
- * Permissões são estritas e aplicadas sempre tendo a ORGANIZAÇÃO como raiz dos dados institucionais.
+ * 3. Matriz de Permissões e Governança de Acessos
+ * A VIPAZ adota uma arquitetura em duas camadas:
+ * 
+ * A) REGRAS DE INTEGRIDADE NÃO CONFIGURÁVEIS (Impostas pela VIPAZ):
+ *    - Preservação da cadeia probatória e imutabilidade de Snapshots já homologados;
+ *    - Segregação lógica absoluta entre organizações/Câmaras;
+ *    - Rastreabilidade inegociável de autoria com carimbo temporal e vínculo institucional;
+ *    - Proibição de alteração automática de AS IS ou maturidade por conclusão isolada de tarefa;
+ *    - Validação de maturidade restrita a rito formal com envolvimento metodológico humano.
+ * 
+ * B) PERMISSÕES INSTITUCIONAIS CONFIGURÁVEIS (Delegáveis pela Câmara a papéis/vínculos elegíveis):
+ *    - Configuração por organização de quais papéis podem deliberar rotas de evolução,
+ *      conduzir avanços setoriais ou submeter documentos probatórios complementares.
  */
 export interface FuturePermissionSet {
-  canConductDiagnosticDoors: boolean;       // Investigação das 6 Portas
+  // Ações de Investigação e Descoberta
+  canConductDiagnosticDoors: boolean;       // Investigação dos aspectos da dimensão
   canSubmitSectorContribution: boolean;      // Contribuições pontuais setoriais
   canUploadEvidences: boolean;               // Submissão de documentos probatórios
-  canVerifySufficiency: boolean;             // Facilitação: aferir suficiência de provas
-  canConsolidateIntegration: boolean;        // Facilitação: consolidar C1-C6 e calcular maturidade
-  canExecuteHumanValidation: boolean;        // Facilitação: validar maturidade formalmente
-  canSealImmutableSnapshot: boolean;         // Marco temporal auditável
-  canManageEvolutionPlan: boolean;           // Criar e gerenciar ações de evolução
-  canDeliberateExecutivePriorities: boolean; // Mesa Diretora / Presidência: aprovar e priorizar apoios
+  
+  // Ações Metodológicas e Validação
+  canVerifySufficiency: boolean;             // Aferir suficiência fática e probatória
+  canConsolidateIntegration: boolean;        // Consolidar C1-C6 e propor maturidade
+  canExecuteHumanValidation: boolean;        // Validação metodológica formal de maturidade
+  canSealImmutableSnapshot: boolean;         // Emitir marco temporal de Snapshot auditável
+  
+  // Ações de Minha Rota e Evolução
+  canDeliberateRouteDecision: boolean;       // Confirmar ou ajustar rota (Agora, No Horizonte, etc.)
+  canManageEvolutionPlan: boolean;           // Gerenciar e criar avanços de evolução
+  canConcludeAvancoDelivery: boolean;        // Declarar entrega concluída de um avanço
   canConsultExecutiveReports: boolean;       // Consulta a relatórios gerenciais e sínteses
+  
+  // Administração e Integridade Técnica
   canExportTechnicalBackup: boolean;         // Exportação de salvaguarda
   canManageSystemIntegrity: boolean;         // Testes de integridade e diagnósticos técnicos
 }
@@ -102,6 +121,7 @@ export interface FutureAuditLogEntry {
   organizationId: string;
   cycleId: string;
   userId: string;
+  membershipId?: string; // Vínculo institucional formal associado ao ato
   userRole: UserRole;
   actionType: 
     | 'ACCESS_VIEW' 
@@ -111,6 +131,7 @@ export interface FutureAuditLogEntry {
     | 'UPDATE_CAPACITY' 
     | 'VALIDATE_MATURITY' 
     | 'CREATE_SNAPSHOT' 
+    | 'DELIBERATE_ROUTE'
     | 'DELIBERATE_ACTION';
   targetResource: string;
   timestamp: string;
@@ -120,11 +141,21 @@ export interface FutureAuditLogEntry {
 }
 
 /**
- * REQUISITOS FUTUROS DE PRODUÇÃO:
- * 1. AUTENTICAÇÃO: Identity Provider compatível com padrão público (GOV.BR / SAML / OAuth corporativo).
- * 2. BANCO PERSISTENTE: PostgreSQL / Cloud SQL com Row-Level Security (RLS) segregado por organização.
- * 3. SEGREGAÇÃO POR ORGANIZAÇÃO: Isolamento lógico rígido onde a Câmara Municipal é raiz de todas as coleções.
- * 4. AUTORIZAÇÃO POR PERFIL/PAPEL: Interlocutor, Gestor, Facilitador e Participante com jornadas e permissões fechadas.
- * 5. LOGS DE AUDITORIA: Registro append-only imutável de todas as evidências, respostas e homologações.
- * 6. GESTÃO DO CICLO DE VIDA: Revogação segura e histórico completo das gestões e portarias.
+ * REQUISITOS DE ARQUITETURA PARA PRODUÇÃO (GOVERNANÇA & ACESSO):
+ * 
+ * 1. MODELO CANÔNICO DE AUTORIZAÇÃO EM 6 CAMADAS:
+ *    A autorização formal de qualquer ato na VIPAZ deve avaliar em tempo de execução:
+ *    [Identidade Autenticada] 
+ *      + [Membership Ativo] 
+ *      + [Organização Contextual] 
+ *      + [Papel Contextual no Vínculo] 
+ *      + [Permissão da Ação] 
+ *      + [Regras de Integridade Inegociáveis da VIPAZ]
+ * 
+ * 2. AUTENTICAÇÃO: Identity Provider compatível com padrão público (GOV.BR / SAML / OAuth corporativo).
+ * 3. BANCO PERSISTENTE: PostgreSQL / Cloud SQL com Row-Level Security (RLS) segregado por organização.
+ * 4. SEGREGAÇÃO POR ORGANIZAÇÃO: Isolamento lógico rígido onde a Câmara Municipal é raiz de todas as coleções.
+ * 5. LOGS DE AUDITORIA: Registro append-only imutável de todas as evidências, respostas, rotas e homologações.
+ * 6. GESTÃO DO CICLO DE VIDA: Revogação segura e histórico completo das gestões, mandatos e portarias.
  */
+

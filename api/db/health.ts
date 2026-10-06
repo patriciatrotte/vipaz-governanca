@@ -1,6 +1,7 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { Request, Response } from 'express';
+import { buildSupabaseHeaders } from '../../src/services/persistence/supabaseAdapters';
 
-export default async function handler(_req: VercelRequest, res: VercelResponse) {
+export default async function handler(_req: Request, res: Response) {
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
 
@@ -16,10 +17,7 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     const response = await fetch(
       `${supabaseUrl}/rest/v1/organizations?select=id&limit=1`,
       {
-        headers: {
-          apikey: supabaseSecretKey,
-          Authorization: `Bearer ${supabaseSecretKey}`
-        }
+        headers: buildSupabaseHeaders(supabaseSecretKey)
       }
     );
 

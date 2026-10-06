@@ -9,6 +9,7 @@ import {
   AlertTriangle, 
   EyeOff, 
   ArrowRight,
+  ArrowLeft,
   Printer,
   Compass,
   Award,
@@ -24,7 +25,12 @@ import {
 import { CAPACITIES_DEFINITIONS, MATURITY_LEVELS_INFO } from '../data/methodologyConstants';
 import { formatMaturityLevel, cleanPresentationText, formatCapacityStatus } from '../utils/formatters';
 
-export const OutputsView: React.FC = () => {
+interface OutputsViewProps {
+  initialTab?: 'EXECUTIVE' | 'TECHNICAL' | 'SNAPSHOT_VIEW' | 'UPCOMING';
+  onBackToHub?: () => void;
+}
+
+export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHub }) => {
   const { 
     currentOrg, 
     integration, 
@@ -58,7 +64,7 @@ export const OutputsView: React.FC = () => {
   const canViewSnapshot = isFacilitator || isGestor || isInterlocutor;
 
   // Determinar aba ativa padrão permitida para o perfil
-  const defaultTab = canViewExecutive ? 'EXECUTIVE' : canViewTechnical ? 'TECHNICAL' : 'UNAUTHORIZED';
+  const defaultTab = initialTab || (canViewExecutive ? 'EXECUTIVE' : canViewTechnical ? 'TECHNICAL' : 'UNAUTHORIZED');
   const [activeTab, setActiveTab] = useState<'EXECUTIVE' | 'TECHNICAL' | 'SNAPSHOT_VIEW' | 'UPCOMING'>(
     defaultTab === 'UNAUTHORIZED' ? 'UPCOMING' : defaultTab
   );
@@ -131,7 +137,7 @@ export const OutputsView: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <FileText className="w-5 h-5 text-emerald-400" />
-            <h2 className="text-xl font-bold tracking-tight">Central de Relatórios e Sínteses D1</h2>
+            <h2 className="text-xl font-bold tracking-tight">Relatórios &amp; Saídas Metodológicas</h2>
           </div>
           <p className="text-xs text-slate-300 mt-1.5 max-w-2xl leading-relaxed">
             Representações derivadas da base metodológica dimensional. A profundidade técnica pertence à plataforma, a síntese pertence à entrega gerencial e a rastreabilidade conecta ambas.
@@ -143,10 +149,20 @@ export const OutputsView: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
+        <div className="flex items-center gap-2 self-start md:self-auto shrink-0 flex-wrap">
+          {onBackToHub && (
+            <button
+              onClick={onBackToHub}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold px-3 py-2 rounded-lg border border-slate-700 transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Voltar ao Hub</span>
+            </button>
+          )}
+
           <button
             onClick={() => window.print()}
-            className="bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-semibold px-3.5 py-2 rounded-lg border border-slate-700 transition-colors flex items-center gap-1.5 shadow-xs"
+            className="bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-semibold px-3.5 py-2 rounded-lg border border-slate-700 transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
           >
             <Printer className="w-3.5 h-3.5 text-slate-300" />
             <span>Imprimir / PDF</span>
@@ -302,7 +318,7 @@ export const OutputsView: React.FC = () => {
                 <p className="text-xs text-slate-700 font-serif leading-relaxed max-w-2xl mt-1">
                   {isValidated 
                     ? (validatedLevelInfo?.shortDesc || integration.humanValidation.validationNotes || validatedLevelInfo?.criteriaText)
-                    : 'A apuração das 6 Portas ainda se encontra em fase de consolidação analítica e saneamento de pendências. Nenhum nível provisório é inferido antes da validação metodológica formal.'}
+                    : 'A apuração dos aspectos da Dimensão D1 ainda se encontra em fase de consolidação analítica e saneamento de pendências. Nenhum nível provisório é inferido antes da validação metodológica formal.'}
                 </p>
               </div>
 
@@ -435,7 +451,9 @@ export const OutputsView: React.FC = () => {
                 6. Próxima Revisão Institucional
               </span>
               <div className="font-bold text-slate-800">
-                {snapshot?.scheduledNextReview || 'Previsão de 12 meses após consolidação do ciclo'}
+                {snapshot?.scheduledNextReview 
+                  ? (snapshot.scheduledNextReview.includes('-') ? new Date(snapshot.scheduledNextReview).toLocaleDateString('pt-BR') : snapshot.scheduledNextReview)
+                  : 'A definir conforme pactuação institucional'}
               </div>
               <p className="text-[11px] text-slate-500">
                 Ciclo ordinário de revisão da maturidade dimensional e verificação dos critérios de avanço para os níveis subsequentes.

@@ -9,31 +9,31 @@ import { AppView } from '../context/PilotContext';
  * definidas para o perfil selecionado.
  */
 export const ROLE_ALLOWED_VIEWS: Record<UserRole, AppView[]> = {
-  // GESTOR INSTITUCIONAL: Somente Visão Geral, Prioridades, Acompanhamento e Relatórios.
-  // NÃO tem acesso a formulários de diagnóstico das portas, painel de facilitação ou validação de maturidade.
-  GESTOR_INSTITUCIONAL: ['HOME', 'ACTION_PLAN', 'INDICATOR', 'OUTPUTS'],
+  // GESTOR INSTITUCIONAL: Somente Visão Geral, Diagnóstico (consulta), Prioridades, Acompanhamento e Relatórios.
+  GESTOR_INSTITUCIONAL: ['HOME', 'DIAGNOSTIC', 'ACTION_PLAN', 'INDICATOR', 'OUTPUTS', 'KNOWLEDGE'],
 
-  // INTERLOCUTOR PRINCIPAL / ENCARREGADO: Visão Geral, Diagnóstico das Portas, Contribuições Setoriais,
-  // Plano de Evolução, Acompanhamento, Relatórios autorizados, Repositório de Evidências e Pendências.
-  // NÃO tem acesso exclusivo à Facilitação (painel de facilitação, consolidação dimensional C1-C6 ou snapshot imutável).
+  // INTERLOCUTOR PRINCIPAL / ENCARREGADO: Visão Geral, Diagnóstico, Contribuições Setoriais,
+  // Plano de Evolução, Acompanhamento, Relatórios autorizados, Repositório de Evidências, Pendências e Conhecimento.
   INTERLOCUTOR_PRINCIPAL: [
     'HOME', 
+    'DIAGNOSTIC',
     'INTERVIEW', 
     'DISTRIBUTED', 
     'ACTION_PLAN', 
     'INDICATOR', 
     'OUTPUTS', 
     'EVIDENCES', 
-    'PENDING'
+    'PENDING',
+    'KNOWLEDGE'
   ],
 
-  // PARTICIPANTE CONVIDADO: Somente contribuições pertinentes do seu setor, evidências do setor e orientações.
-  // NUNCA tem acesso ao diagnóstico institucional completo nem deliberações de governança.
-  PARTICIPANTE: ['DISTRIBUTED', 'EVIDENCES', 'HOME'],
+  // PARTICIPANTE CONVIDADO: Somente contribuições pertinentes do seu setor, evidências do setor, orientações e conhecimento.
+  PARTICIPANTE: ['DISTRIBUTED', 'EVIDENCES', 'HOME', 'KNOWLEDGE'],
 
   // FACILITADOR: Visão metodológica ampliada de investigação, análise fática, validação humana, evolução e relatórios.
   FACILITADOR: [
     'HOME', 
+    'DIAGNOSTIC',
     'INTERVIEW', 
     'DISTRIBUTED', 
     'EVIDENCES', 
@@ -46,11 +46,12 @@ export const ROLE_ALLOWED_VIEWS: Record<UserRole, AppView[]> = {
     'OUTPUTS', 
     'DIARY', 
     'TESTS_HARNESS', 
-    'BACKUP'
+    'BACKUP',
+    'KNOWLEDGE'
   ],
 
   // ADMINISTRADOR TÉCNICO: Funções técnicas autorizadas (testes de sistema, backup e diário), sem acesso institucional irrestrito.
-  ADMINISTRADOR: ['HOME', 'TESTS_HARNESS', 'BACKUP', 'DIARY']
+  ADMINISTRADOR: ['HOME', 'DIAGNOSTIC', 'TESTS_HARNESS', 'BACKUP', 'DIARY', 'KNOWLEDGE']
 };
 
 /**

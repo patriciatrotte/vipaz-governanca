@@ -14,6 +14,7 @@ import {
   EvaluationCycle
 } from '../types';
 import { AppView } from '../context/PilotContext';
+import { DOORS_DEFINITIONS } from '../data/methodologyConstants';
 
 export interface JourneyStage {
   id: string;
@@ -118,14 +119,22 @@ export function calculateUserJourney(params: JourneyEngineParams): UserJourneyIn
   const doorsWithPendingVerification = doorsArray.filter(
     d => doorStatuses[d] === 'SUFICIENTEMENTE_EXPLORADA_COMPROVACAO_PENDENTE'
   );
+  const totalApplicableDoors = DOORS_DEFINITIONS.length;
   const doorsExplored = doorsArray.filter(
     d => doorStatuses[d] === 'SUFICIENTEMENTE_EXPLORADA' || 
          doorStatuses[d] === 'SUFICIENTEMENTE_EXPLORADA_COMPROVACAO_PENDENTE'
   );
   const exploredDoorsCount = doorsExplored.length;
-  const isInterviewComplete = Boolean(params.currentCycle?.interviewCompletedAt) || doorsExplored.length === 6;
+  const allAspectsInvestigated = exploredDoorsCount >= totalApplicableDoors && doorsRequiringDeepening.length === 0;
+  const isInterviewComplete = Boolean(params.currentCycle?.interviewCompletedAt) || allAspectsInvestigated;
 
-  // Atividade investigativa ativa: identifica se qualquer porta já saiu do estado estático
+  // Próximo aspecto pendente de investigação fática na dimensão
+  const firstUnexploredDoor = DOORS_DEFINITIONS.find(d => {
+    const st = doorStatuses[d.id];
+    return st !== 'SUFICIENTEMENTE_EXPLORADA' && st !== 'SUFICIENTEMENTE_EXPLORADA_COMPROVACAO_PENDENTE';
+  });
+
+  // Atividade investigativa ativa: identifica se qualquer aspecto já saiu do estado estático
   const hasInvestigativeActivity = 
     doorsInDiscovery.length > 0 || 
     doorsRequiringSource.length > 0 || 
@@ -154,25 +163,25 @@ export function calculateUserJourney(params: JourneyEngineParams): UserJourneyIn
   const stagesProgress: JourneyStage[] = [
     {
       id: 'portas',
-      label: 'Diagnóstico das 6 Portas D1',
+      label: 'Investigação D1',
       status: doorsRequiringDeepening.length > 0
         ? 'EM_APROFUNDAMENTO'
-        : isInterviewComplete
+        : allAspectsInvestigated
         ? 'CONCLUIDO'
         : (doorsExplored.length > 0 || hasInvestigativeActivity)
         ? 'EM_ANDAMENTO'
         : 'NAO_INICIADO',
       statusText: doorsRequiringDeepening.length > 0
-        ? `${doorsExplored.length}/6 percorridas • Aprofundamento requerido (${doorsRequiringDeepening.join(', ')})`
-        : isInterviewComplete
-        ? '6/6 concluídas • Coleta fática encerrada'
+        ? `${doorsExplored.length}/${totalApplicableDoors} investigados • Aprofundamento requerido (${doorsRequiringDeepening.join(', ')})`
+        : allAspectsInvestigated
+        ? `${totalApplicableDoors}/${totalApplicableDoors} investigados • Apuração concluída`
         : doorsExplored.length > 0
-        ? `${doorsExplored.length}/6 percorridas`
+        ? `${doorsExplored.length}/${totalApplicableDoors} investigados`
         : hasInvestigativeActivity
         ? 'Em andamento'
         : 'Não iniciado',
-      detail: 'Investigação fática não indutiva com respondentes institucionais da Câmara.',
-      isCurrent: !isInterviewComplete && (doorsExplored.length < 6 || doorsRequiringDeepening.length > 0)
+      detail: 'Investigação fática dos aspectos da dimensão com respondentes da Câmara.',
+      isCurrent: !allAspectsInvestigated || doorsRequiringDeepening.length > 0
     },
     {
       id: 'contribuicoes',
@@ -211,20 +220,22 @@ export function calculateUserJourney(params: JourneyEngineParams): UserJourneyIn
       label: 'Consolidação & Validação Humana',
       status: isMaturityValidated
         ? 'CONCLUIDO'
-        : blockingPendings.length === 0 && doorsExplored.length === 6
+        : blockingPendings.length === 0 && allAspectsInvestigated
         ? 'EM_ANDAMENTO'
         : 'PENDENTE',
       statusText: isMaturityValidated
         ? `Nível ${integration.humanValidation.validatedLevel.replace('_', ' ')} homologado pelo Facilitador`
         : blockingPendings.length > 0
         ? 'Aguardando saneamento de pendências bloqueadoras'
+        : !allAspectsInvestigated
+        ? 'Aguardando investigação dos aspectos restantes'
         : 'Aguardando validação formal da facilitação',
       detail: 'Avaliação das capacidades C1–C6 sem compensação e sem pontuação cega.',
-      isCurrent: !isMaturityValidated && blockingPendings.length === 0 && doorsExplored.length === 6
+      isCurrent: !isMaturityValidated && blockingPendings.length === 0 && allAspectsInvestigated
     },
     {
       id: 'plano_evolucao',
-      label: 'Plano de Evolução & Governança',
+      label: 'Jornada de Evolução',
       status: hasSnapshot && hasActionsInPlan
         ? 'EM_ANDAMENTO'
         : hasSnapshot
@@ -233,7 +244,7 @@ export function calculateUserJourney(params: JourneyEngineParams): UserJourneyIn
       statusText: hasActionsInPlan
         ? `${actions.length} ações estruturantes em acompanhamento`
         : hasSnapshot
-        ? 'Snapshot D1 registrado • Pronto para cadastro de ações'
+        ? 'Snapshot registrado • Pronto para cadastro de ações'
         : 'Aguardando homologação do diagnóstico',
       detail: 'Metas pactuadas com responsáveis, prazos e sustentação institucional.',
       isCurrent: isMaturityValidated && hasSnapshot
@@ -388,16 +399,21 @@ export function calculateUserJourney(params: JourneyEngineParams): UserJourneyIn
       const target = doorsInDiscovery[0];
       resumeTargetDoorId = target;
       resumeTargetView = 'INTERVIEW';
-      resumeHeadline = `Você está no percurso da Porta ${target}, atualmente em descoberta.`;
+      resumeHeadline = `Você está no percurso do aspecto ${target}, atualmente em descoberta.`;
       resumeDetail = `Continue a conversa fática para mapear a governança e as práticas vigentes na Câmara.`;
+    } else if (!allAspectsInvestigated && firstUnexploredDoor) {
+      resumeTargetDoorId = firstUnexploredDoor.id;
+      resumeTargetView = 'INTERVIEW';
+      resumeHeadline = `Investigação D1 em andamento (${exploredDoorsCount}/${totalApplicableDoors} aspectos investigados).`;
+      resumeDetail = `Próximo aspecto a investigar: ${firstUnexploredDoor.code} • ${firstUnexploredDoor.title}.`;
     } else {
-      resumeHeadline = 'As 6 portas foram percorridas. Há pontos de aprofundamento e pendências sob sua articulação.';
-      resumeDetail = 'Acompanhe os documentos comprobatórios e as pendências solicitadas pela facilitação.';
+      resumeHeadline = 'Todos os aspectos aplicáveis da dimensão foram investigados.';
+      resumeDetail = 'Acompanhe as referências comprobatórias e as orientações da facilitação.';
       resumeTargetView = blockingPendings.length > 0 ? 'PENDING' : 'INTERVIEW';
     }
 
     // Próximo passo recomendado determinístico
-    let nextStepTitle = 'Continuar Diagnóstico das Portas';
+    let nextStepTitle = 'Continuar Investigação D1';
     let nextStepDesc = 'Prosseguir com a apuração fática da governança.';
     let nextStepView: AppView = 'INTERVIEW';
     let nextStepDoor: DoorId = resumeTargetDoorId;
@@ -411,16 +427,32 @@ export function calculateUserJourney(params: JourneyEngineParams): UserJourneyIn
       nextStepDoor = bp.doorId;
       nextStepPriority = 'URGENTE';
     } else if (doorsRequiringDeepening.length > 0) {
-      nextStepTitle = `Aprofundar Porta ${doorsRequiringDeepening[0]}`;
+      nextStepTitle = `Aprofundar Aspecto ${doorsRequiringDeepening[0]}`;
       nextStepDesc = `Responder às dúvidas fáticas identificadas na facilitação sobre os fluxos entre áreas.`;
       nextStepView = 'INTERVIEW';
       nextStepDoor = doorsRequiringDeepening[0];
       nextStepPriority = 'ALTA';
     } else if (doorsWithPendingVerification.length > 0) {
-      nextStepTitle = `Apresentar Evidência da Porta ${doorsWithPendingVerification[0]}`;
-      nextStepDesc = `Localizar e anexar documento de suporte para comprovação probatória.`;
+      nextStepTitle = `Apresentar Evidência do Aspecto ${doorsWithPendingVerification[0]}`;
+      nextStepDesc = `Localizar e referenciar documento ou registro de suporte para comprovação probatória.`;
       nextStepView = 'EVIDENCES';
       nextStepPriority = 'ALTA';
+    } else if (!allAspectsInvestigated && firstUnexploredDoor) {
+      nextStepTitle = `Investigar Aspecto ${firstUnexploredDoor.code} • ${firstUnexploredDoor.title}`;
+      nextStepDesc = `Prosseguir com a apuração fática do aspecto ${firstUnexploredDoor.code} da governança.`;
+      nextStepView = 'INTERVIEW';
+      nextStepDoor = firstUnexploredDoor.id;
+      nextStepPriority = 'NORMAL';
+    } else if (!isMaturityValidated) {
+      nextStepTitle = 'Acompanhar Validação da Facilitação';
+      nextStepDesc = 'A equipe de facilitação está consolidando a análise de maturidade C1–C6.';
+      nextStepView = 'DIAGNOSTIC';
+      nextStepPriority = 'NORMAL';
+    } else {
+      nextStepTitle = 'Acompanhar Jornada de Evolução';
+      nextStepDesc = 'Consultar ações estruturantes pactuadas para a governança da Câmara.';
+      nextStepView = 'ACTION_PLAN';
+      nextStepPriority = 'NORMAL';
     }
 
     return {
@@ -430,14 +462,14 @@ export function calculateUserJourney(params: JourneyEngineParams): UserJourneyIn
         title: 'Você é o principal ponto de articulação do diagnóstico institucional',
         roleHeadline: 'Encarregado de Dados / Interlocutor Principal da Câmara.',
         objective: 'Coordenar a descoberta fática de como a Câmara lida com dados, articulando respostas da Procuradoria e dos setores operacionais.',
-        firstStep: 'Iniciar o diagnóstico das 6 Portas D1. Não é necessário conhecer sozinho todas as respostas: você poderá solicitar apoio de outros setores sempre que necessário.',
+        firstStep: 'Iniciar a investigação dos aspectos da Dimensão D1. Não é necessário conhecer sozinho todas as respostas: você poderá solicitar apoio de outros setores sempre que necessário.',
         expectedResult: 'Retrato Executivo fático validado, clareza das responsabilidades e Plano de Evolução para proteção da instituição.',
-        actionLabel: 'Continuar Diagnóstico',
+        actionLabel: 'Continuar Investigação',
         actionView: 'INTERVIEW',
         actionDoorId: resumeTargetDoorId
       },
       fourQuestions: {
-        whereAmI: `Diagnóstico Institucional D1 da ${currentOrg.name} (${exploredDoorsCount}/6 portas percorridas).`,
+        whereAmI: `Diagnóstico Institucional D1 da ${currentOrg.name} (${exploredDoorsCount}/${totalApplicableDoors} aspectos investigados).`,
         whatToDoNow: nextStepDesc,
         whyItMatters: 'O diagnóstico não busca avaliar individualmente o Encarregado, mas registrar a maturidade institucional para estruturar a Casa.',
         whatWillIGet: 'Um Retrato Executivo homologado e um Plano de Evolução detalhado com responsáveis e prazos.'
@@ -484,17 +516,22 @@ export function calculateUserJourney(params: JourneyEngineParams): UserJourneyIn
     const div = activeDivergences[0];
     facilTargetView = 'FACILITATOR_PANEL';
     facilTargetDoor = div.doorId;
-    facilResumeHeadline = `Há 1 divergência operacional aberta na Porta ${div.doorId}: "${div.title}".`;
+    facilResumeHeadline = `Há 1 divergência operacional aberta no aspecto ${div.doorId}: "${div.title}".`;
     facilResumeDetail = 'Conciliar as falas divergentes antes de atribuir suficiência à capacidade correspondente.';
   } else if (doorsRequiringDeepening.length > 0) {
     const d = doorsRequiringDeepening[0];
     facilTargetView = 'INTERVIEW';
     facilTargetDoor = d;
-    facilResumeHeadline = `A Porta ${d} requer aprofundamento probatório com os setores da Câmara.`;
+    facilResumeHeadline = `O aspecto ${d} requer aprofundamento probatório com os setores da Câmara.`;
     facilResumeDetail = 'Aplicar perguntas adaptativas e registrar unidades de informação complementares.';
+  } else if (!allAspectsInvestigated && firstUnexploredDoor) {
+    facilTargetView = 'INTERVIEW';
+    facilTargetDoor = firstUnexploredDoor.id;
+    facilResumeHeadline = `Investigação D1 em andamento (${exploredDoorsCount}/${totalApplicableDoors} aspectos investigados).`;
+    facilResumeDetail = `Próximo aspecto a investigar: ${firstUnexploredDoor.code} • ${firstUnexploredDoor.title}.`;
   } else if (!isMaturityValidated) {
     facilTargetView = 'INTEGRATION';
-    facilResumeHeadline = 'Investigação fática percorrida. Análise de integração C1–C6 aguardando validação metodológica.';
+    facilResumeHeadline = 'Investigação fática dos aspectos concluída. Análise de integração C1–C6 aguardando validação metodológica.';
     facilResumeDetail = 'Conferir o rationale de sustentação de cada capacidade e registrar a validação humana formal.';
   } else if (!hasSnapshot) {
     facilTargetView = 'SNAPSHOT';
@@ -503,7 +540,7 @@ export function calculateUserJourney(params: JourneyEngineParams): UserJourneyIn
   } else {
     facilTargetView = 'ACTION_PLAN';
     facilResumeHeadline = 'Ciclo D1 consolidado e Snapshot homologado.';
-    facilResumeDetail = 'Acompanhar a execução das ações estruturantes e o indicador experimental de tração.';
+    facilResumeDetail = 'Acompanhar a execução das ações estruturantes da Jornada de Evolução.';
   }
 
   // Próximo passo recomendado determinístico do Facilitador
@@ -515,22 +552,28 @@ export function calculateUserJourney(params: JourneyEngineParams): UserJourneyIn
 
   if (blockingPendings.length > 0) {
     facNextTitle = 'Tratar Pendência Bloqueadora';
-    facNextDesc = `Conferir a amostra documental para sanar a pendência na Porta ${blockingPendings[0].doorId}.`;
+    facNextDesc = `Conferir a amostra documental para sanar a pendência no aspecto ${blockingPendings[0].doorId}.`;
     facNextView = 'PENDING';
     facNextDoor = blockingPendings[0].doorId;
     facNextPriority = 'URGENTE';
   } else if (activeDivergences.length > 0) {
     facNextTitle = 'Conciliar Divergência Operacional';
-    facNextDesc = `Avaliar contradição entre relatos na Porta ${activeDivergences[0].doorId} no Painel de Facilitação.`;
+    facNextDesc = `Avaliar contradição entre relatos no aspecto ${activeDivergences[0].doorId} no Painel de Facilitação.`;
     facNextView = 'FACILITATOR_PANEL';
     facNextDoor = activeDivergences[0].doorId;
     facNextPriority = 'ALTA';
   } else if (doorsRequiringDeepening.length > 0) {
-    facNextTitle = `Aprofundar Porta ${doorsRequiringDeepening[0]}`;
+    facNextTitle = `Aprofundar Aspecto ${doorsRequiringDeepening[0]}`;
     facNextDesc = 'Conduzir sondagem complementar sobre fluxos de atendimento com o Protocolo e TI.';
     facNextView = 'INTERVIEW';
     facNextDoor = doorsRequiringDeepening[0];
     facNextPriority = 'ALTA';
+  } else if (!allAspectsInvestigated && firstUnexploredDoor) {
+    facNextTitle = `Investigar Aspecto ${firstUnexploredDoor.code} • ${firstUnexploredDoor.title}`;
+    facNextDesc = `Conduzir apuração fática do aspecto ${firstUnexploredDoor.code} com respondentes da Câmara.`;
+    facNextView = 'INTERVIEW';
+    facNextDoor = firstUnexploredDoor.id;
+    facNextPriority = 'NORMAL';
   } else if (!isMaturityValidated) {
     facNextTitle = 'Validar Análise Metodológica C1–C6';
     facNextDesc = 'Revisar matriz de capacidades e registrar validação humana de maturidade.';
@@ -542,7 +585,7 @@ export function calculateUserJourney(params: JourneyEngineParams): UserJourneyIn
     facNextView = 'SNAPSHOT';
     facNextPriority = 'ALTA';
   } else {
-    facNextTitle = 'Acompanhar Plano de Evolução';
+    facNextTitle = 'Acompanhar Jornada de Evolução';
     facNextDesc = 'Monitorar o andamento das ações pactuadas com a administração da Câmara.';
     facNextView = 'ACTION_PLAN';
     facNextPriority = 'NORMAL';
@@ -584,7 +627,7 @@ export function calculateUserJourney(params: JourneyEngineParams): UserJourneyIn
       actionView: facNextView,
       actionDoorId: facNextDoor,
       priority: facNextPriority,
-      reason: 'Assegura a cadeia probatória e a integridade da consolidação dimensional.'
+      reason: 'Continue a investigação para completar a análise desta dimensão.'
     },
     stagesProgress
   };
