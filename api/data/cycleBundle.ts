@@ -53,11 +53,40 @@ export default async function handler(req: Request, res: Response) {
       fetchTable('pending_items')
     ]);
 
+    // O schema físico de information_units não carrega question_code.
+    // A porta é reconstruída pela cadeia relacional canônica:
+    // information_unit -> response -> question_instance -> question_code.
+    const questionCodeByInstanceId = new Map(
+      questionInstances.map((row: any) => [
+        String(row.id || ''),
+        row.question_code || row.door_id || null
+      ])
+    );
+
+    const questionCodeByResponseId = new Map(
+      responses.map((row: any) => [
+        String(row.id || ''),
+        row.question_code ||
+          row.door_id ||
+          questionCodeByInstanceId.get(String(row.question_instance_id || '')) ||
+          null
+      ])
+    );
+
+    const informationUnitsWithQuestionCode = informationUnits.map((row: any) => ({
+      ...row,
+      question_code:
+        row.question_code ||
+        row.door_id ||
+        questionCodeByResponseId.get(String(row.response_id || '')) ||
+        null
+    }));
+
     return res.status(200).json({
       cycleId: cleanCycleId,
       questionInstances,
       responses,
-      informationUnits,
+      informationUnits: informationUnitsWithQuestionCode,
       additionalQuestions,
       evidences,
       pendingItems
