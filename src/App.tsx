@@ -382,7 +382,7 @@ export default function App() {
     />;
   }
   return (
-    <PilotProvider key={accessMode}>
+    <PilotProvider key={accessMode} institutionalMode={accessMode === 'AUTHENTICATED'}>
       <div className="fixed bottom-3 right-3 z-[100] flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 shadow-lg text-xs text-slate-800">
         <span>{accessMode === 'SIMULATION' ? 'Modo de simulação' : 'Sessão institucional'}</span>
         <button type="button" onClick={signOut} className="font-semibold text-emerald-800 underline">
