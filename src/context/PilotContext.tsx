@@ -859,6 +859,12 @@ export const PilotProvider: React.FC<{ children: React.ReactNode; institutionalM
     }
 
     const org = organizations.find(o => o.id === orgId || (o.legacyId && o.legacyId === orgId));
+    // O catálogo institucional é a lista autorizada retornada pelo servidor.
+    // Identificadores arbitrários nunca podem selecionar outra instituição.
+    if (institutionalMode && !org) {
+      console.warn('[VIPAZ Acesso] Organização não incluída no catálogo autorizado.');
+      return;
+    }
     const effectiveOrgId = org?.id || orgId;
 
     const orgCycles = cycles.filter(c => 
