@@ -115,9 +115,9 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
   );
 
   // Capacidades estritamente validadas como DEMONSTRADA
-  const demonstratedCapacities = Object.values(integration.capacities).filter(
-    cap => cap.status === 'DEMONSTRADA'
-  );
+  const demonstratedCapacities = isValidated
+    ? Object.values(integration.capacities).filter(cap => cap.status === 'DEMONSTRADA')
+    : [];
 
   // Capacidades em estruturação
   const structuringCapacities = Object.values(integration.capacities).filter(
@@ -125,14 +125,10 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
   );
 
   // Próxima conquista baseada na integração validada
-  const nextAchievementText = integration.nextInstitutionalAchievement;
+  const nextAchievementText = isValidated ? integration.nextInstitutionalAchievement : null;
 
-  // Relatos validados na escuta não equivalem a capacidades ou maturidade demonstradas.
-  // Seleção vinculada à organização/ciclo carregados pelo contexto, sem conteúdo fixo por município.
-  const d12InterviewStatements = informationUnits
-    .filter(unit => unit.doorId === 'D1.2' && unit.validationStatus === 'VALIDADO')
-    .map(unit => unit.statement.trim())
-    .filter((statement, index, statements) => Boolean(statement) && statements.indexOf(statement) === index);
+  // Entrevista identificada apenas para sinalizar a etapa de revisão.
+  // Unidades validadas na escuta não autorizam publicação automática.
   const hasD12Interview = originalResponses.some(response => response.doorId === 'D1.2');
 
   // Ações pactuadas (no máximo 3 para o Retrato Executivo, apenas se o ciclo possuir validação ou ações formalizadas)
@@ -374,26 +370,15 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
             )}
           </div>
 
-          {/* Síntese factual da escuta: não atribui maturidade nem comprovação operacional. */}
+          {/* A publicação da síntese individualizada exige revisão humana específica. */}
           {!isValidated && hasD12Interview && (
             <section className="space-y-2">
               <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                O que a instituição relatou sobre encaminhamentos (D1.2)
+                Encaminhamentos entre áreas (D1.2)
               </h2>
               <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2 text-xs text-slate-700">
-                {d12InterviewStatements.length > 0 ? (
-                  <>
-                    <p>Na escuta institucional, foram relatadas as seguintes características dos encaminhamentos:</p>
-                    <ul className="list-disc pl-5 space-y-1">
-                      {d12InterviewStatements.map(statement => <li key={statement}>{statement}</li>)}
-                    </ul>
-                    <p className="text-slate-600">
-                      Essas informações descrevem a experiência relatada. A confirmação de como o encaminhamento ocorre na prática poderá ser feita com um caso concreto, caso a instituição considere útil.
-                    </p>
-                  </>
-                ) : (
-                  <p>A entrevista sobre encaminhamentos foi registrada e ainda requer conferência de seu conteúdo para compor a síntese institucional.</p>
-                )}
+                <p>A instituição participou da escuta sobre como são encaminhadas demandas relacionadas à proteção de dados.</p>
+                <p>A síntese individualizada desse relato está em revisão e será apresentada após confirmação humana. A entrevista, por si só, não determina o estágio de maturidade nem comprova a execução das práticas relatadas.</p>
               </div>
             </section>
           )}
@@ -472,10 +457,10 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
               </span>
               <div className="flex items-center justify-between">
                 <span className="font-bold text-slate-800">
-                  {snapshot?.experimentalIndicatorBaseline?.name || 'Indicador de Continuidade das Ações'}
+                  {isValidated && snapshot?.experimentalIndicatorBaseline?.name || 'Indicador de Continuidade das Ações'}
                 </span>
                 <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  {snapshot?.experimentalIndicatorBaseline 
+                  {isValidated && snapshot?.experimentalIndicatorBaseline 
                     ? `${snapshot.experimentalIndicatorBaseline.trackedPercentage}% (Baseline)`
                     : 'Em Aferição'}
                 </span>
@@ -490,7 +475,7 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
                 6. Próxima Revisão Institucional
               </span>
               <div className="font-bold text-slate-800">
-                {snapshot?.scheduledNextReview 
+                {isValidated && snapshot?.scheduledNextReview 
                   ? (snapshot.scheduledNextReview.includes('-') ? new Date(snapshot.scheduledNextReview).toLocaleDateString('pt-BR') : snapshot.scheduledNextReview)
                   : 'A definir conforme pactuação institucional'}
               </div>
