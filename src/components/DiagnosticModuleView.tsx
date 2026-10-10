@@ -26,6 +26,7 @@ export const DiagnosticModuleView: React.FC = () => {
     currentCycle,
     currentUser,
     doorStatuses,
+    originalResponses,
     activeDoorId,
     setActiveDoorId,
     setCurrentView,
@@ -53,6 +54,8 @@ export const DiagnosticModuleView: React.FC = () => {
   const exploredDoorsCount = doors.filter(
     s => s === 'SUFICIENTEMENTE_EXPLORADA' || s === 'SUFICIENTEMENTE_EXPLORADA_COMPROVACAO_PENDENTE'
   ).length;
+
+  const doorsWithResponses = new Set(originalResponses.map(response => response.doorId)).size;
 
   const doorsConsolidatedCount = doors.filter(
     s => s === 'SUFICIENTEMENTE_EXPLORADA'
@@ -98,7 +101,9 @@ export const DiagnosticModuleView: React.FC = () => {
 
           <div className="flex items-center gap-2 self-start lg:self-auto">
             <span className="text-xs text-slate-300 font-mono">
-              Investigação: <strong className="text-emerald-400">{exploredDoorsCount}/{totalAspects}</strong>
+              Com respostas: <strong className="text-emerald-400">{doorsWithResponses}/{totalAspects} portas</strong>
+              <span className="mx-2 text-slate-500">·</span>
+              Suficientemente exploradas: <strong className="text-emerald-400">{exploredDoorsCount}/{totalAspects}</strong>
             </span>
           </div>
         </div>
