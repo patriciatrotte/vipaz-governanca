@@ -1211,7 +1211,10 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
     const orgCycles = cycles.filter(c => c.organizationId === orgId);
     const activeCycle = orgCycles.find(c => c.status !== 'ARQUIVADO') || orgCycles[0];
 
-    const state = loadStateForOrg(orgId, activeCycle?.id);
+    // O resumo institucional não pode consultar cache legado de outra sessão.
+    const state = institutionalMode
+      ? getEmptyOrgState(orgId, activeCycle?.id || 'no-cycle')
+      : loadStateForOrg(orgId, activeCycle?.id);
     const blockingPending = state.pendingItems.filter(p => p.impact === 'BLOQUEANTE' && p.status === 'ABERTA').length;
 
     let calculatedStatus: CycleStatus = activeCycle?.status || 'NAO_INICIADO';
@@ -1225,7 +1228,7 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
       calculatedStatus = 'EM_ANDAMENTO';
     }
 
-    const savedLastActivity = localStorage.getItem(`${STORAGE_KEY_PREFIX}${orgId}_lastActivity`);
+    const savedLastActivity = institutionalMode ? null : localStorage.getItem(`${STORAGE_KEY_PREFIX}${orgId}_lastActivity`);
     const lastDate = savedLastActivity 
       ? new Date(savedLastActivity).toLocaleDateString('pt-BR') 
       : activeCycle?.updatedAt
