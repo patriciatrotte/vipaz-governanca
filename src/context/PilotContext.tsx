@@ -135,7 +135,7 @@ interface PilotContextType {
     mainInterlocutorRole?: string;
     mainInterlocutorEmail?: string;
   }) => Promise<Organization>;
-  startD1Cycle: (organizationId: string) => EvaluationCycle;
+  startD1Cycle: (organizationId: string) => Promise<EvaluationCycle>;
   completeInterview: () => void;
   getOrganizationSummary: (orgId: string) => {
     cycleName: string;
