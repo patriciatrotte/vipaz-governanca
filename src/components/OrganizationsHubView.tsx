@@ -45,6 +45,16 @@ export const OrganizationsHubView: React.FC = () => {
   const [interlocutorName, setInterlocutorName] = useState('');
   const [interlocutorRole, setInterlocutorRole] = useState('');
   const [formError, setFormError] = useState('');
+  const [catalogView, setCatalogView] = useState<'CARDS' | 'LIST'>('CARDS');
+  const [catalogSearch, setCatalogSearch] = useState('');
+  const [catalogFilter, setCatalogFilter] = useState<'ALL' | 'DEMO' | 'REAL'>('ALL');
+  const filteredOrganizations = organizations.filter(org => {
+    if (catalogFilter === 'DEMO' && !org.isDemo) return false;
+    if (catalogFilter === 'REAL' && org.isDemo) return false;
+    const query = catalogSearch.trim().toLocaleLowerCase('pt-BR');
+    return !query || [org.name, org.municipality, org.state].some(value => String(value || '').toLocaleLowerCase('pt-BR').includes(query));
+  }).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+
 
   // Abrir modal de criação
   const handleOpenCreate = () => {
@@ -195,14 +205,46 @@ const handleConfirmStartCycle = async () => {
           </span>
         </div>
 
+        {!isCatalogLoading && (
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-3" aria-label="Organização do catálogo">
+            <input aria-label="Buscar instituição ou município" type="search" value={catalogSearch} onChange={e => setCatalogSearch(e.target.value)} placeholder="Buscar instituição ou município…" className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            <select aria-label="Filtrar instituições" value={catalogFilter} onChange={e => setCatalogFilter(e.target.value as 'ALL' | 'DEMO' | 'REAL')} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+              <option value="ALL">Todas</option><option value="REAL">Instituições</option><option value="DEMO">Demonstração</option>
+            </select>
+            <div className="inline-flex rounded-lg border border-slate-300 p-1 text-xs" aria-label="Formato de visualização">
+              <button type="button" aria-pressed={catalogView === 'CARDS'} onClick={() => setCatalogView('CARDS')} className={`rounded px-3 py-1.5 ${catalogView === 'CARDS' ? 'bg-slate-900 text-white' : 'text-slate-700'}`}>Cartões</button>
+              <button type="button" aria-pressed={catalogView === 'LIST'} onClick={() => setCatalogView('LIST')} className={`rounded px-3 py-1.5 ${catalogView === 'LIST' ? 'bg-slate-900 text-white' : 'text-slate-700'}`}>Lista</button>
+            </div>
+            <span className="self-center text-xs text-slate-500">{filteredOrganizations.length} resultado(s)</span>
+          </div>
+        )}
         {/* Grid de Cards de Organizações (2 colunas desktop, 1 coluna telas menores) */}
         {isCatalogLoading && (
           <div role="status" aria-live="polite" className="rounded-xl border border-sky-200 bg-sky-50 p-5 text-sm text-sky-900">
             Consultando organizações e ciclos na base central. Aguarde para visualizar o catálogo completo.
           </div>
         )}
-        {!isCatalogLoading && <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {organizations.map(org => {
+        {!isCatalogLoading && catalogView === 'LIST' && (
+          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+            <table className="min-w-full text-left text-sm">
+              <thead className="bg-slate-100 text-xs text-slate-600"><tr><th className="px-4 py-3">Instituição</th><th className="px-4 py-3">Município / UF</th><th className="px-4 py-3">Ciclo</th><th className="px-4 py-3">Situação</th><th className="px-4 py-3">Acesso</th></tr></thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredOrganizations.map(org => {
+                  const summary = getOrganizationSummary(org.id);
+                  return <tr key={org.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 font-semibold text-slate-900">{org.name}{org.isDemo && <span className="ml-2 text-xs font-normal text-amber-700">Teste</span>}</td>
+                    <td className="px-4 py-3 text-slate-600">{[org.municipality, org.state].filter(Boolean).join(' / ') || '—'}</td>
+                    <td className="px-4 py-3 text-slate-600">{summary.cycleName}</td>
+                    <td className="px-4 py-3"><CycleStatusBadge status={summary.cycleStatus} /></td>
+                    <td className="px-4 py-3"><button type="button" onClick={() => selectOrganization(org.id)} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white">Abrir instituição</button></td>
+                  </tr>;
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {!isCatalogLoading && catalogView === 'CARDS' && <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filteredOrganizations.map(org => {
             const summary = getOrganizationSummary(org.id);
             const isCompleted = summary.cycleStatus === 'CONCLUIDO_VALIDADO';
             const actionLabel = isCompleted ? 'Consultar' : 'Continuar';
