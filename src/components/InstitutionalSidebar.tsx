@@ -264,12 +264,12 @@ export const InstitutionalSidebar: React.FC<InstitutionalSidebarProps> = ({
               } ${
                 active
                   ? 'bg-emerald-600 text-white font-semibold shadow-xs'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-800/80 active:bg-slate-800'
+                  : 'text-slate-100 hover:text-white hover:bg-slate-800/80 active:bg-slate-800'
               }`}
             >
               {/* Ícone */}
               <div className={`shrink-0 flex items-center justify-center transition-transform group-hover:scale-105 ${
-                active ? 'text-white' : 'text-slate-400 group-hover:text-emerald-400'
+                active ? 'text-white' : 'text-slate-200 group-hover:text-emerald-400'
               }`}>
                 <IconComponent className="w-5 h-5" />
               </div>
@@ -300,7 +300,7 @@ export const InstitutionalSidebar: React.FC<InstitutionalSidebarProps> = ({
                     )}
                   </div>
                   <span className={`text-[11px] truncate block ${
-                    active ? 'text-emerald-100' : 'text-slate-400 group-hover:text-slate-300'
+                    active ? 'text-emerald-100' : 'text-slate-300 group-hover:text-white'
                   }`}>
                     {mod.subtitle}
                   </span>
