@@ -766,16 +766,14 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           adapted.distributedRequests.length > 0;
 
         if (hasCentralRecords) {
-          // Aplica o estado adaptado com autoridade central primária
-          setDoorStatuses(adapted.doorStatuses);
-          setQuestionInstances(adapted.questionInstances);
-          setOriginalResponses(adapted.originalResponses);
-          setInformationUnits(adapted.informationUnits);
-          setProbings(adapted.probings);
-          setPedagogicalInterventions(adapted.pedagogicalInterventions);
-          setDistributedRequests(adapted.distributedRequests);
-          setEvidences(adapted.evidences);
-          setPendingItems(adapted.pendingItems);
+          // O pacote central contém apenas dados investigativos. Ao trocar de
+          // organização/ciclo, NÃO manter no estado React resultados derivados
+          // da sessão anterior. O cache local histórico permanece intocado.
+          const isolated = getEmptyOrgState(orgId, cycleId);
+          applyStateBundle({
+            ...isolated,
+            ...adapted
+          });
 
           // NÃO espelhar um pacote híbrido no cache local.
           // O endpoint central entrega somente a investigação primária; integração,
