@@ -250,7 +250,7 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-700 flex items-center gap-2.5 no-print">
             <EyeOff className="w-4 h-4 text-slate-500 shrink-0" />
             <span>
-              <strong>Finalidade Gerencial:</strong> Síntese de governança orientada à Presidência e Mesa Diretora. Não expõe falas individuais, identidades de servidores ou controvérsias operacionais, consolidando estritamente os resultados validados do ciclo.
+              <strong>Finalidade Gerencial:</strong> Síntese de governança orientada à Presidência e Mesa Diretora. Não expõe falas individuais, identidades de servidores ou controvérsias operacionais, distinguindo informações levantadas, resultados formalmente validados e pontos ainda em avaliação.
             </span>
           </div>
 
@@ -312,13 +312,13 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
                       )}
                     </div>
                   ) : (
-                    'Maturidade ainda não apurada'
+                    'Em avaliação'
                   )}
                 </div>
                 <p className="text-xs text-slate-700 font-serif leading-relaxed max-w-2xl mt-1">
                   {isValidated 
                     ? (validatedLevelInfo?.shortDesc || integration.humanValidation.validationNotes || validatedLevelInfo?.criteriaText)
-                    : 'A apuração dos aspectos da Dimensão D1 ainda se encontra em fase de consolidação analítica e saneamento de pendências. Nenhum nível provisório é inferido antes da validação metodológica formal.'}
+                    : 'A avaliação está em andamento. O estágio de maturidade será apresentado após a validação metodológica.'}
                 </p>
               </div>
 
@@ -377,7 +377,7 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
                 Meta Estruturante do Ciclo:
               </span>
               <p className="text-slate-200 text-xs sm:text-sm font-serif leading-relaxed">
-                {nextAchievementText || 'Padronização dos fluxos formais de governança e consolidação das evidências operacionais.'}
+                {nextAchievementText || 'Próximo avanço a definir com a instituição, a partir das informações levantadas.'}
               </p>
             </div>
           </div>
@@ -420,7 +420,7 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-500 font-serif">
                 {isValidated
                   ? 'Nenhuma ação prioritária foi cadastrada no Plano de Evolução deste ciclo.'
-                  : 'As prioridades do ciclo serão consolidadas na pactuação do Plano de Evolução após a validação metodológica.'}
+                  : 'Ainda não há ações pactuadas. As orientações preliminares podem ser examinadas pela instituição, sem constituir compromissos ou exigências de registro.'}
               </div>
             )}
           </div>
@@ -467,7 +467,7 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
               {isValidated ? (
                 <>Validação metodológica concluída em {integration.humanValidation.validatedAt ? new Date(integration.humanValidation.validatedAt).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')} — responsável: {integration.humanValidation.facilitatorName}.</>
               ) : (
-                <>Retrato Executivo derivado da base validada do Piloto Dimensional D1 v1.0.</>
+                <>Síntese preliminar do ciclo, sujeita à validação metodológica. Não constitui classificação definitiva de maturidade.</>
               )}
             </span>
             <span className="font-mono">
