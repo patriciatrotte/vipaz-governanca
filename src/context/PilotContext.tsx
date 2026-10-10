@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import {
   Organization,
   EvaluationCycle,
@@ -535,6 +535,8 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
   const [currentCycleId, setCurrentCycleId] = useState<string | null>(null);
   const [isLoadingCentral, setIsLoadingCentral] = useState<boolean>(false);
+  // Identifica a requisição válida para impedir reidratação tardia de outro ciclo.
+  const centralLoadSequence = useRef(0);
   const [isCentralAvailable, setIsCentralAvailable] = useState<boolean>(false);
   const [isCatalogLoading, setIsCatalogLoading] = useState<boolean>(true);
   const [investigationProvenance, setInvestigationProvenance] = useState<PilotContextType['investigationProvenance']>({ source: 'UNDETERMINED', cycleId: null, reconciliation: 'NOT_VERIFIED' });
@@ -743,9 +745,11 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Reidratação da sessão investigativa central (Bloco 1)
   const loadCentralInvestigation = async (cycleId: string, orgId: string) => {
+    const requestId = ++centralLoadSequence.current;
     setIsLoadingCentral(true);
     try {
       const res = await fetch(`/api/data/cycle-bundle?cycleId=${encodeURIComponent(cycleId)}`);
+      if (requestId !== centralLoadSequence.current) return;
       const contentType = res.headers.get('content-type') || '';
       const isJson = contentType.includes('application/json');
 
@@ -756,6 +760,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         );
       } else if (res.ok) {
         const rawBundle = await res.json();
+        if (requestId !== centralLoadSequence.current) return;
         const adapted = adaptCycleBundleToDomain(rawBundle);
 
         // Se houver qualquer registro central existente para este ciclo
@@ -816,6 +821,8 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Transição de contexto: Selecionar Organização
   const selectOrganization = (orgId: string) => {
+    // Invalida cargas pendentes da organização anterior, inclusive se a nova não tiver ciclo.
+    centralLoadSequence.current += 1;
     // Não persistir resultados derivados de origem inconciliada ao trocar de organização.
     // A gravação automática já é controlada pelo estado de proveniência.
     if (currentOrgId && currentOrgId !== orgId && !isCentralAvailable && !isLoadingCentral) {
@@ -884,6 +891,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Transição de contexto: Voltar à Central
   const returnToOrganizationsHub = () => {
+    centralLoadSequence.current += 1;
     // Ao sair de um ciclo carregado da base central, não gravar no cache
     // um pacote derivado vazio ou inconciliado como se fosse resultado validado.
     if (currentOrgId && !isCentralAvailable && !isLoadingCentral) {
