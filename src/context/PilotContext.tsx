@@ -1541,6 +1541,10 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
     advancedElements?: string[],
     insufficiencies?: string[]
   ) => {
+    if (investigationProvenance.source === 'CENTRAL' && investigationProvenance.reconciliation === 'PENDING') {
+      console.warn('[VIPAZ Avaliação] Alteração bloqueada: investigação central sem conciliação metodológica do ciclo.');
+      return;
+    }
     if (currentUser.role !== 'FACILITADOR') {
       console.warn('[Autorização D1] Apenas o Facilitador Metodológico pode alterar a avaliação das capacidades.');
       return;
@@ -1561,6 +1565,10 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
   };
 
   const validateHumanMaturity = (level: MaturityLevel, notes: string, facilitatorName: string) => {
+    if (investigationProvenance.source === 'CENTRAL' && investigationProvenance.reconciliation === 'PENDING') {
+      console.warn('[VIPAZ Avaliação] Validação bloqueada: investigação central sem conciliação metodológica do ciclo.');
+      return;
+    }
     if (currentUser.role !== 'FACILITADOR') {
       console.warn('[Autorização D1] Apenas o Facilitador Metodológico pode validar a maturidade dimensional.');
       return;
@@ -1578,6 +1586,10 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
   };
 
   const createSnapshot = () => {
+    if (investigationProvenance.source === 'CENTRAL' && investigationProvenance.reconciliation === 'PENDING') {
+      alert('Não é possível gerar um resultado: a investigação central ainda precisa ser conciliada com a avaliação validada deste ciclo.');
+      return;
+    }
     if (currentUser.role !== 'FACILITADOR') {
       alert('Acesso restrito: Apenas o Facilitador Metodológico pode gerar o Snapshot imutável da Dimensão D1.');
       return;
@@ -1601,17 +1613,16 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
       organizationName: org.name,
       municipality: org.municipality,
       dimensionId: 'D1',
-      cycleId: org.cycleId || 'ciclo-d1',
+      cycleId: currentCycleId || org.cycleId || 'ciclo-d1',
       baseDate: new Date().toISOString().split('T')[0],
-      methodologyVersion: 'D1 v1.0',
+      methodologyVersion: currentCycle?.methodologyVersion || org.methodologyVersion || integration.methodologyVersion,
       validatedLevel: integration.humanValidation.validatedLevel,
       capacitiesAssessment: integration.capacities,
       demonstratedCapacities: demonstrated,
       structuringCapacities: structuring,
-      advancedElements: [
-        'Acolhimento gerencial pela Diretoria Geral com aprovação orçamentária efetiva (C5).',
-        'Rotinas automatizadas de backup em nuvem governamental já em operação na TI (C3).'
-      ],
+      advancedElements: Array.from(new Set(
+        Object.values(integration.capacities).flatMap(capacity => capacity.advancedElements || [])
+      )),
       validatedGaps: gaps,
       relevantPendingItems: pendingItems,
       nextAchievement: integration.nextInstitutionalAchievement,
