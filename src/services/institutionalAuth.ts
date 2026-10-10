@@ -31,7 +31,19 @@ export const signInInstitutionalUser = async (email: string, password: string): 
   const verified = await fetch('/api/auth/session', {
     headers: { Authorization: `Bearer ${payload.access_token}` }
   });
-  if (!verified.ok) throw new Error(verified.status >= 500 ? 'Serviço de autorização indisponível (HTTP ' + verified.status + '). Sua senha foi aceita.' : 'Sessão institucional não autorizada (HTTP ' + verified.status + ').');
+  if (!verified.ok) {
+    const details = await verified.json().catch(() => null);
+    const safeCodes: Record<string, string> = {
+      membership_lookup_failed: 'consulta de vínculos',
+      global_role_lookup_failed: 'consulta de administrador global',
+      authentication_service_unavailable: 'comunicação com Supabase',
+      auth_not_configured: 'configuração do serviço',
+      invalid_session: 'validação da sessão'
+    };
+    const stage = typeof details?.error === 'string' ? safeCodes[details.error] : undefined;
+    const upstream = typeof details?.upstreamStatus === 'number' ? ' / Supabase ' + details.upstreamStatus : '';
+    throw new Error('Verificação institucional falhou (HTTP ' + verified.status + (stage ? ' · ' + stage : '') + upstream + '). Sua senha foi aceita.');
+  }
   const session = await verified.json();
   if ((!Array.isArray(session.memberships) || session.memberships.length === 0) && session.isGlobalAdmin !== true) {
     throw new Error('Usuário sem vínculo institucional ativo nem papel administrativo global. Solicite habilitação ao administrador.');
