@@ -1,18 +1,30 @@
 import type { Request, Response } from 'express';
 import { buildSupabaseHeaders } from '../../src/services/persistence/supabaseAdapters.js';
+import { getScopedReadHeaders } from '../_lib/scopedRead.js';
+import { AccessError } from '../_lib/cycleAccess.js';
 
 export default async function handler(req: Request, res: Response) {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) return res.status(503).json({ error: 'database_not_configured' });
 
+  // Escritas administrativas aguardam autorização institucional no servidor.
+  // Nunca permitir criação usando apenas um papel simulado na interface.
+  if (req.method === 'POST') return res.status(403).json({ error: 'institutional_write_not_enabled' });
+
   if (req.method === 'GET') {
+    let scopedHeaders: Record<string, string>;
+    try { scopedHeaders = await getScopedReadHeaders(req, url, key); }
+    catch (error) {
+      if (error instanceof AccessError) return res.status(error.status).json({ error: error.code });
+      return res.status(503).json({ error: 'authorization_unavailable' });
+    }
     try {
       // Tenta com join de organizations para resgatar legacy_id se existir
-      let r = await fetch(`${url}/rest/v1/governance_cycles?select=*,organizations(id,legacy_id,name)&order=created_at.asc`, { headers: buildSupabaseHeaders(key) });
+      let r = await fetch(`${url}/rest/v1/governance_cycles?select=*,organizations(id,legacy_id,name)&order=created_at.asc`, { headers: scopedHeaders });
       if (!r.ok) {
         // Fallback para select simples se o join falhar
-        r = await fetch(`${url}/rest/v1/governance_cycles?select=*&order=created_at.asc`, { headers: buildSupabaseHeaders(key) });
+        r = await fetch(`${url}/rest/v1/governance_cycles?select=*&order=created_at.asc`, { headers: scopedHeaders });
       }
       if (!r.ok) {
         return res.status(502).json({ error: 'cycles_read_failed', details: await r.text() });
