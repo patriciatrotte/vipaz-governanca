@@ -26,7 +26,7 @@ const run = async (req: Request) => {
   await sessionHandler(req,res);
   return {status,payload,headers};
 };
-const setup = (memberships: unknown[], identityStatus=200) => {
+const setup = (memberships: unknown[], identityStatus=200, globalRoles: unknown[] = []) => {
   process.env.SUPABASE_URL='https://example.test';
   process.env.SUPABASE_SECRET_KEY='server-secret';
   const calls:string[]=[];
@@ -35,6 +35,7 @@ const setup = (memberships: unknown[], identityStatus=200) => {
     calls.push(url);
     if(url.includes('/auth/v1/user')) return {ok:identityStatus===200,json:async()=>({id:'33333333-3333-4333-8333-333333333333'})} as globalThis.Response;
     if(url.includes('/organization_memberships')) return {ok:true,json:async()=>memberships} as globalThis.Response;
+    if(url.includes('/global_user_roles')) return {ok:true,json:async()=>globalRoles} as globalThis.Response;
     throw new Error('Unexpected fetch');
   }) as unknown as typeof fetch;
   return calls;
@@ -68,4 +69,17 @@ test('somente vínculos vigentes são retornados', async () => {
   const result=await run(request('valid'));
   assert.equal(result.status,200);
   assert.deepEqual(result.payload.memberships,[{organizationId:'org-active',role:'MEMBER'}]);
+});
+
+test('administrador global vigente é reconhecido sem vínculo institucional', async () => {
+  setup([],200,[{valid_from:'2020-01-01T00:00:00Z',valid_until:null}]);
+  const result=await run(request('valid'));
+  assert.equal(result.status,200);
+  assert.equal(result.payload.isGlobalAdmin,true);
+  assert.deepEqual(result.payload.memberships,[]);
+});
+test('papel administrativo expirado não autoriza', async () => {
+  setup([],200,[{valid_from:'2020-01-01T00:00:00Z',valid_until:'2021-01-01T00:00:00Z'}]);
+  const result=await run(request('valid'));
+  assert.equal(result.payload.isGlobalAdmin,false);
 });
