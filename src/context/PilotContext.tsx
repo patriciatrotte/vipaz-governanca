@@ -38,6 +38,7 @@ import {
 } from '../types';
 
 import { isViewAllowedForRole, getDefaultViewForRole } from '../utils/rolePermissions';
+import { getInstitutionalToken } from '../services/institutionalAuth';
 import {
   adaptCycleBundleToDomain,
   mapOrganizationRowToDomain,
@@ -748,7 +749,10 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const requestId = ++centralLoadSequence.current;
     setIsLoadingCentral(true);
     try {
-      const res = await fetch(`/api/data/cycle-bundle?cycleId=${encodeURIComponent(cycleId)}`);
+      const token = getInstitutionalToken();
+      const res = await fetch(`/api/data/cycle-bundle?cycleId=${encodeURIComponent(cycleId)}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
       if (requestId !== centralLoadSequence.current) return;
       const contentType = res.headers.get('content-type') || '';
       const isJson = contentType.includes('application/json');
