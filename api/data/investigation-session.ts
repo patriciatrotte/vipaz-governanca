@@ -9,6 +9,13 @@ export default async function handler(req: Request, res: Response) {
     return res.status(503).json({ error: 'database_not_configured' });
   }
 
+  // Até existir autorização institucional de escrita verificável, não aceitar
+  // sessões de investigação por endpoint privilegiado (service role).
+  // Preserva registros existentes; não remove nem altera dados históricos.
+  if (req.method === 'POST') {
+    return res.status(403).json({ error: 'institutional_write_not_enabled' });
+  }
+
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'method_not_allowed' });
