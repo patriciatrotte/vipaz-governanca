@@ -281,6 +281,7 @@ interface PilotContextType {
   // Persistência Central (Supabase)
   isLoadingCentral: boolean;
   isCentralAvailable: boolean;
+  isCatalogLoading: boolean;
   investigationProvenance: { source: 'CENTRAL' | 'LOCAL' | 'UNDETERMINED'; cycleId: string | null; reconciliation: 'PENDING' | 'NOT_VERIFIED' };
 }
 
@@ -535,6 +536,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [currentCycleId, setCurrentCycleId] = useState<string | null>(null);
   const [isLoadingCentral, setIsLoadingCentral] = useState<boolean>(false);
   const [isCentralAvailable, setIsCentralAvailable] = useState<boolean>(false);
+  const [isCatalogLoading, setIsCatalogLoading] = useState<boolean>(true);
   const [investigationProvenance, setInvestigationProvenance] = useState<PilotContextType['investigationProvenance']>({ source: 'UNDETERMINED', cycleId: null, reconciliation: 'NOT_VERIFIED' });
   const [currentView, setCurrentViewState] = useState<AppView>('CENTRAL');
   const [activeDoorId, setActiveDoorId] = useState<DoorId>('D1.1');
@@ -730,6 +732,8 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         });
       } catch (error) {
         console.warn('[VIPAZ Persistência] Falha ao sincronizar catálogo central; mantendo contingência local.', error);
+      } finally {
+        if (!cancelled) setIsCatalogLoading(false);
       }
     };
 
@@ -2032,7 +2036,8 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
         runMandatoryTests,
         isLoadingCentral,
         isCentralAvailable,
-      investigationProvenance
+        isCatalogLoading,
+        investigationProvenance
       }}
     >
       {children}
