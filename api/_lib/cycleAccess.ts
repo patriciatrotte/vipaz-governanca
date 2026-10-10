@@ -36,13 +36,27 @@ export async function requireCycleReadAccess(
   const organizationId = cycles?.[0]?.organization_id;
   if (!organizationId) throw new AccessError(404, 'cycle_not_found');
 
+  // Administrador global vigente pode ler ciclos de todas as instituições.
+  const globalRoleResponse = await fetch(
+    `${url}/rest/v1/global_user_roles?user_id=eq.${encodeURIComponent(identity.id)}&role_code=eq.ADMIN_VIPAZ&status=eq.ACTIVE&revoked_at=is.null&select=valid_from,valid_until`,
+    { headers }
+  );
+  if (!globalRoleResponse.ok) throw new AccessError(503, 'authorization_unavailable');
+  const globalRoles = await globalRoleResponse.json();
+  const now = Date.now();
+  const isGlobalAdmin = Array.isArray(globalRoles) && globalRoles.some((item: any) => {
+    const from = item.valid_from ? Date.parse(item.valid_from) : 0;
+    const until = item.valid_until ? Date.parse(item.valid_until) : Infinity;
+    return Number.isFinite(from) && from <= now && until > now;
+  });
+  if (isGlobalAdmin) return;
+
   const membershipResponse = await fetch(
     `${url}/rest/v1/organization_memberships?user_id=eq.${encodeURIComponent(identity.id)}&organization_id=eq.${encodeURIComponent(organizationId)}&status=eq.ACTIVE&select=valid_from,valid_until&limit=100`,
     { headers }
   );
   if (!membershipResponse.ok) throw new AccessError(503, 'authorization_unavailable');
   const memberships = await membershipResponse.json();
-  const now = Date.now();
   const authorized = Array.isArray(memberships) && memberships.some((item: any) => {
     const from = item.valid_from ? Date.parse(item.valid_from) : 0;
     const until = item.valid_until ? Date.parse(item.valid_until) : Infinity;
