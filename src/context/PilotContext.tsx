@@ -854,7 +854,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode; institutionalM
     centralLoadSequence.current += 1;
     // Não persistir resultados derivados de origem inconciliada ao trocar de organização.
     // A gravação automática já é controlada pelo estado de proveniência.
-    if (currentOrgId && currentOrgId !== orgId && !isCentralAvailable && !isLoadingCentral) {
+    if (!institutionalMode && currentOrgId && currentOrgId !== orgId && !isCentralAvailable && !isLoadingCentral) {
       saveStateForOrg(currentOrgId, getCurrentStateBundle());
     }
 
@@ -915,9 +915,14 @@ export const PilotProvider: React.FC<{ children: React.ReactNode; institutionalM
       applyStateBundle(getEmptyOrgState(effectiveOrgId, activeCycle.id));
       loadCentralInvestigation(activeCycle.id, effectiveOrgId);
     } else {
-      const localBundle = loadStateForOrg(effectiveOrgId);
-      applyStateBundle(localBundle);
-      setInvestigationProvenance({ source: 'LOCAL', cycleId: activeCycle?.id || null, reconciliation: 'NOT_VERIFIED' });
+      if (institutionalMode) {
+        applyStateBundle(getEmptyOrgState(effectiveOrgId, 'no-cycle'));
+        setInvestigationProvenance({ source: 'UNDETERMINED', cycleId: null, reconciliation: 'NOT_VERIFIED' });
+      } else {
+        const localBundle = loadStateForOrg(effectiveOrgId);
+        applyStateBundle(localBundle);
+        setInvestigationProvenance({ source: 'LOCAL', cycleId: null, reconciliation: 'NOT_VERIFIED' });
+      }
     }
   };
 
@@ -926,7 +931,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode; institutionalM
     centralLoadSequence.current += 1;
     // Ao sair de um ciclo carregado da base central, não gravar no cache
     // um pacote derivado vazio ou inconciliado como se fosse resultado validado.
-    if (currentOrgId && !isCentralAvailable && !isLoadingCentral) {
+    if (!institutionalMode && currentOrgId && !isCentralAvailable && !isLoadingCentral) {
       saveStateForOrg(currentOrgId, getCurrentStateBundle());
     }
     setCurrentOrgId(null);
