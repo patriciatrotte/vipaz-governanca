@@ -885,6 +885,9 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCurrentView('HOME');
 
     if (activeCycle?.id) {
+      // Limpa imediatamente a investigação da Câmara anterior enquanto
+      // o ciclo selecionado carrega. Evita exibição transitória de dados cruzados.
+      applyStateBundle(getEmptyOrgState(effectiveOrgId, activeCycle.id));
       loadCentralInvestigation(activeCycle.id, effectiveOrgId);
     } else {
       const localBundle = loadStateForOrg(effectiveOrgId);
