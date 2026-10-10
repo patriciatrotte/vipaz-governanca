@@ -128,8 +128,31 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
               </div>
               {(() => {
                 const responses = originalResponses.filter(response => response.doorId === 'D1.2');
-                const rectifications = responses.filter(response => response.isRetificationOfResponseId);
-                const originals = responses.filter(response => !response.isRetificationOfResponseId);
+                const linkedUpdates = responses.filter(response =>
+                  response.isRetificationOfResponseId || response.isComplementOfResponseId
+                );
+                const originalRecords = responses.filter(response =>
+                  !response.isRetificationOfResponseId && !response.isComplementOfResponseId
+                );
+                // Alguns registros legados trazem a complementação como novo relato
+                // integral, sem vínculo explícito. Preservamos ambas as fontes e
+                // evitamos apenas a repetição literal na leitura institucional.
+                const isExpandedCopy = (original: string, later: string) =>
+                  later.trim().startsWith(original.trim()) && later.trim() !== original.trim();
+                const updates = [...linkedUpdates];
+                const originals = originalRecords.filter(response => {
+                  const expanded = originalRecords.find(candidate =>
+                    candidate.id !== response.id &&
+                    isExpandedCopy(response.originalText, candidate.originalText)
+                  );
+                  if (expanded && !updates.some(item => item.id === expanded.id)) {
+                    updates.push(expanded);
+                  }
+                  return !updates.some(item => item.id === response.id);
+                });
+                const orderedUpdates = updates.sort((a, b) =>
+                  a.timestamp.localeCompare(b.timestamp)
+                );
                 return (
                   <div className="space-y-3">
                     {originals.map(response => (
@@ -138,12 +161,28 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
                         <p className="text-sm text-slate-800 whitespace-pre-wrap">{response.originalText}</p>
                       </div>
                     ))}
-                    {rectifications.map(response => (
-                      <div key={response.id} className="border-l-2 border-sky-300 pl-3 space-y-1">
-                        <p className="text-xs font-semibold text-slate-700">Complementação registrada posteriormente</p>
-                        <p className="text-sm text-slate-800 whitespace-pre-wrap">{response.originalText}</p>
-                      </div>
-                    ))}
+                    {orderedUpdates.map(response => {
+                      const source = responses.find(item =>
+                        item.id === response.isRetificationOfResponseId ||
+                        item.id === response.isComplementOfResponseId
+                      ) || originals.find(item =>
+                        isExpandedCopy(item.originalText, response.originalText)
+                      );
+                      const sourceText = source?.originalText.trim() || '';
+                      const updatedText = response.originalText.trim();
+                      const addedText = sourceText && updatedText.startsWith(sourceText)
+                        ? updatedText.slice(sourceText.length).trim()
+                        : updatedText;
+                      return (
+                        <div key={response.id} className="border-l-2 border-sky-300 pl-3 space-y-1">
+                          <p className="text-xs font-semibold text-slate-700">
+                            {response.isRetificationOfResponseId ? 'Retificação posterior' : 'Complementação registrada posteriormente'}
+                          </p>
+                          <p className="text-sm text-slate-800 whitespace-pre-wrap">{addedText || updatedText}</p>
+                          <p className="text-xs text-slate-500">Registro integral preservado na rastreabilidade técnica.</p>
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })()}
