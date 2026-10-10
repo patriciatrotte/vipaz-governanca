@@ -127,6 +127,14 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
   // Próxima conquista baseada na integração validada
   const nextAchievementText = integration.nextInstitutionalAchievement;
 
+  // Relatos validados na escuta não equivalem a capacidades ou maturidade demonstradas.
+  // Seleção vinculada à organização/ciclo carregados pelo contexto, sem conteúdo fixo por município.
+  const d12InterviewStatements = informationUnits
+    .filter(unit => unit.doorId === 'D1.2' && unit.validationStatus === 'VALIDADO')
+    .map(unit => unit.statement.trim())
+    .filter((statement, index, statements) => Boolean(statement) && statements.indexOf(statement) === index);
+  const hasD12Interview = originalResponses.some(response => response.doorId === 'D1.2');
+
   // Ações pactuadas (no máximo 3 para o Retrato Executivo, apenas se o ciclo possuir validação ou ações formalizadas)
   const priorityActions = isValidated ? actions.slice(0, 3) : [];
 
@@ -365,6 +373,30 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
               </div>
             )}
           </div>
+
+          {/* Síntese factual da escuta: não atribui maturidade nem comprovação operacional. */}
+          {!isValidated && hasD12Interview && (
+            <section className="space-y-2">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                O que a instituição relatou sobre encaminhamentos (D1.2)
+              </h2>
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2 text-xs text-slate-700">
+                {d12InterviewStatements.length > 0 ? (
+                  <>
+                    <p>Na escuta institucional, foram relatadas as seguintes características dos encaminhamentos:</p>
+                    <ul className="list-disc pl-5 space-y-1">
+                      {d12InterviewStatements.map(statement => <li key={statement}>{statement}</li>)}
+                    </ul>
+                    <p className="text-slate-600">
+                      Essas informações descrevem a experiência relatada. A confirmação de como o encaminhamento ocorre na prática poderá ser feita com um caso concreto, caso a instituição considere útil.
+                    </p>
+                  </>
+                ) : (
+                  <p>A entrevista sobre encaminhamentos foi registrada e ainda requer conferência de seu conteúdo para compor a síntese institucional.</p>
+                )}
+              </div>
+            </section>
+          )}
 
           {/* BLOCO 3: PRÓXIMA CONQUISTA INSTITUCIONAL */}
           <div className="space-y-2">
