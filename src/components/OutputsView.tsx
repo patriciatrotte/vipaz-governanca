@@ -421,6 +421,13 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
                 {isValidated
                   ? 'Nenhuma ação prioritária foi cadastrada no Plano de Evolução deste ciclo.'
                   : 'Ainda não há ações pactuadas. As orientações preliminares podem ser examinadas pela instituição, sem constituir compromissos ou exigências de registro.'}
+                {!isValidated && (
+                  <div className="mt-3 space-y-2 text-slate-700">
+                    <p><strong>Como avançar:</strong> a instituição pode examinar uma situação real relacionada à governança e verificar se os registros existentes já permitem compreender o encaminhamento e seu resultado. Não é necessário criar controles apenas para atender ao relatório.</p>
+                    <p><strong>Como demonstrar:</strong> se decidir realizar essa atividade, poderá registrar um resumo na VIPAZ e associar uma evidência já existente, quando disponível. Esse registro serve ao acompanhamento institucional; não é prestação de contas a órgão fiscalizador.</p>
+                    <p><strong>Como acompanhar:</strong> em uma próxima interação, a instituição poderá informar o que realizou ou retomar a orientação posteriormente. A ausência desse registro não constitui, por si só, descumprimento.</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
