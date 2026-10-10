@@ -772,11 +772,15 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           setEvidences(adapted.evidences);
           setPendingItems(adapted.pendingItems);
 
-          // Atualiza cache local de contingência espelhando o estado central autoritativo
-          saveStateForOrg(orgId, {
-            ...getCurrentStateBundle(),
-            ...adapted
-          });
+          // NÃO espelhar um pacote híbrido no cache local.
+          // O endpoint central entrega somente a investigação primária; integração,
+          // ações e snapshot não têm proveniência central neste contrato.
+          // Preservar o cache local existente até haver reconciliação explícita.
+          // Isso impede que uma carga central parcial grave um estado falsamente coeso.
+          console.warn(
+            '[VIPAZ Persistência] Investigação central carregada sem pacote metodológico derivado. ' +
+            'Resultados locais anteriores requerem reconciliação antes de publicação.'
+          );
 
           setIsCentralAvailable(true);
           console.info(`[VIPAZ Persistência] Ciclo ${cycleId} reidratado com autoridade central (${adapted.informationUnits.length} fatos da escuta, ${adapted.originalResponses.length} respostas).`);
