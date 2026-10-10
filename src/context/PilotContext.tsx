@@ -504,9 +504,10 @@ const saveStateForOrg = (orgId: string, data: PilotOrgData) => {
   }
 };
 
-export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const PilotProvider: React.FC<{ children: React.ReactNode; institutionalMode?: boolean }> = ({ children, institutionalMode = false }) => {
   // Lista de Organizações e Ciclos
   const [organizations, setOrganizations] = useState<Organization[]>(() => {
+    if (institutionalMode) return [];
     try {
       const saved = localStorage.getItem('PILOTO_ORGANIZATIONS');
       if (saved) {
@@ -520,6 +521,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   const [cycles, setCycles] = useState<EvaluationCycle[]>(() => {
+    if (institutionalMode) return [];
     try {
       const saved = localStorage.getItem('PILOTO_CYCLES');
       if (saved) {
@@ -652,10 +654,11 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     // Investigação central e resultados derivados locais não formam um pacote validado.
     // Não sobrescrever o cache enquanto essa proveniência estiver inconciliada.
-    if (!currentOrgId || isLoadingCentral || isCentralAvailable) return;
+    if (institutionalMode || !currentOrgId || isLoadingCentral || isCentralAvailable) return;
     saveStateForOrg(currentOrgId, getCurrentStateBundle());
   }, [
     currentOrgId,
+    institutionalMode,
     isLoadingCentral,
     isCentralAvailable,
     doorStatuses,
@@ -710,33 +713,26 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const remoteCycles = await cycleResponse.json();
         if (cancelled) return;
 
-        setOrganizations(current => {
-          const remoteMapped: Organization[] = (Array.isArray(remoteOrgs) ? remoteOrgs : []).map(mapOrganizationRowToDomain);
-          const byId = new Map(current.map(org => [org.id, org]));
-          remoteMapped.forEach(org => {
-            byId.set(org.id, { ...(byId.get(org.id) || {} as Organization), ...org });
-            if (org.legacyId) {
-              byId.set(org.legacyId, { ...(byId.get(org.legacyId) || {} as Organization), ...org });
-            }
+        const remoteMappedOrgs: Organization[] = (Array.isArray(remoteOrgs) ? remoteOrgs : []).map(mapOrganizationRowToDomain);
+        const remoteMappedCycles: EvaluationCycle[] = (Array.isArray(remoteCycles) ? remoteCycles : []).map(mapCycleRowToDomain);
+        // Modo institucional: o servidor define integralmente o catálogo autorizado.
+        // Nunca unir com localStorage ou com organizações previamente visitadas.
+        if (institutionalMode) {
+          const allowedIds = new Set(remoteMappedOrgs.flatMap(org => [org.id, org.legacyId].filter(Boolean)));
+          setOrganizations(remoteMappedOrgs);
+          setCycles(remoteMappedCycles.filter(cycle => allowedIds.has(cycle.organizationId)));
+        } else {
+          setOrganizations(current => {
+            const byId = new Map(current.map(org => [org.id, org]));
+            remoteMappedOrgs.forEach(org => byId.set(org.id, org));
+            return Array.from(byId.values());
           });
-          const merged = Array.from(new Set(byId.values()));
-          localStorage.setItem('PILOTO_ORGANIZATIONS', JSON.stringify(merged));
-          return merged;
-        });
-
-        setCycles(current => {
-          const remoteMapped: EvaluationCycle[] = (Array.isArray(remoteCycles) ? remoteCycles : []).map(mapCycleRowToDomain);
-          const byId = new Map(current.map(cycle => [cycle.id, cycle]));
-          remoteMapped.forEach(cycle => {
-            byId.set(cycle.id, { ...(byId.get(cycle.id) || {} as EvaluationCycle), ...cycle });
-            if (cycle.legacyId) {
-              byId.set(cycle.legacyId, { ...(byId.get(cycle.legacyId) || {} as EvaluationCycle), ...cycle });
-            }
+          setCycles(current => {
+            const byId = new Map(current.map(cycle => [cycle.id, cycle]));
+            remoteMappedCycles.forEach(cycle => byId.set(cycle.id, cycle));
+            return Array.from(byId.values());
           });
-          const merged = Array.from(new Set(byId.values()));
-          localStorage.setItem('PILOTO_CYCLES', JSON.stringify(merged));
-          return merged;
-        });
+        }
       } catch (error) {
         console.warn('[VIPAZ Persistência] Falha ao sincronizar catálogo central; mantendo contingência local.', error);
       } finally {
@@ -746,7 +742,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     syncCentralCatalog();
     return () => { cancelled = true; };
-  }, []);
+  }, [institutionalMode]);
 
   // Reidratação da sessão investigativa central (Bloco 1)
   const loadCentralInvestigation = async (cycleId: string, orgId: string) => {
