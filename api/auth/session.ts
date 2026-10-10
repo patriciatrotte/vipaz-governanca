@@ -52,7 +52,21 @@ export default async function handler(req: Request, res: Response) {
       role: item.role_code
     })) : [];
 
-    return res.status(200).json({ authenticated: true, userId, memberships: active });
+    // Administradores globais podem acessar o catálogo sob as políticas RLS,
+    // independentemente de vínculo individual com uma Câmara.
+    const adminResponse = await fetch(
+      `${url}/rest/v1/global_user_roles?user_id=eq.${encodeURIComponent(userId)}&role_code=eq.ADMIN_VIPAZ&status=eq.ACTIVE&revoked_at=is.null&select=valid_from,valid_until`,
+      { headers: { apikey: secret, Authorization: `Bearer ${secret}` } }
+    );
+    if (!adminResponse.ok) return res.status(502).json({ error: 'global_role_lookup_failed' });
+    const globalRoles = await adminResponse.json();
+    const isGlobalAdmin = Array.isArray(globalRoles) && globalRoles.some((item: any) => {
+      const from = item.valid_from ? Date.parse(item.valid_from) : 0;
+      const until = item.valid_until ? Date.parse(item.valid_until) : Infinity;
+      return Number.isFinite(from) && from <= now && until > now;
+    });
+
+    return res.status(200).json({ authenticated: true, userId, memberships: active, isGlobalAdmin });
   } catch {
     return res.status(502).json({ error: 'authentication_service_unavailable' });
   }
