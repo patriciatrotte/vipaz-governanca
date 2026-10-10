@@ -17,7 +17,7 @@ const response = (data: unknown, status = 200) => ({
   status,
   json: async () => data
 } as Response);
-const allowFetch = (membership: unknown[], userStatus = 200) => {
+const allowFetch = (membership: unknown[], userStatus = 200, globalRoles: unknown[] = []) => {
   const calls: string[] = [];
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const url = String(input);
@@ -25,6 +25,7 @@ const allowFetch = (membership: unknown[], userStatus = 200) => {
     if (url.includes('/auth/v1/user')) return response({ id: user }, userStatus);
     if (url.includes('/governance_cycles')) return response([{ organization_id: org }]);
     if (url.includes('/organization_memberships')) return response(membership);
+    if (url.includes('/global_user_roles')) return response(globalRoles);
     throw new Error('Unexpected fetch: ' + url);
   }) as typeof fetch;
   return calls;
@@ -48,9 +49,9 @@ test('token inválido: 401, sem consulta a ciclos ou vínculos', async () => {
 test('vínculo ativo da organização: acesso permitido', async () => {
   const calls = allowFetch([{ valid_from: '2020-01-01T00:00:00Z', valid_until: null }]);
   await requireCycleReadAccess(req('valid'), 'https://example.test', 'server-key', cycle);
-  assert.equal(calls.length, 3);
-  assert.ok(calls[2].includes('organization_id=eq.' + org));
-  assert.ok(calls[2].includes('user_id=eq.' + user));
+  assert.equal(calls.length, 4);
+  assert.ok(calls[3].includes('organization_id=eq.' + org));
+  assert.ok(calls[3].includes('user_id=eq.' + user));
 });
 
 test('usuário sem vínculo com a Câmara: 403', async () => {
@@ -69,4 +70,11 @@ test('vínculo futuro: 403', async () => {
   allowFetch([{ valid_from: '2099-01-01T00:00:00Z', valid_until: null }]);
   await assert.rejects(requireCycleReadAccess(req('valid'), 'https://example.test', 'server-key', cycle),
     (err: unknown) => err instanceof AccessError && err.status === 403);
+});
+
+test('administrador global ativo pode ler ciclo sem vínculo institucional', async () => {
+  const calls = allowFetch([],200,[{valid_from:'2020-01-01T00:00:00Z',valid_until:null}]);
+  await requireCycleReadAccess(req('valid'),'https://example.test','server-key',cycle);
+  assert.equal(calls.length,3);
+  assert.ok(calls[2].includes('/global_user_roles'));
 });
