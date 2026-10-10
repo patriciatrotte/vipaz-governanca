@@ -25,6 +25,7 @@ import { METHODOLOGY_VERSION } from '../data/methodologyConstants';
 export const OrganizationsHubView: React.FC = () => {
   const { 
     organizations, 
+    isCatalogLoading,
     selectOrganization, 
     createOrganization, 
     startD1Cycle, 
@@ -190,12 +191,17 @@ const handleConfirmStartCycle = async () => {
             </p>
           </div>
           <span className="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
-            {organizations.length} {organizations.length === 1 ? 'organização' : 'organizações'}
+            {isCatalogLoading ? 'Atualizando catálogo…' : `${organizations.length} ${organizations.length === 1 ? 'organização' : 'organizações'}`}
           </span>
         </div>
 
         {/* Grid de Cards de Organizações (2 colunas desktop, 1 coluna telas menores) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {isCatalogLoading && (
+          <div role="status" aria-live="polite" className="rounded-xl border border-sky-200 bg-sky-50 p-5 text-sm text-sky-900">
+            Consultando organizações e ciclos na base central. Aguarde para visualizar o catálogo completo.
+          </div>
+        )}
+        {!isCatalogLoading && <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {organizations.map(org => {
             const summary = getOrganizationSummary(org.id);
             const isCompleted = summary.cycleStatus === 'CONCLUIDO_VALIDADO';
@@ -312,7 +318,7 @@ const handleConfirmStartCycle = async () => {
               </div>
             );
           })}
-        </div>
+        </div>}
       </div>
 
       {/* TELA 2 — MODAL: NOVA ORGANIZAÇÃO */}
