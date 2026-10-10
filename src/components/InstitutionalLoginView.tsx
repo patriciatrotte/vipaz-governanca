@@ -8,7 +8,7 @@ export const InstitutionalLoginView: React.FC<Props> = ({ onSuccess, onSimulatio
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const configured = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
+  const configured = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError('');
