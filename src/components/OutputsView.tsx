@@ -514,19 +514,20 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
             {(['D1.1', 'D1.2', 'D1.3', 'D1.4', 'D1.5', 'D1.6'] as const).map(doorId => {
               const doorResponses = originalResponses.filter(response => response.doorId === doorId);
               const doorUnits = informationUnits.filter(unit => unit.doorId === doorId && unit.validationStatus === 'VALIDADO');
-              const lastResponses = doorResponses.filter(response =>
-                !doorResponses.some(other => other.isRetificationOfResponseId === response.id)
+              // Preservar resposta original e retificações na trilha de auditoria.
+              const orderedResponses = [...doorResponses].sort((left, right) =>
+                left.timestamp.localeCompare(right.timestamp)
               );
               return (
                 <details key={doorId} className="rounded-lg border border-slate-200 bg-white p-3">
                   <summary className="cursor-pointer text-xs font-semibold text-slate-800">
                     {doorId} · {doorResponses.length} relato(s) · {doorUnits.length} informação(ões) validada(s) na escuta
                   </summary>
-                  {lastResponses.length === 0 ? (
+                  {orderedResponses.length === 0 ? (
                     <p className="text-xs text-slate-500 mt-3">Ainda não há relatos registrados nesta porta.</p>
                   ) : (
                     <div className="space-y-3 mt-3">
-                      {lastResponses.map(response => (
+                      {orderedResponses.map(response => (
                         <div key={response.id} className="border-l-2 border-slate-300 pl-3">
                           <p className="text-[11px] font-semibold text-slate-600">
                             Fonte registrada · {response.isRetificationOfResponseId ? 'retificação' : response.isComplementOfResponseId ? 'complementação' : 'resposta original'}
