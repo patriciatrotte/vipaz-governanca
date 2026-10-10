@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { PilotProvider, usePilot } from './context/PilotContext';
+import { InstitutionalLoginView } from './components/InstitutionalLoginView';
+import { getInstitutionalToken } from './services/institutionalAuth';
 import { Navbar } from './components/Navbar';
 import { InstitutionalSidebar } from './components/InstitutionalSidebar';
 import { InstitutionalOverviewView } from './components/InstitutionalOverviewView';
@@ -366,6 +368,15 @@ const AppContent: React.FC = () => {
 };
 
 export default function App() {
+  const [accessMode, setAccessMode] = useState<'LOGIN' | 'AUTHENTICATED' | 'SIMULATION'>(
+    () => getInstitutionalToken() ? 'AUTHENTICATED' : 'LOGIN'
+  );
+  if (accessMode === 'LOGIN') {
+    return <InstitutionalLoginView
+      onSuccess={() => setAccessMode('AUTHENTICATED')}
+      onSimulation={() => setAccessMode('SIMULATION')}
+    />;
+  }
   return (
     <PilotProvider>
       <AppContent />
