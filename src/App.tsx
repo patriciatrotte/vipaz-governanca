@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { PilotProvider, usePilot } from './context/PilotContext';
+import { InstitutionalLoginView } from './components/InstitutionalLoginView';
+import { getInstitutionalToken, clearInstitutionalToken } from './services/institutionalAuth';
 import { Navbar } from './components/Navbar';
 import { InstitutionalSidebar } from './components/InstitutionalSidebar';
 import { InstitutionalOverviewView } from './components/InstitutionalOverviewView';
@@ -366,8 +368,27 @@ const AppContent: React.FC = () => {
 };
 
 export default function App() {
+  const [accessMode, setAccessMode] = useState<'LOGIN' | 'AUTHENTICATED' | 'SIMULATION'>(
+    () => getInstitutionalToken() ? 'AUTHENTICATED' : 'LOGIN'
+  );
+  const signOut = () => {
+    clearInstitutionalToken();
+    setAccessMode('LOGIN');
+  };
+  if (accessMode === 'LOGIN') {
+    return <InstitutionalLoginView
+      onSuccess={() => setAccessMode('AUTHENTICATED')}
+      onSimulation={() => setAccessMode('SIMULATION')}
+    />;
+  }
   return (
-    <PilotProvider>
+    <PilotProvider key={accessMode} institutionalMode={accessMode === 'AUTHENTICATED'}>
+      <div className="fixed bottom-3 right-3 z-[100] flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 shadow-lg text-xs text-slate-800">
+        <span>{accessMode === 'SIMULATION' ? 'Modo de simulação' : 'Sessão institucional'}</span>
+        <button type="button" onClick={signOut} className="font-semibold text-emerald-800 underline">
+          {accessMode === 'SIMULATION' ? 'Sair da simulação' : 'Encerrar sessão'}
+        </button>
+      </div>
       <AppContent />
     </PilotProvider>
   );

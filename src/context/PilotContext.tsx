@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import {
   Organization,
   EvaluationCycle,
@@ -38,6 +38,7 @@ import {
 } from '../types';
 
 import { isViewAllowedForRole, getDefaultViewForRole } from '../utils/rolePermissions';
+import { getInstitutionalToken } from '../services/institutionalAuth';
 import {
   adaptCycleBundleToDomain,
   mapOrganizationRowToDomain,
@@ -134,7 +135,7 @@ interface PilotContextType {
     mainInterlocutorRole?: string;
     mainInterlocutorEmail?: string;
   }) => Promise<Organization>;
-  startD1Cycle: (organizationId: string) => EvaluationCycle;
+  startD1Cycle: (organizationId: string) => Promise<EvaluationCycle>;
   completeInterview: () => void;
   getOrganizationSummary: (orgId: string) => {
     cycleName: string;
@@ -281,6 +282,8 @@ interface PilotContextType {
   // Persistência Central (Supabase)
   isLoadingCentral: boolean;
   isCentralAvailable: boolean;
+  isCatalogLoading: boolean;
+  investigationProvenance: { source: 'CENTRAL' | 'LOCAL' | 'UNDETERMINED'; cycleId: string | null; reconciliation: 'PENDING' | 'NOT_VERIFIED' };
 }
 
 const PilotContext = createContext<PilotContextType | null>(null);
@@ -501,9 +504,10 @@ const saveStateForOrg = (orgId: string, data: PilotOrgData) => {
   }
 };
 
-export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const PilotProvider: React.FC<{ children: React.ReactNode; institutionalMode?: boolean }> = ({ children, institutionalMode = false }) => {
   // Lista de Organizações e Ciclos
   const [organizations, setOrganizations] = useState<Organization[]>(() => {
+    if (institutionalMode) return [];
     try {
       const saved = localStorage.getItem('PILOTO_ORGANIZATIONS');
       if (saved) {
@@ -517,6 +521,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   const [cycles, setCycles] = useState<EvaluationCycle[]>(() => {
+    if (institutionalMode) return [];
     try {
       const saved = localStorage.getItem('PILOTO_CYCLES');
       if (saved) {
@@ -533,7 +538,11 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
   const [currentCycleId, setCurrentCycleId] = useState<string | null>(null);
   const [isLoadingCentral, setIsLoadingCentral] = useState<boolean>(false);
+  // Identifica a requisição válida para impedir reidratação tardia de outro ciclo.
+  const centralLoadSequence = useRef(0);
   const [isCentralAvailable, setIsCentralAvailable] = useState<boolean>(false);
+  const [isCatalogLoading, setIsCatalogLoading] = useState<boolean>(true);
+  const [investigationProvenance, setInvestigationProvenance] = useState<PilotContextType['investigationProvenance']>({ source: 'UNDETERMINED', cycleId: null, reconciliation: 'NOT_VERIFIED' });
   const [currentView, setCurrentViewState] = useState<AppView>('CENTRAL');
   const [activeDoorId, setActiveDoorId] = useState<DoorId>('D1.1');
   const [activeResponseId, setActiveResponseId] = useState<string | null>(null);
@@ -643,11 +652,15 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Salva no localStorage quando o estado metodológico de uma organização ativa é modificado
   // Salvaguarda obrigatória: NUNCA salvar enquanto a carga central estiver ativa (impede race condition)
   useEffect(() => {
-    if (!currentOrgId || isLoadingCentral) return;
+    // Investigação central e resultados derivados locais não formam um pacote validado.
+    // Não sobrescrever o cache enquanto essa proveniência estiver inconciliada.
+    if (institutionalMode || !currentOrgId || isLoadingCentral || isCentralAvailable) return;
     saveStateForOrg(currentOrgId, getCurrentStateBundle());
   }, [
     currentOrgId,
+    institutionalMode,
     isLoadingCentral,
+    isCentralAvailable,
     doorStatuses,
     questionInstances,
     originalResponses,
@@ -679,11 +692,25 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const syncCentralCatalog = async () => {
       try {
+        const token = getInstitutionalToken();
+        // Sem identidade real, não consultar o catálogo institucional central.
+        if (!token) {
+          if (institutionalMode && !cancelled) {
+            setOrganizations([]);
+            setCycles([]);
+          }
+          return;
+        }
+        const headers = { Authorization: `Bearer ${token}` };
         const [orgResponse, cycleResponse] = await Promise.all([
-          fetch('/api/data/organizations'),
-          fetch('/api/data/cycles')
+          fetch('/api/data/organizations', { headers }),
+          fetch('/api/data/cycles', { headers })
         ]);
         if (!orgResponse.ok || !cycleResponse.ok) {
+          if (institutionalMode && !cancelled) {
+            setOrganizations([]);
+            setCycles([]);
+          }
           if (orgResponse.status === 503 || cycleResponse.status === 503) {
             console.warn('[VIPAZ Persistência] Base central não configurada (HTTP 503). Mantendo catálogo em contingência local.');
           } else {
@@ -696,47 +723,51 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const remoteCycles = await cycleResponse.json();
         if (cancelled) return;
 
-        setOrganizations(current => {
-          const remoteMapped: Organization[] = (Array.isArray(remoteOrgs) ? remoteOrgs : []).map(mapOrganizationRowToDomain);
-          const byId = new Map(current.map(org => [org.id, org]));
-          remoteMapped.forEach(org => {
-            byId.set(org.id, { ...(byId.get(org.id) || {} as Organization), ...org });
-            if (org.legacyId) {
-              byId.set(org.legacyId, { ...(byId.get(org.legacyId) || {} as Organization), ...org });
-            }
+        const remoteMappedOrgs: Organization[] = (Array.isArray(remoteOrgs) ? remoteOrgs : []).map(mapOrganizationRowToDomain);
+        const remoteMappedCycles: EvaluationCycle[] = (Array.isArray(remoteCycles) ? remoteCycles : []).map(mapCycleRowToDomain);
+        // Modo institucional: o servidor define integralmente o catálogo autorizado.
+        // Nunca unir com localStorage ou com organizações previamente visitadas.
+        if (institutionalMode) {
+          const allowedIds = new Set(remoteMappedOrgs.flatMap(org => [org.id, org.legacyId].filter(Boolean)));
+          setOrganizations(remoteMappedOrgs);
+          setCycles(remoteMappedCycles.filter(cycle => allowedIds.has(cycle.organizationId)));
+        } else {
+          setOrganizations(current => {
+            const byId = new Map(current.map(org => [org.id, org]));
+            remoteMappedOrgs.forEach(org => byId.set(org.id, org));
+            return Array.from(byId.values());
           });
-          const merged = Array.from(new Set(byId.values()));
-          localStorage.setItem('PILOTO_ORGANIZATIONS', JSON.stringify(merged));
-          return merged;
-        });
-
-        setCycles(current => {
-          const remoteMapped: EvaluationCycle[] = (Array.isArray(remoteCycles) ? remoteCycles : []).map(mapCycleRowToDomain);
-          const byId = new Map(current.map(cycle => [cycle.id, cycle]));
-          remoteMapped.forEach(cycle => {
-            byId.set(cycle.id, { ...(byId.get(cycle.id) || {} as EvaluationCycle), ...cycle });
-            if (cycle.legacyId) {
-              byId.set(cycle.legacyId, { ...(byId.get(cycle.legacyId) || {} as EvaluationCycle), ...cycle });
-            }
+          setCycles(current => {
+            const byId = new Map(current.map(cycle => [cycle.id, cycle]));
+            remoteMappedCycles.forEach(cycle => byId.set(cycle.id, cycle));
+            return Array.from(byId.values());
           });
-          const merged = Array.from(new Set(byId.values()));
-          localStorage.setItem('PILOTO_CYCLES', JSON.stringify(merged));
-          return merged;
-        });
+        }
       } catch (error) {
-        console.warn('[VIPAZ Persistência] Falha ao sincronizar catálogo central; mantendo contingência local.', error);
+        if (institutionalMode && !cancelled) {
+          setOrganizations([]);
+          setCycles([]);
+        }
+        console.warn('[VIPAZ Persistência] Falha ao sincronizar catálogo central; catálogo institucional não autorizado permanece vazio.', error);
+      } finally {
+        if (!cancelled) setIsCatalogLoading(false);
       }
     };
 
     syncCentralCatalog();
     return () => { cancelled = true; };
-  }, []);
+  }, [institutionalMode]);
 
   // Reidratação da sessão investigativa central (Bloco 1)
   const loadCentralInvestigation = async (cycleId: string, orgId: string) => {
+    const requestId = ++centralLoadSequence.current;
     setIsLoadingCentral(true);
     try {
-      const res = await fetch(`/api/data/cycle-bundle?cycleId=${encodeURIComponent(cycleId)}`);
+      const token = getInstitutionalToken();
+      const res = await fetch(`/api/data/cycle-bundle?cycleId=${encodeURIComponent(cycleId)}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (requestId !== centralLoadSequence.current) return;
       const contentType = res.headers.get('content-type') || '';
       const isJson = contentType.includes('application/json');
 
@@ -747,6 +778,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         );
       } else if (res.ok) {
         const rawBundle = await res.json();
+        if (requestId !== centralLoadSequence.current) return;
         const adapted = adaptCycleBundleToDomain(rawBundle);
 
         // Se houver qualquer registro central existente para este ciclo
@@ -761,29 +793,42 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           adapted.distributedRequests.length > 0;
 
         if (hasCentralRecords) {
-          // Aplica o estado adaptado com autoridade central primária
-          setDoorStatuses(adapted.doorStatuses);
-          setQuestionInstances(adapted.questionInstances);
-          setOriginalResponses(adapted.originalResponses);
-          setInformationUnits(adapted.informationUnits);
-          setProbings(adapted.probings);
-          setPedagogicalInterventions(adapted.pedagogicalInterventions);
-          setDistributedRequests(adapted.distributedRequests);
-          setEvidences(adapted.evidences);
-          setPendingItems(adapted.pendingItems);
-
-          // Atualiza cache local de contingência espelhando o estado central autoritativo
-          saveStateForOrg(orgId, {
-            ...getCurrentStateBundle(),
+          // O pacote central contém apenas dados investigativos. Ao trocar de
+          // organização/ciclo, NÃO manter no estado React resultados derivados
+          // da sessão anterior. O cache local histórico permanece intocado.
+          const isolated = getEmptyOrgState(orgId, cycleId);
+          applyStateBundle({
+            ...isolated,
             ...adapted
           });
 
+          // NÃO espelhar um pacote híbrido no cache local.
+          // O endpoint central entrega somente a investigação primária; integração,
+          // ações e snapshot não têm proveniência central neste contrato.
+          // Preservar o cache local existente até haver reconciliação explícita.
+          // Isso impede que uma carga central parcial grave um estado falsamente coeso.
+          console.warn(
+            '[VIPAZ Persistência] Investigação central carregada sem pacote metodológico derivado. ' +
+            'Resultados locais anteriores requerem reconciliação antes de publicação.'
+          );
+
           setIsCentralAvailable(true);
+          setInvestigationProvenance({ source: 'CENTRAL', cycleId, reconciliation: 'PENDING' });
           console.info(`[VIPAZ Persistência] Ciclo ${cycleId} reidratado com autoridade central (${adapted.informationUnits.length} fatos da escuta, ${adapted.originalResponses.length} respostas).`);
           setIsLoadingCentral(false);
           return;
         }
       } else {
+        // Negativa de autenticação/autorização não é indisponibilidade da base.
+        // Nunca contornar 401/403 exibindo dados institucionais do cache local.
+        if (res.status === 401 || res.status === 403) {
+          console.warn('[VIPAZ Acesso] Leitura institucional bloqueada até autenticação e vínculo verificados.');
+          applyStateBundle(getEmptyOrgState(orgId, cycleId));
+          setIsCentralAvailable(false);
+          setInvestigationProvenance({ source: 'UNDETERMINED', cycleId, reconciliation: 'NOT_VERIFIED' });
+          setIsLoadingCentral(false);
+          return;
+        }
         if (res.status === 503) {
           console.warn(`[VIPAZ Persistência] Base central não configurada (HTTP 503). Acionando contingência de cache local para ciclo ${cycleId}.`);
         } else {
@@ -794,8 +839,24 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.warn(`[VIPAZ Persistência] Falha de conexão com a base central. Acionando contingência de cache local para ciclo ${cycleId}:`, err);
     }
 
+    // Em sessão institucional autenticada, qualquer falha de leitura central
+    // deve falhar fechada: não substituir dados protegidos por cache histórico.
+    // O cache permanece intocado, mas não é apresentado como fonte autorizada.
+    if (institutionalMode && requestId === centralLoadSequence.current) {
+      applyStateBundle(getEmptyOrgState(orgId, cycleId));
+      setIsCentralAvailable(false);
+      setInvestigationProvenance({ source: 'UNDETERMINED', cycleId, reconciliation: 'NOT_VERIFIED' });
+      setIsLoadingCentral(false);
+      return;
+    }
+
+    // Uma falha de uma requisição antiga não pode reidratar o cache de outra
+    // organização após navegação, nem alterar sua proveniência.
+    if (requestId !== centralLoadSequence.current) return;
+
     // Contingência observável: carrega do cache local do navegador
     setIsCentralAvailable(false);
+    setInvestigationProvenance({ source: 'LOCAL', cycleId, reconciliation: 'NOT_VERIFIED' });
     const localBundle = loadStateForOrg(orgId, cycleId);
     applyStateBundle(localBundle);
     setIsLoadingCentral(false);
@@ -803,11 +864,21 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Transição de contexto: Selecionar Organização
   const selectOrganization = (orgId: string) => {
-    if (currentOrgId && currentOrgId !== orgId) {
+    // Invalida cargas pendentes da organização anterior, inclusive se a nova não tiver ciclo.
+    centralLoadSequence.current += 1;
+    // Não persistir resultados derivados de origem inconciliada ao trocar de organização.
+    // A gravação automática já é controlada pelo estado de proveniência.
+    if (!institutionalMode && currentOrgId && currentOrgId !== orgId && !isCentralAvailable && !isLoadingCentral) {
       saveStateForOrg(currentOrgId, getCurrentStateBundle());
     }
 
     const org = organizations.find(o => o.id === orgId || (o.legacyId && o.legacyId === orgId));
+    // O catálogo institucional é a lista autorizada retornada pelo servidor.
+    // Identificadores arbitrários nunca podem selecionar outra instituição.
+    if (institutionalMode && !org) {
+      console.warn('[VIPAZ Acesso] Organização não incluída no catálogo autorizado.');
+      return;
+    }
     const effectiveOrgId = org?.id || orgId;
 
     const orgCycles = cycles.filter(c => 
@@ -853,19 +924,34 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     setCurrentOrgId(effectiveOrgId);
     setCurrentCycleId(activeCycle?.id || null);
+    // Invalida a proveniência da organização anterior antes de carregar o novo ciclo.
+    setIsCentralAvailable(false);
+    setInvestigationProvenance({ source: 'UNDETERMINED', cycleId: activeCycle?.id || null, reconciliation: 'NOT_VERIFIED' });
     setCurrentView('HOME');
 
     if (activeCycle?.id) {
+      // Limpa imediatamente a investigação da Câmara anterior enquanto
+      // o ciclo selecionado carrega. Evita exibição transitória de dados cruzados.
+      applyStateBundle(getEmptyOrgState(effectiveOrgId, activeCycle.id));
       loadCentralInvestigation(activeCycle.id, effectiveOrgId);
     } else {
-      const localBundle = loadStateForOrg(effectiveOrgId);
-      applyStateBundle(localBundle);
+      if (institutionalMode) {
+        applyStateBundle(getEmptyOrgState(effectiveOrgId, 'no-cycle'));
+        setInvestigationProvenance({ source: 'UNDETERMINED', cycleId: null, reconciliation: 'NOT_VERIFIED' });
+      } else {
+        const localBundle = loadStateForOrg(effectiveOrgId);
+        applyStateBundle(localBundle);
+        setInvestigationProvenance({ source: 'LOCAL', cycleId: null, reconciliation: 'NOT_VERIFIED' });
+      }
     }
   };
 
   // Transição de contexto: Voltar à Central
   const returnToOrganizationsHub = () => {
-    if (currentOrgId) {
+    centralLoadSequence.current += 1;
+    // Ao sair de um ciclo carregado da base central, não gravar no cache
+    // um pacote derivado vazio ou inconciliado como se fosse resultado validado.
+    if (!institutionalMode && currentOrgId && !isCentralAvailable && !isLoadingCentral) {
       saveStateForOrg(currentOrgId, getCurrentStateBundle());
     }
     setCurrentOrgId(null);
@@ -883,6 +969,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     mainInterlocutorRole?: string;
     mainInterlocutorEmail?: string;
   }): Promise<Organization> => {
+    if (institutionalMode) return Promise.reject(new Error('Criação institucional indisponível até habilitação de escrita autorizada.'));
     return (async () => {
     const slug = data.name
       .toLowerCase()
@@ -954,6 +1041,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Iniciar primeiro ciclo D1 de uma organização
 const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> => {
+  if (institutionalMode) throw new Error('Início de ciclo institucional indisponível até habilitação de escrita autorizada.');
   const org = organizations.find(
     o => o.id === organizationId || o.legacyId === organizationId
   );
@@ -1125,7 +1213,10 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
     const orgCycles = cycles.filter(c => c.organizationId === orgId);
     const activeCycle = orgCycles.find(c => c.status !== 'ARQUIVADO') || orgCycles[0];
 
-    const state = loadStateForOrg(orgId, activeCycle?.id);
+    // O resumo institucional não pode consultar cache legado de outra sessão.
+    const state = institutionalMode
+      ? getEmptyOrgState(orgId, activeCycle?.id || 'no-cycle')
+      : loadStateForOrg(orgId, activeCycle?.id);
     const blockingPending = state.pendingItems.filter(p => p.impact === 'BLOQUEANTE' && p.status === 'ABERTA').length;
 
     let calculatedStatus: CycleStatus = activeCycle?.status || 'NAO_INICIADO';
@@ -1139,7 +1230,7 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
       calculatedStatus = 'EM_ANDAMENTO';
     }
 
-    const savedLastActivity = localStorage.getItem(`${STORAGE_KEY_PREFIX}${orgId}_lastActivity`);
+    const savedLastActivity = institutionalMode ? null : localStorage.getItem(`${STORAGE_KEY_PREFIX}${orgId}_lastActivity`);
     const lastDate = savedLastActivity 
       ? new Date(savedLastActivity).toLocaleDateString('pt-BR') 
       : activeCycle?.updatedAt
@@ -1505,6 +1596,10 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
     advancedElements?: string[],
     insufficiencies?: string[]
   ) => {
+    if (investigationProvenance.source === 'CENTRAL' && investigationProvenance.reconciliation === 'PENDING') {
+      console.warn('[VIPAZ Avaliação] Alteração bloqueada: investigação central sem conciliação metodológica do ciclo.');
+      return;
+    }
     if (currentUser.role !== 'FACILITADOR') {
       console.warn('[Autorização D1] Apenas o Facilitador Metodológico pode alterar a avaliação das capacidades.');
       return;
@@ -1525,6 +1620,10 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
   };
 
   const validateHumanMaturity = (level: MaturityLevel, notes: string, facilitatorName: string) => {
+    if (investigationProvenance.source === 'CENTRAL' && investigationProvenance.reconciliation === 'PENDING') {
+      console.warn('[VIPAZ Avaliação] Validação bloqueada: investigação central sem conciliação metodológica do ciclo.');
+      return;
+    }
     if (currentUser.role !== 'FACILITADOR') {
       console.warn('[Autorização D1] Apenas o Facilitador Metodológico pode validar a maturidade dimensional.');
       return;
@@ -1542,6 +1641,10 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
   };
 
   const createSnapshot = () => {
+    if (investigationProvenance.source === 'CENTRAL' && investigationProvenance.reconciliation === 'PENDING') {
+      alert('Não é possível gerar um resultado: a investigação central ainda precisa ser conciliada com a avaliação validada deste ciclo.');
+      return;
+    }
     if (currentUser.role !== 'FACILITADOR') {
       alert('Acesso restrito: Apenas o Facilitador Metodológico pode gerar o Snapshot imutável da Dimensão D1.');
       return;
@@ -1565,17 +1668,16 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
       organizationName: org.name,
       municipality: org.municipality,
       dimensionId: 'D1',
-      cycleId: org.cycleId || 'ciclo-d1',
+      cycleId: currentCycleId || org.cycleId || 'ciclo-d1',
       baseDate: new Date().toISOString().split('T')[0],
-      methodologyVersion: 'D1 v1.0',
+      methodologyVersion: currentCycle?.methodologyVersion || org.methodologyVersion || integration.methodologyVersion,
       validatedLevel: integration.humanValidation.validatedLevel,
       capacitiesAssessment: integration.capacities,
       demonstratedCapacities: demonstrated,
       structuringCapacities: structuring,
-      advancedElements: [
-        'Acolhimento gerencial pela Diretoria Geral com aprovação orçamentária efetiva (C5).',
-        'Rotinas automatizadas de backup em nuvem governamental já em operação na TI (C3).'
-      ],
+      advancedElements: Array.from(new Set(
+        Object.values(integration.capacities).flatMap(capacity => capacity.advancedElements || [])
+      )),
       validatedGaps: gaps,
       relevantPendingItems: pendingItems,
       nextAchievement: integration.nextInstitutionalAchievement,
@@ -2016,7 +2118,9 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
         importStructuredBackup,
         runMandatoryTests,
         isLoadingCentral,
-        isCentralAvailable
+        isCentralAvailable,
+        isCatalogLoading,
+        investigationProvenance
       }}
     >
       {children}

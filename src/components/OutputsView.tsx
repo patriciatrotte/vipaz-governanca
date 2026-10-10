@@ -42,6 +42,7 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
     pendingItems,
     actions,
     currentUser,
+    investigationProvenance,
     setCurrentView
   } = usePilot();
 
@@ -103,6 +104,114 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
     );
   }
 
+  // O endpoint central entrega apenas a investigação. Sem reconciliação explícita,
+  // a integração e o snapshot locais não podem ser publicados como resultados do ciclo.
+  if (investigationProvenance.source === 'CENTRAL' && investigationProvenance.reconciliation === 'PENDING' && activeTab !== 'TECHNICAL') {
+    return (
+      <div className="max-w-4xl mx-auto py-12 px-4 space-y-4 print:hidden">
+        <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-4">
+          <div className="space-y-1">
+            <h2 className="text-lg font-bold text-slate-900">Registros da escuta institucional</h2>
+            <p className="text-sm text-slate-600">
+              As informações coletadas já podem ser consultadas. A avaliação das capacidades
+              ainda está em conferência e não há resultado de maturidade validado para apresentar.
+            </p>
+          </div>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 space-y-1" role="status">
+            <p className="text-xs font-semibold text-amber-950">Avaliação em conferência</p>
+            <p className="text-xs text-amber-900">
+              Os dados de avaliação, ações e histórico ainda precisam ser vinculados e conferidos
+              com o ciclo correto. Até lá, o relatório executivo e o registro de resultado
+              permanecem indisponíveis. As entrevistas já realizadas estão preservadas;
+              não é necessário repeti-las.
+            </p>
+          </div>
+          {originalResponses.some(response => response.doorId === 'D1.2') && (
+            <section className="rounded-lg border border-slate-200 bg-white p-4 space-y-3" aria-label="Síntese preliminar da escuta D1.2">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">O que já podemos apresentar — escuta D1.2</h3>
+                <p className="text-xs text-slate-600 mt-1">Registro preliminar de entrevista, não avaliação concluída de capacidade ou maturidade.</p>
+              </div>
+              {(() => {
+                const responses = originalResponses.filter(response => response.doorId === 'D1.2');
+                const linkedUpdates = responses.filter(response =>
+                  response.isRetificationOfResponseId || response.isComplementOfResponseId
+                );
+                const originalRecords = responses.filter(response =>
+                  !response.isRetificationOfResponseId && !response.isComplementOfResponseId
+                );
+                // Alguns registros legados trazem a complementação como novo relato
+                // integral, sem vínculo explícito. Preservamos ambas as fontes e
+                // evitamos apenas a repetição literal na leitura institucional.
+                const isExpandedCopy = (original: string, later: string) =>
+                  later.trim().startsWith(original.trim()) && later.trim() !== original.trim();
+                const updates = [...linkedUpdates];
+                const originals = originalRecords.filter(response => {
+                  const expanded = originalRecords.find(candidate =>
+                    candidate.id !== response.id &&
+                    isExpandedCopy(response.originalText, candidate.originalText)
+                  );
+                  if (expanded && !updates.some(item => item.id === expanded.id)) {
+                    updates.push(expanded);
+                  }
+                  return !updates.some(item => item.id === response.id);
+                });
+                const orderedUpdates = updates.sort((a, b) =>
+                  a.timestamp.localeCompare(b.timestamp)
+                );
+                return (
+                  <div className="space-y-3">
+                    {originals.map(response => (
+                      <div key={response.id} className="space-y-1">
+                        <p className="text-xs font-semibold text-slate-700">Relato registrado na entrevista</p>
+                        <p className="text-sm text-slate-800 whitespace-pre-wrap">{response.originalText}</p>
+                      </div>
+                    ))}
+                    {orderedUpdates.map(response => {
+                      const source = responses.find(item =>
+                        item.id === response.isRetificationOfResponseId ||
+                        item.id === response.isComplementOfResponseId
+                      ) || originals.find(item =>
+                        isExpandedCopy(item.originalText, response.originalText)
+                      );
+                      const sourceText = source?.originalText.trim() || '';
+                      const updatedText = response.originalText.trim();
+                      const addedText = sourceText && updatedText.startsWith(sourceText)
+                        ? updatedText.slice(sourceText.length).trim()
+                        : updatedText;
+                      return (
+                        <div key={response.id} className="border-l-2 border-sky-300 pl-3 space-y-1">
+                          <p className="text-xs font-semibold text-slate-700">
+                            {response.isRetificationOfResponseId ? 'Retificação posterior' : 'Complementação registrada posteriormente'}
+                          </p>
+                          <p className="text-sm text-slate-800 whitespace-pre-wrap">{addedText || updatedText}</p>
+                          <p className="text-xs text-slate-500">Registro integral preservado na rastreabilidade técnica.</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+              <p className="text-xs text-slate-600 border-t border-slate-100 pt-3">
+                Próximo passo possível: confirmar, em momento oportuno, como os encaminhamentos entre áreas são realizados e acompanhados. Esta sugestão não representa obrigação, pendência formal ou conclusão de insuficiência.
+              </p>
+            </section>
+          )}
+          {canViewTechnical && (
+            <button type="button" onClick={() => setActiveTab('TECHNICAL')}
+              className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white">
+              Conferir fontes na Rastreabilidade Técnica
+            </button>
+          )}
+          <button type="button" onClick={() => setCurrentView('HOME')}
+            className="ml-2 rounded-lg border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-800">
+            Voltar à Visão Geral
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Dados validados metodologicamente
   const isValidated = integration.humanValidation.isValidated;
   const validatedLevelKey = isValidated ? integration.humanValidation.validatedLevel : null;
@@ -115,9 +224,9 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
   );
 
   // Capacidades estritamente validadas como DEMONSTRADA
-  const demonstratedCapacities = Object.values(integration.capacities).filter(
-    cap => cap.status === 'DEMONSTRADA'
-  );
+  const demonstratedCapacities = isValidated
+    ? Object.values(integration.capacities).filter(cap => cap.status === 'DEMONSTRADA')
+    : [];
 
   // Capacidades em estruturação
   const structuringCapacities = Object.values(integration.capacities).filter(
@@ -125,7 +234,11 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
   );
 
   // Próxima conquista baseada na integração validada
-  const nextAchievementText = integration.nextInstitutionalAchievement;
+  const nextAchievementText = isValidated ? integration.nextInstitutionalAchievement : null;
+
+  // Entrevista identificada apenas para sinalizar a etapa de revisão.
+  // Unidades validadas na escuta não autorizam publicação automática.
+  const hasD12Interview = originalResponses.some(response => response.doorId === 'D1.2');
 
   // Ações pactuadas (no máximo 3 para o Retrato Executivo, apenas se o ciclo possuir validação ou ações formalizadas)
   const priorityActions = isValidated ? actions.slice(0, 3) : [];
@@ -250,7 +363,7 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-700 flex items-center gap-2.5 no-print">
             <EyeOff className="w-4 h-4 text-slate-500 shrink-0" />
             <span>
-              <strong>Finalidade Gerencial:</strong> Síntese de governança orientada à Presidência e Mesa Diretora. Não expõe falas individuais, identidades de servidores ou controvérsias operacionais, consolidando estritamente os resultados validados do ciclo.
+              <strong>Finalidade Gerencial:</strong> Síntese de governança orientada à Presidência e Mesa Diretora. Não expõe falas individuais, identidades de servidores ou controvérsias operacionais, distinguindo informações levantadas, resultados formalmente validados e pontos ainda em avaliação.
             </span>
           </div>
 
@@ -312,13 +425,13 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
                       )}
                     </div>
                   ) : (
-                    'Maturidade ainda não apurada'
+                    'Em avaliação'
                   )}
                 </div>
                 <p className="text-xs text-slate-700 font-serif leading-relaxed max-w-2xl mt-1">
                   {isValidated 
                     ? (validatedLevelInfo?.shortDesc || integration.humanValidation.validationNotes || validatedLevelInfo?.criteriaText)
-                    : 'A apuração dos aspectos da Dimensão D1 ainda se encontra em fase de consolidação analítica e saneamento de pendências. Nenhum nível provisório é inferido antes da validação metodológica formal.'}
+                    : 'A avaliação está em andamento. O estágio de maturidade será apresentado após a validação metodológica.'}
                 </p>
               </div>
 
@@ -366,6 +479,19 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
             )}
           </div>
 
+          {/* A publicação da síntese individualizada exige revisão humana específica. */}
+          {!isValidated && hasD12Interview && (
+            <section className="space-y-2">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Encaminhamentos entre áreas (D1.2)
+              </h2>
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2 text-xs text-slate-700">
+                <p>A instituição participou da escuta sobre como são encaminhadas demandas relacionadas à proteção de dados.</p>
+                <p>A síntese individualizada desse relato está em revisão e será apresentada após confirmação humana. A entrevista, por si só, não determina o estágio de maturidade nem comprova a execução das práticas relatadas.</p>
+              </div>
+            </section>
+          )}
+
           {/* BLOCO 3: PRÓXIMA CONQUISTA INSTITUCIONAL */}
           <div className="space-y-2">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">
@@ -377,7 +503,7 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
                 Meta Estruturante do Ciclo:
               </span>
               <p className="text-slate-200 text-xs sm:text-sm font-serif leading-relaxed">
-                {nextAchievementText || 'Padronização dos fluxos formais de governança e consolidação das evidências operacionais.'}
+                {nextAchievementText || 'Próximo avanço a definir com a instituição, a partir das informações levantadas.'}
               </p>
             </div>
           </div>
@@ -420,7 +546,14 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-500 font-serif">
                 {isValidated
                   ? 'Nenhuma ação prioritária foi cadastrada no Plano de Evolução deste ciclo.'
-                  : 'As prioridades do ciclo serão consolidadas na pactuação do Plano de Evolução após a validação metodológica.'}
+                  : 'Ainda não há ações pactuadas. As orientações preliminares podem ser examinadas pela instituição, sem constituir compromissos ou exigências de registro.'}
+                {!isValidated && (
+                  <div className="mt-3 space-y-2 text-slate-700">
+                    <p><strong>Como avançar:</strong> a instituição pode examinar uma situação real relacionada à governança e verificar se os registros existentes já permitem compreender o encaminhamento e seu resultado. Não é necessário criar controles apenas para atender ao relatório.</p>
+                    <p><strong>Como demonstrar:</strong> se decidir realizar essa atividade, poderá registrar um resumo na VIPAZ e associar uma evidência já existente, quando disponível. Esse registro serve ao acompanhamento institucional; não é prestação de contas a órgão fiscalizador.</p>
+                    <p><strong>Como acompanhar:</strong> em uma próxima interação, a instituição poderá informar o que realizou ou retomar a orientação posteriormente. A ausência desse registro não constitui, por si só, descumprimento.</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -433,10 +566,10 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
               </span>
               <div className="flex items-center justify-between">
                 <span className="font-bold text-slate-800">
-                  {snapshot?.experimentalIndicatorBaseline?.name || 'Indicador de Continuidade das Ações'}
+                  {isValidated && snapshot?.experimentalIndicatorBaseline?.name || 'Indicador de Continuidade das Ações'}
                 </span>
                 <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  {snapshot?.experimentalIndicatorBaseline 
+                  {isValidated && snapshot?.experimentalIndicatorBaseline 
                     ? `${snapshot.experimentalIndicatorBaseline.trackedPercentage}% (Baseline)`
                     : 'Em Aferição'}
                 </span>
@@ -451,7 +584,7 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
                 6. Próxima Revisão Institucional
               </span>
               <div className="font-bold text-slate-800">
-                {snapshot?.scheduledNextReview 
+                {isValidated && snapshot?.scheduledNextReview 
                   ? (snapshot.scheduledNextReview.includes('-') ? new Date(snapshot.scheduledNextReview).toLocaleDateString('pt-BR') : snapshot.scheduledNextReview)
                   : 'A definir conforme pactuação institucional'}
               </div>
@@ -467,7 +600,7 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
               {isValidated ? (
                 <>Validação metodológica concluída em {integration.humanValidation.validatedAt ? new Date(integration.humanValidation.validatedAt).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')} — responsável: {integration.humanValidation.facilitatorName}.</>
               ) : (
-                <>Retrato Executivo derivado da base validada do Piloto Dimensional D1 v1.0.</>
+                <>Síntese preliminar do ciclo, sujeita à validação metodológica. Não constitui classificação definitiva de maturidade.</>
               )}
             </span>
             <span className="font-mono">
@@ -494,6 +627,56 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
               Estruturação ponta a ponta que conecta cada <strong>conclusão validada</strong> aos seus <strong>dados derivados</strong> (racional e suficiência) e <strong>dados primários</strong> (unidades de informação e evidências documentais).
             </p>
           </div>
+
+          {investigationProvenance.source === 'CENTRAL' && investigationProvenance.reconciliation === 'PENDING' && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-950 print:hidden" role="status">
+              <strong>Proveniência: investigação central — ciclo {investigationProvenance.cycleId}.</strong>
+              <p className="mt-1">A investigação deste ciclo foi carregada da base central. As avaliações e o snapshot de origem local não foram incorporados a esta sessão. As capacidades permanecem sem avaliação conciliada; não utilizar estados iniciais ou informações da escuta como conclusões institucionais.</p>
+            </div>
+          )}
+          {/* Conferência das fontes antes de qualquer síntese institucional. Não publica respostas individuais. */}
+          <section className="rounded-xl border border-sky-200 bg-sky-50/40 p-4 space-y-3 print:hidden">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">Conferência da investigação para o relatório</h2>
+              <p className="text-xs text-slate-600 mt-1">
+                Área restrita à facilitação. Os registros abaixo são fontes para revisão humana,
+                não conclusões de maturidade nem texto autorizado para publicação.
+              </p>
+            </div>
+            {(['D1.1', 'D1.2', 'D1.3', 'D1.4', 'D1.5', 'D1.6'] as const).map(doorId => {
+              const doorResponses = originalResponses.filter(response => response.doorId === doorId);
+              const doorUnits = informationUnits.filter(unit => unit.doorId === doorId && unit.validationStatus === 'VALIDADO');
+              // Preservar resposta original e retificações na trilha de auditoria.
+              const orderedResponses = [...doorResponses].sort((left, right) =>
+                left.timestamp.localeCompare(right.timestamp)
+              );
+              return (
+                <details key={doorId} className="rounded-lg border border-slate-200 bg-white p-3">
+                  <summary className="cursor-pointer text-xs font-semibold text-slate-800">
+                    {doorId} · {doorResponses.length} relato(s) · {doorUnits.length} informação(ões) validada(s) na escuta
+                  </summary>
+                  {orderedResponses.length === 0 ? (
+                    <p className="text-xs text-slate-500 mt-3">Ainda não há relatos registrados nesta porta.</p>
+                  ) : (
+                    <div className="space-y-3 mt-3">
+                      {orderedResponses.map(response => (
+                        <div key={response.id} className="border-l-2 border-slate-300 pl-3">
+                          <p className="text-[11px] font-semibold text-slate-600">
+                            Fonte registrada · {response.isRetificationOfResponseId ? 'retificação' : response.isComplementOfResponseId ? 'complementação' : 'resposta original'}
+                          </p>
+                          <p className="text-xs text-slate-700 whitespace-pre-wrap mt-1">{response.originalText}</p>
+                        </div>
+                      ))}
+                      <p className="text-[11px] text-slate-500">
+                        Antes de elaborar a síntese, confirmar o sentido do relato, as limitações das fontes e
+                        a eventual existência de evidências. Não inferir ausência de prática a partir de ausência de anexo.
+                      </p>
+                    </div>
+                  )}
+                </details>
+              );
+            })}
+          </section>
 
           {/* Legenda de Tipologia da Informação */}
           <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs">
