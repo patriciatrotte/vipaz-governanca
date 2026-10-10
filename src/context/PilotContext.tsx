@@ -969,6 +969,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode; institutionalM
     mainInterlocutorRole?: string;
     mainInterlocutorEmail?: string;
   }): Promise<Organization> => {
+    if (institutionalMode) return Promise.reject(new Error('Criação institucional indisponível até habilitação de escrita autorizada.'));
     return (async () => {
     const slug = data.name
       .toLowerCase()
@@ -1040,6 +1041,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode; institutionalM
 
   // Iniciar primeiro ciclo D1 de uma organização
 const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> => {
+  if (institutionalMode) throw new Error('Início de ciclo institucional indisponível até habilitação de escrita autorizada.');
   const org = organizations.find(
     o => o.id === organizationId || o.legacyId === organizationId
   );
