@@ -812,7 +812,9 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Transição de contexto: Selecionar Organização
   const selectOrganization = (orgId: string) => {
-    if (currentOrgId && currentOrgId !== orgId) {
+    // Não persistir resultados derivados de origem inconciliada ao trocar de organização.
+    // A gravação automática já é controlada pelo estado de proveniência.
+    if (currentOrgId && currentOrgId !== orgId && !isCentralAvailable && !isLoadingCentral) {
       saveStateForOrg(currentOrgId, getCurrentStateBundle());
     }
 
