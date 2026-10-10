@@ -5,7 +5,7 @@ interface Props { onSuccess: () => void; onSimulation: () => void; }
 
 export const InstitutionalLoginView: React.FC<Props> = ({ onSuccess, onSimulation }) => {
   const [recoveryToken, setRecoveryToken] = useState<string | null>(() => readRecoveryToken());
-  const [mode, setMode] = useState<'login' | 'request' | 'reset'>(() => window.location.hash.includes('type=recovery') ? 'reset' : 'login');
+  const [mode, setMode] = useState<'login' | 'request' | 'reset'>(() => recoveryToken ? 'reset' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
