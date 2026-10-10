@@ -33,10 +33,10 @@ const setup = (memberships: unknown[], identityStatus=200) => {
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const url=String(input);
     calls.push(url);
-    if(url.includes('/auth/v1/user')) return {ok:identityStatus===200,json:async()=>({id:'33333333-3333-4333-8333-333333333333'})} as Response;
-    if(url.includes('/organization_memberships')) return {ok:true,json:async()=>memberships} as Response;
+    if(url.includes('/auth/v1/user')) return {ok:identityStatus===200,json:async()=>({id:'33333333-3333-4333-8333-333333333333'})} as globalThis.Response;
+    if(url.includes('/organization_memberships')) return {ok:true,json:async()=>memberships} as globalThis.Response;
     throw new Error('Unexpected fetch');
-  }) as typeof fetch;
+  }) as unknown as typeof fetch;
   return calls;
 };
 
