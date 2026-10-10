@@ -829,6 +829,17 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.warn(`[VIPAZ Persistência] Falha de conexão com a base central. Acionando contingência de cache local para ciclo ${cycleId}:`, err);
     }
 
+    // Em sessão institucional autenticada, qualquer falha de leitura central
+    // deve falhar fechada: não substituir dados protegidos por cache histórico.
+    // O cache permanece intocado, mas não é apresentado como fonte autorizada.
+    if (getInstitutionalToken() && requestId === centralLoadSequence.current) {
+      applyStateBundle(getEmptyOrgState(orgId, cycleId));
+      setIsCentralAvailable(false);
+      setInvestigationProvenance({ source: 'UNDETERMINED', cycleId, reconciliation: 'NOT_VERIFIED' });
+      setIsLoadingCentral(false);
+      return;
+    }
+
     // Uma falha de uma requisição antiga não pode reidratar o cache de outra
     // organização após navegação, nem alterar sua proveniência.
     if (requestId !== centralLoadSequence.current) return;
