@@ -145,8 +145,8 @@ export const mapResponseRowToDomain = (row: any): OriginalResponse => {
     questionInstanceId: String(row.question_instance_id || row.questionInstanceId || row.door_id || row.question_code || ''),
     doorId: normalizeDoorId(row.door_id || row.question_code || row.doorId),
     respondentId: String(row.respondent_id || row.respondentId || row.participant_id || 'respondent-01'),
-    respondentName: String(row.respondent_name || row.respondentName || 'Respondente Principal').trim(),
-    respondentRole: String(row.respondent_role || row.respondentRole || 'Participante Designado').trim(),
+    respondentName: String(row.source_name || row.respondent_name || row.respondentName || 'Respondente Principal').trim(),
+    respondentRole: String(row.source_role || row.respondent_role || row.respondentRole || 'Participante Designado').trim(),
     originalText: String(row.original_text || row.response_text || row.text || row.originalText || '').trim(),
     timestamp: String(row.created_at || row.timestamp || new Date().toISOString()),
     modality: (row.modality === 'ORAL_GRAVADA' || row.modality === 'TEXTO_DIRETO') 
