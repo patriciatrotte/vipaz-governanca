@@ -502,6 +502,49 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
             </p>
           </div>
 
+          {/* Conferência das fontes antes de qualquer síntese institucional. Não publica respostas individuais. */}
+          <section className="rounded-xl border border-sky-200 bg-sky-50/40 p-4 space-y-3 print:hidden">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">Conferência da investigação para o relatório</h2>
+              <p className="text-xs text-slate-600 mt-1">
+                Área restrita à facilitação. Os registros abaixo são fontes para revisão humana,
+                não conclusões de maturidade nem texto autorizado para publicação.
+              </p>
+            </div>
+            {(['D1.1', 'D1.2', 'D1.3', 'D1.4', 'D1.5', 'D1.6'] as const).map(doorId => {
+              const doorResponses = originalResponses.filter(response => response.doorId === doorId);
+              const doorUnits = informationUnits.filter(unit => unit.doorId === doorId && unit.validationStatus === 'VALIDADO');
+              const lastResponses = doorResponses.filter(response =>
+                !doorResponses.some(other => other.isRetificationOfResponseId === response.id)
+              );
+              return (
+                <details key={doorId} className="rounded-lg border border-slate-200 bg-white p-3">
+                  <summary className="cursor-pointer text-xs font-semibold text-slate-800">
+                    {doorId} · {doorResponses.length} relato(s) · {doorUnits.length} informação(ões) validada(s) na escuta
+                  </summary>
+                  {lastResponses.length === 0 ? (
+                    <p className="text-xs text-slate-500 mt-3">Ainda não há relatos registrados nesta porta.</p>
+                  ) : (
+                    <div className="space-y-3 mt-3">
+                      {lastResponses.map(response => (
+                        <div key={response.id} className="border-l-2 border-slate-300 pl-3">
+                          <p className="text-[11px] font-semibold text-slate-600">
+                            Fonte registrada · {response.isRetificationOfResponseId ? 'retificação' : response.isComplementOfResponseId ? 'complementação' : 'resposta original'}
+                          </p>
+                          <p className="text-xs text-slate-700 whitespace-pre-wrap mt-1">{response.originalText}</p>
+                        </div>
+                      ))}
+                      <p className="text-[11px] text-slate-500">
+                        Antes de elaborar a síntese, confirmar o sentido do relato, as limitações das fontes e
+                        a eventual existência de evidências. Não inferir ausência de prática a partir de ausência de anexo.
+                      </p>
+                    </div>
+                  )}
+                </details>
+              );
+            })}
+          </section>
+
           {/* Legenda de Tipologia da Informação */}
           <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs">
             <span className="font-bold text-slate-700">Tipologia Metodológica:</span>
