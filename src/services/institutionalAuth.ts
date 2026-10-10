@@ -33,8 +33,8 @@ export const signInInstitutionalUser = async (email: string, password: string): 
   });
   if (!verified.ok) throw new Error('Identidade ou vínculos institucionais não verificados.');
   const session = await verified.json();
-  if (!Array.isArray(session.memberships) || session.memberships.length === 0) {
-    throw new Error('Usuário sem vínculo institucional ativo. Solicite habilitação ao administrador.');
+  if ((!Array.isArray(session.memberships) || session.memberships.length === 0) && session.isGlobalAdmin !== true) {
+    throw new Error('Usuário sem vínculo institucional ativo nem papel administrativo global. Solicite habilitação ao administrador.');
   }
   sessionStorage.setItem(TOKEN_KEY, payload.access_token);
 };
