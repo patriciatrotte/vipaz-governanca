@@ -120,6 +120,38 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
           <p className="text-xs text-amber-900">
             Os registros da investigação permanecem preservados. Não é necessário repetir entrevistas.
           </p>
+          {originalResponses.some(response => response.doorId === 'D1.2') && (
+            <section className="rounded-lg border border-slate-200 bg-white p-4 space-y-3" aria-label="Síntese preliminar da escuta D1.2">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">O que já podemos apresentar — escuta D1.2</h3>
+                <p className="text-xs text-slate-600 mt-1">Registro preliminar de entrevista, não avaliação concluída de capacidade ou maturidade.</p>
+              </div>
+              {(() => {
+                const responses = originalResponses.filter(response => response.doorId === 'D1.2');
+                const rectifications = responses.filter(response => response.isRetificationOfResponseId);
+                const originals = responses.filter(response => !response.isRetificationOfResponseId);
+                return (
+                  <div className="space-y-3">
+                    {originals.map(response => (
+                      <div key={response.id} className="space-y-1">
+                        <p className="text-xs font-semibold text-slate-700">Relato registrado na entrevista</p>
+                        <p className="text-sm text-slate-800 whitespace-pre-wrap">{response.originalText}</p>
+                      </div>
+                    ))}
+                    {rectifications.map(response => (
+                      <div key={response.id} className="border-l-2 border-sky-300 pl-3 space-y-1">
+                        <p className="text-xs font-semibold text-slate-700">Complementação registrada posteriormente</p>
+                        <p className="text-sm text-slate-800 whitespace-pre-wrap">{response.originalText}</p>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+              <p className="text-xs text-slate-600 border-t border-slate-100 pt-3">
+                Próximo passo possível: confirmar, em momento oportuno, como os encaminhamentos entre áreas são realizados e acompanhados. Esta sugestão não representa obrigação, pendência formal ou conclusão de insuficiência.
+              </p>
+            </section>
+          )}
           {canViewTechnical && (
             <button type="button" onClick={() => setActiveTab('TECHNICAL')}
               className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white">
