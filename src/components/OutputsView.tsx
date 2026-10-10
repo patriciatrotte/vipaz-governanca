@@ -42,7 +42,7 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
     pendingItems,
     actions,
     currentUser,
-    isCentralAvailable,
+    investigationProvenance,
     setCurrentView
   } = usePilot();
 
@@ -106,7 +106,7 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
 
   // O endpoint central entrega apenas a investigação. Sem reconciliação explícita,
   // a integração e o snapshot locais não podem ser publicados como resultados do ciclo.
-  if (isCentralAvailable && activeTab !== 'TECHNICAL') {
+  if (investigationProvenance.source === 'CENTRAL' && investigationProvenance.reconciliation === 'PENDING' && activeTab !== 'TECHNICAL') {
     return (
       <div className="max-w-4xl mx-auto py-12 px-4 space-y-4 print:hidden">
         <div className="rounded-xl border border-amber-300 bg-amber-50 p-6 space-y-3">
@@ -551,6 +551,12 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
             </p>
           </div>
 
+          {investigationProvenance.source === 'CENTRAL' && investigationProvenance.reconciliation === 'PENDING' && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-950 print:hidden" role="status">
+              <strong>Proveniência: investigação central — ciclo {investigationProvenance.cycleId}.</strong>
+              <p className="mt-1">As avaliações de capacidades e o snapshot abaixo podem pertencer a um estado local anterior e não estão reconciliados com este ciclo. Não utilizar essas classificações como conclusão institucional até conferência específica.</p>
+            </div>
+          )}
           {/* Conferência das fontes antes de qualquer síntese institucional. Não publica respostas individuais. */}
           <section className="rounded-xl border border-sky-200 bg-sky-50/40 p-4 space-y-3 print:hidden">
             <div>
