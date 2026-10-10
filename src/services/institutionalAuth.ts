@@ -31,7 +31,7 @@ export const signInInstitutionalUser = async (email: string, password: string): 
   const verified = await fetch('/api/auth/session', {
     headers: { Authorization: `Bearer ${payload.access_token}` }
   });
-  if (!verified.ok) throw new Error('Identidade ou vínculos institucionais não verificados.');
+  if (!verified.ok) throw new Error(verified.status >= 500 ? 'Serviço de autorização indisponível (HTTP ' + verified.status + '). Sua senha foi aceita.' : 'Sessão institucional não autorizada (HTTP ' + verified.status + ').');
   const session = await verified.json();
   if ((!Array.isArray(session.memberships) || session.memberships.length === 0) && session.isGlobalAdmin !== true) {
     throw new Error('Usuário sem vínculo institucional ativo nem papel administrativo global. Solicite habilitação ao administrador.');
