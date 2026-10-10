@@ -689,9 +689,13 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const syncCentralCatalog = async () => {
       try {
+        const token = getInstitutionalToken();
+        // Sem identidade real, não consultar o catálogo institucional central.
+        if (!token) return;
+        const headers = { Authorization: `Bearer ${token}` };
         const [orgResponse, cycleResponse] = await Promise.all([
-          fetch('/api/data/organizations'),
-          fetch('/api/data/cycles')
+          fetch('/api/data/organizations', { headers }),
+          fetch('/api/data/cycles', { headers })
         ]);
         if (!orgResponse.ok || !cycleResponse.ok) {
           if (orgResponse.status === 503 || cycleResponse.status === 503) {
