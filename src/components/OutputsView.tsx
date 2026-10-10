@@ -631,7 +631,7 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
           {investigationProvenance.source === 'CENTRAL' && investigationProvenance.reconciliation === 'PENDING' && (
             <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-950 print:hidden" role="status">
               <strong>Proveniência: investigação central — ciclo {investigationProvenance.cycleId}.</strong>
-              <p className="mt-1">As avaliações de capacidades e o snapshot abaixo podem pertencer a um estado local anterior e não estão reconciliados com este ciclo. Não utilizar essas classificações como conclusão institucional até conferência específica.</p>
+              <p className="mt-1">A investigação deste ciclo foi carregada da base central. As avaliações e o snapshot de origem local não foram incorporados a esta sessão. As capacidades permanecem sem avaliação conciliada; não utilizar estados iniciais ou informações da escuta como conclusões institucionais.</p>
             </div>
           )}
           {/* Conferência das fontes antes de qualquer síntese institucional. Não publica respostas individuais. */}
