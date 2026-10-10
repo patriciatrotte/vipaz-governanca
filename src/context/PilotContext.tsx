@@ -884,7 +884,9 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Transição de contexto: Voltar à Central
   const returnToOrganizationsHub = () => {
-    if (currentOrgId) {
+    // Ao sair de um ciclo carregado da base central, não gravar no cache
+    // um pacote derivado vazio ou inconciliado como se fosse resultado validado.
+    if (currentOrgId && !isCentralAvailable && !isLoadingCentral) {
       saveStateForOrg(currentOrgId, getCurrentStateBundle());
     }
     setCurrentOrgId(null);
