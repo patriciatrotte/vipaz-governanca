@@ -126,6 +126,19 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
               não é necessário repeti-las.
             </p>
           </div>
+          <section className="rounded-lg border border-slate-200 bg-white p-4 space-y-3" aria-label="Panorama dos registros de investigação D1">
+            <h3 className="text-sm font-bold text-slate-900">Registros disponíveis por porta D1</h3>
+            <p className="text-xs text-slate-600">Contagem de relatos armazenados, não de capacidades demonstradas ou maturidade validada.</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {(['D1.1', 'D1.2', 'D1.3', 'D1.4', 'D1.5', 'D1.6'] as const).map(door => (
+                <div key={door} className="rounded-lg border border-slate-200 p-3">
+                  <p className="text-xs font-semibold text-slate-700">{door}</p>
+                  <p className="text-sm text-slate-900">{originalResponses.filter(response => response.doorId === door).length} relato(s)</p>
+                  <p className="text-xs text-slate-500">{informationUnits.filter(unit => unit.doorId === door).length} informação(ões) extraída(s)</p>
+                </div>
+              ))}
+            </div>
+          </section>
           {originalResponses.some(response => response.doorId === 'D1.2') && (
             <section className="rounded-lg border border-slate-200 bg-white p-4 space-y-3" aria-label="Síntese preliminar da escuta D1.2">
               <div>
