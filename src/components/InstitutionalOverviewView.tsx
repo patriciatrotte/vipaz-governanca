@@ -1,4 +1,5 @@
 import React from 'react';
+import { IntentEntry } from './IntentEntry';
 import { usePilot } from '../context/PilotContext';
 import { calculateUserJourney } from '../utils/journeyEngine';
 import { DOORS_DEFINITIONS } from '../data/methodologyConstants';
@@ -100,6 +101,8 @@ export const InstitutionalOverviewView: React.FC = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-in fade-in">
       
+      <IntentEntry onContinue={handleNextStepNavigation} />
+
       {/* ==================================================================== */}
       {/* CAMADA PRINCIPAL: SEU PRÓXIMO PASSO (Destaque visual proeminente)    */}
       {/* ==================================================================== */}
