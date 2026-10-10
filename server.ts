@@ -31,6 +31,9 @@ import organizationsHandler from './api/data/organizations';
 import cyclesHandler from './api/data/cycles';
 import cycleBundleHandler from './api/data/cycleBundle';
 import dbHealthHandler from './api/db/health';
+import knowledgeHandler from './api/data/knowledge';
+
+app.all('/api/data/knowledge', (req: Request, res: Response) => knowledgeHandler(req, res));
 
 // Health check
 app.get('/api/health', (req: Request, res: Response) => {
