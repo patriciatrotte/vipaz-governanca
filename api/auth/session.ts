@@ -39,7 +39,7 @@ export default async function handler(req: Request, res: Response) {
       { headers: { apikey: secret, Authorization: `Bearer ${secret}` } }
     );
     if (!membershipResponse.ok) {
-      return res.status(502).json({ error: 'membership_lookup_failed' });
+      return res.status(502).json({ error: 'membership_lookup_failed', upstreamStatus: membershipResponse.status });
     }
     const memberships = await membershipResponse.json();
     const now = Date.now();
@@ -58,7 +58,7 @@ export default async function handler(req: Request, res: Response) {
       `${url}/rest/v1/global_user_roles?user_id=eq.${encodeURIComponent(userId)}&role_code=eq.ADMIN_VIPAZ&status=eq.ACTIVE&revoked_at=is.null&select=valid_from,valid_until`,
       { headers: { apikey: secret, Authorization: `Bearer ${secret}` } }
     );
-    if (!adminResponse.ok) return res.status(502).json({ error: 'global_role_lookup_failed' });
+    if (!adminResponse.ok) return res.status(502).json({ error: 'global_role_lookup_failed', upstreamStatus: adminResponse.status });
     const globalRoles = await adminResponse.json();
     const isGlobalAdmin = Array.isArray(globalRoles) && globalRoles.some((item: any) => {
       const from = item.valid_from ? Date.parse(item.valid_from) : 0;
