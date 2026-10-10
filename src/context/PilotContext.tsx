@@ -694,13 +694,23 @@ export const PilotProvider: React.FC<{ children: React.ReactNode; institutionalM
       try {
         const token = getInstitutionalToken();
         // Sem identidade real, não consultar o catálogo institucional central.
-        if (!token) return;
+        if (!token) {
+          if (institutionalMode && !cancelled) {
+            setOrganizations([]);
+            setCycles([]);
+          }
+          return;
+        }
         const headers = { Authorization: `Bearer ${token}` };
         const [orgResponse, cycleResponse] = await Promise.all([
           fetch('/api/data/organizations', { headers }),
           fetch('/api/data/cycles', { headers })
         ]);
         if (!orgResponse.ok || !cycleResponse.ok) {
+          if (institutionalMode && !cancelled) {
+            setOrganizations([]);
+            setCycles([]);
+          }
           if (orgResponse.status === 503 || cycleResponse.status === 503) {
             console.warn('[VIPAZ Persistência] Base central não configurada (HTTP 503). Mantendo catálogo em contingência local.');
           } else {
@@ -828,7 +838,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode; institutionalM
     // Em sessão institucional autenticada, qualquer falha de leitura central
     // deve falhar fechada: não substituir dados protegidos por cache histórico.
     // O cache permanece intocado, mas não é apresentado como fonte autorizada.
-    if (getInstitutionalToken() && requestId === centralLoadSequence.current) {
+    if (institutionalMode && requestId === centralLoadSequence.current) {
       applyStateBundle(getEmptyOrgState(orgId, cycleId));
       setIsCentralAvailable(false);
       setInvestigationProvenance({ source: 'UNDETERMINED', cycleId, reconciliation: 'NOT_VERIFIED' });
