@@ -801,6 +801,16 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           return;
         }
       } else {
+        // Negativa de autenticação/autorização não é indisponibilidade da base.
+        // Nunca contornar 401/403 exibindo dados institucionais do cache local.
+        if (res.status === 401 || res.status === 403) {
+          console.warn('[VIPAZ Acesso] Leitura institucional bloqueada até autenticação e vínculo verificados.');
+          applyStateBundle(getEmptyOrgState(orgId, cycleId));
+          setIsCentralAvailable(false);
+          setInvestigationProvenance({ source: 'UNDETERMINED', cycleId, reconciliation: 'NOT_VERIFIED' });
+          setIsLoadingCentral(false);
+          return;
+        }
         if (res.status === 503) {
           console.warn(`[VIPAZ Persistência] Base central não configurada (HTTP 503). Acionando contingência de cache local para ciclo ${cycleId}.`);
         } else {
