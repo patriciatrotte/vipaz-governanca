@@ -42,6 +42,7 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
     pendingItems,
     actions,
     currentUser,
+    isCentralAvailable,
     setCurrentView
   } = usePilot();
 
@@ -97,6 +98,37 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
             className="text-xs bg-slate-900 hover:bg-slate-800 text-white font-semibold px-4 py-2 rounded-lg transition-colors inline-flex items-center gap-1.5 shadow-xs"
           >
             Voltar para Visão Geral
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // O endpoint central entrega apenas a investigação. Sem reconciliação explícita,
+  // a integração e o snapshot locais não podem ser publicados como resultados do ciclo.
+  if (isCentralAvailable && activeTab !== 'TECHNICAL') {
+    return (
+      <div className="max-w-4xl mx-auto py-12 px-4 space-y-4 print:hidden">
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-6 space-y-3">
+          <h2 className="text-lg font-bold text-amber-950">Relatório aguardando conciliação dos dados</h2>
+          <p className="text-sm text-amber-900">
+            A investigação foi carregada da base central, mas as avaliações de capacidades,
+            ações e snapshots disponíveis neste ambiente ainda não possuem correspondência
+            confirmada com o mesmo ciclo. Para evitar conclusões indevidas, a apresentação
+            executiva e a emissão do snapshot estão temporariamente indisponíveis.
+          </p>
+          <p className="text-xs text-amber-900">
+            Os registros da investigação permanecem preservados. Não é necessário repetir entrevistas.
+          </p>
+          {canViewTechnical && (
+            <button type="button" onClick={() => setActiveTab('TECHNICAL')}
+              className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white">
+              Conferir fontes na Rastreabilidade Técnica
+            </button>
+          )}
+          <button type="button" onClick={() => setCurrentView('HOME')}
+            className="ml-2 rounded-lg border border-amber-400 px-4 py-2 text-xs font-semibold text-amber-950">
+            Voltar à Visão Geral
           </button>
         </div>
       </div>
