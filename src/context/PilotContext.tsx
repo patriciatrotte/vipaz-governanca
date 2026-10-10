@@ -281,6 +281,7 @@ interface PilotContextType {
   // Persistência Central (Supabase)
   isLoadingCentral: boolean;
   isCentralAvailable: boolean;
+  investigationProvenance: { source: 'CENTRAL' | 'LOCAL' | 'UNDETERMINED'; cycleId: string | null; reconciliation: 'PENDING' | 'NOT_VERIFIED' };
 }
 
 const PilotContext = createContext<PilotContextType | null>(null);
@@ -534,6 +535,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [currentCycleId, setCurrentCycleId] = useState<string | null>(null);
   const [isLoadingCentral, setIsLoadingCentral] = useState<boolean>(false);
   const [isCentralAvailable, setIsCentralAvailable] = useState<boolean>(false);
+  const [investigationProvenance, setInvestigationProvenance] = useState<PilotContextType['investigationProvenance']>({ source: 'UNDETERMINED', cycleId: null, reconciliation: 'NOT_VERIFIED' });
   const [currentView, setCurrentViewState] = useState<AppView>('CENTRAL');
   const [activeDoorId, setActiveDoorId] = useState<DoorId>('D1.1');
   const [activeResponseId, setActiveResponseId] = useState<string | null>(null);
@@ -786,6 +788,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           );
 
           setIsCentralAvailable(true);
+          setInvestigationProvenance({ source: 'CENTRAL', cycleId, reconciliation: 'PENDING' });
           console.info(`[VIPAZ Persistência] Ciclo ${cycleId} reidratado com autoridade central (${adapted.informationUnits.length} fatos da escuta, ${adapted.originalResponses.length} respostas).`);
           setIsLoadingCentral(false);
           return;
@@ -803,6 +806,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Contingência observável: carrega do cache local do navegador
     setIsCentralAvailable(false);
+    setInvestigationProvenance({ source: 'LOCAL', cycleId, reconciliation: 'NOT_VERIFIED' });
     const localBundle = loadStateForOrg(orgId, cycleId);
     applyStateBundle(localBundle);
     setIsLoadingCentral(false);
@@ -860,6 +864,9 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     setCurrentOrgId(effectiveOrgId);
     setCurrentCycleId(activeCycle?.id || null);
+    // Invalida a proveniência da organização anterior antes de carregar o novo ciclo.
+    setIsCentralAvailable(false);
+    setInvestigationProvenance({ source: 'UNDETERMINED', cycleId: activeCycle?.id || null, reconciliation: 'NOT_VERIFIED' });
     setCurrentView('HOME');
 
     if (activeCycle?.id) {
@@ -867,6 +874,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } else {
       const localBundle = loadStateForOrg(effectiveOrgId);
       applyStateBundle(localBundle);
+      setInvestigationProvenance({ source: 'LOCAL', cycleId: activeCycle?.id || null, reconciliation: 'NOT_VERIFIED' });
     }
   };
 
@@ -2023,7 +2031,8 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
         importStructuredBackup,
         runMandatoryTests,
         isLoadingCentral,
-        isCentralAvailable
+        isCentralAvailable,
+      investigationProvenance
       }}
     >
       {children}
