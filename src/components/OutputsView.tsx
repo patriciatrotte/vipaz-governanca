@@ -109,17 +109,23 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
   if (investigationProvenance.source === 'CENTRAL' && investigationProvenance.reconciliation === 'PENDING' && activeTab !== 'TECHNICAL') {
     return (
       <div className="max-w-4xl mx-auto py-12 px-4 space-y-4 print:hidden">
-        <div className="rounded-xl border border-amber-300 bg-amber-50 p-6 space-y-3">
-          <h2 className="text-lg font-bold text-amber-950">Relatório aguardando conciliação dos dados</h2>
-          <p className="text-sm text-amber-900">
-            A investigação foi carregada da base central, mas as avaliações de capacidades,
-            ações e snapshots disponíveis neste ambiente ainda não possuem correspondência
-            confirmada com o mesmo ciclo. Para evitar conclusões indevidas, a apresentação
-            executiva e a emissão do snapshot estão temporariamente indisponíveis.
-          </p>
-          <p className="text-xs text-amber-900">
-            Os registros da investigação permanecem preservados. Não é necessário repetir entrevistas.
-          </p>
+        <div className="rounded-xl border border-slate-200 bg-white p-6 space-y-4">
+          <div className="space-y-1">
+            <h2 className="text-lg font-bold text-slate-900">Registros da escuta institucional</h2>
+            <p className="text-sm text-slate-600">
+              As informações coletadas já podem ser consultadas. A avaliação das capacidades
+              ainda está em conferência e não há resultado de maturidade validado para apresentar.
+            </p>
+          </div>
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 space-y-1" role="status">
+            <p className="text-xs font-semibold text-amber-950">Avaliação em conferência</p>
+            <p className="text-xs text-amber-900">
+              Os dados de avaliação, ações e histórico ainda precisam ser vinculados e conferidos
+              com o ciclo correto. Até lá, o relatório executivo e o registro de resultado
+              permanecem indisponíveis. As entrevistas já realizadas estão preservadas;
+              não é necessário repeti-las.
+            </p>
+          </div>
           {originalResponses.some(response => response.doorId === 'D1.2') && (
             <section className="rounded-lg border border-slate-200 bg-white p-4 space-y-3" aria-label="Síntese preliminar da escuta D1.2">
               <div>
@@ -198,7 +204,7 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
             </button>
           )}
           <button type="button" onClick={() => setCurrentView('HOME')}
-            className="ml-2 rounded-lg border border-amber-400 px-4 py-2 text-xs font-semibold text-amber-950">
+            className="ml-2 rounded-lg border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-800">
             Voltar à Visão Geral
           </button>
         </div>
