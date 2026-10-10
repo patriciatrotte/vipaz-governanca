@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { AccessError, requireCycleReadAccess } from '../_lib/cycleAccess.js';
 
 const getSupabaseConfig = () => {
   const url = process.env.SUPABASE_URL;
@@ -89,6 +90,7 @@ export default async function handler(
 
   try {
     const { url, key } = getSupabaseConfig();
+    await requireCycleReadAccess(req, url, key, cleanCycleId);
 
     // 1. O ciclo se relaciona diretamente com investigation_sessions.
     const investigationSessions = await fetchRows(
@@ -244,6 +246,9 @@ export default async function handler(
       pendingItems: pendingItemsWithQuestionCode,
     });
   } catch (error) {
+    if (error instanceof AccessError) {
+      return res.status(error.status).json({ error: error.code });
+    }
     console.error('[cycle-bundle] Central read failed:', error);
 
     return res.status(502).json({
