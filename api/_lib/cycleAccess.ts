@@ -26,7 +26,7 @@ export async function requireCycleReadAccess(
   }
 
   // A consulta privilegiada só resolve os vínculos após validar a identidade.
-  const headers = { apikey: secret, Authorization: `Bearer ${secret}` };
+  const headers = { apikey: secret, ...(secret.startsWith('sb_secret_') ? {} : { Authorization: `Bearer ${secret}` }) };
   const cycleResponse = await fetch(
     `${url}/rest/v1/governance_cycles?id=eq.${encodeURIComponent(cycleId)}&select=organization_id&limit=1`,
     { headers }
