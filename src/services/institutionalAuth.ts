@@ -17,7 +17,7 @@ export const clearInstitutionalToken = (): void => {
 
 export const signInInstitutionalUser = async (email: string, password: string): Promise<void> => {
   const url = import.meta.env.VITE_SUPABASE_URL;
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !anonKey) throw new Error('Login institucional ainda não configurado neste ambiente.');
   const response = await fetch(`${String(url).replace(/\/$/, '')}/auth/v1/token?grant_type=password`, {
     method: 'POST',
