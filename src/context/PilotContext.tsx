@@ -643,11 +643,14 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Salva no localStorage quando o estado metodológico de uma organização ativa é modificado
   // Salvaguarda obrigatória: NUNCA salvar enquanto a carga central estiver ativa (impede race condition)
   useEffect(() => {
-    if (!currentOrgId || isLoadingCentral) return;
+    // Investigação central e resultados derivados locais não formam um pacote validado.
+    // Não sobrescrever o cache enquanto essa proveniência estiver inconciliada.
+    if (!currentOrgId || isLoadingCentral || isCentralAvailable) return;
     saveStateForOrg(currentOrgId, getCurrentStateBundle());
   }, [
     currentOrgId,
     isLoadingCentral,
+    isCentralAvailable,
     doorStatuses,
     questionInstances,
     originalResponses,
