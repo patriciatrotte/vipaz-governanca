@@ -744,7 +744,11 @@ export const PilotProvider: React.FC<{ children: React.ReactNode; institutionalM
           });
         }
       } catch (error) {
-        console.warn('[VIPAZ Persistência] Falha ao sincronizar catálogo central; mantendo contingência local.', error);
+        if (institutionalMode && !cancelled) {
+          setOrganizations([]);
+          setCycles([]);
+        }
+        console.warn('[VIPAZ Persistência] Falha ao sincronizar catálogo central; catálogo institucional não autorizado permanece vazio.', error);
       } finally {
         if (!cancelled) setIsCatalogLoading(false);
       }
