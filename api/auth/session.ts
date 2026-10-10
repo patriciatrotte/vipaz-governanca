@@ -36,7 +36,7 @@ export default async function handler(req: Request, res: Response) {
 
     const membershipResponse = await fetch(
       `${url}/rest/v1/organization_memberships?user_id=eq.${encodeURIComponent(userId)}&status=eq.ACTIVE&select=organization_id,role_code,valid_from,valid_until`,
-      { headers: { apikey: secret, Authorization: `Bearer ${secret}` } }
+      { headers: { apikey: secret, ...(secret.startsWith('sb_secret_') ? {} : { Authorization: `Bearer ${secret}` }) } }
     );
     if (!membershipResponse.ok) {
       return res.status(502).json({ error: 'membership_lookup_failed', upstreamStatus: membershipResponse.status });
@@ -56,7 +56,7 @@ export default async function handler(req: Request, res: Response) {
     // independentemente de vínculo individual com uma Câmara.
     const adminResponse = await fetch(
       `${url}/rest/v1/global_user_roles?user_id=eq.${encodeURIComponent(userId)}&role_code=eq.ADMIN_VIPAZ&status=eq.ACTIVE&revoked_at=is.null&select=valid_from,valid_until`,
-      { headers: { apikey: secret, Authorization: `Bearer ${secret}` } }
+      { headers: { apikey: secret, ...(secret.startsWith('sb_secret_') ? {} : { Authorization: `Bearer ${secret}` }) } }
     );
     if (!adminResponse.ok) return res.status(502).json({ error: 'global_role_lookup_failed', upstreamStatus: adminResponse.status });
     const globalRoles = await adminResponse.json();
