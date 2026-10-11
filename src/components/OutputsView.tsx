@@ -42,7 +42,9 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
     pendingItems,
     actions,
     currentUser,
-    setCurrentView
+    setCurrentView,
+    isLoadingCentral,
+    isCentralAvailable
   } = usePilot();
 
   // Matriz de Acesso do Piloto D1
@@ -161,6 +163,8 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
           )}
 
           <button
+            disabled={isLoadingCentral}
+            title={isLoadingCentral ? 'Aguarde a recuperação do ciclo' : 'Imprimir o relatório apresentado'}
             onClick={() => window.print()}
             className="bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-semibold px-3.5 py-2 rounded-lg border border-slate-700 transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
           >
@@ -168,6 +172,15 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
             <span>Imprimir / PDF</span>
           </button>
         </div>
+      </div>
+
+      {/* Transparência de proveniência: recuperação central não garante consolidação metodológica central. */}
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-950 print:border print:bg-white" role="status">
+        {isLoadingCentral
+          ? 'Recuperando dados do ciclo. Aguarde antes de imprimir.'
+          : isCentralAvailable
+            ? 'Dados investigativos recuperados da base central. A integração metodológica, o snapshot e as ações deste relatório ainda podem depender do estado local; confira sua validação antes de usar como documento institucional.'
+            : 'Base central não confirmada para este ciclo. O relatório pode estar utilizando dados locais de contingência; não o trate como emissão oficial do Supabase sem conferência.'}
       </div>
 
       {/* NAVEGAÇÃO INTERNA DO HUB (ABAS POR PERFIL) */}
