@@ -70,7 +70,7 @@ export const InstitutionalLogin: React.FC = () => {
       {signedInEmail && scope && (
         <p className="mt-2 text-sm font-medium text-slate-700" aria-live="polite">
           {scope.isGlobalAdmin ? 'Administração VIPAZ verificada' : 'Usuário institucional autenticado'}
-          {' · '}{scope.organizations.length} organização(ões) visível(is) conforme permissões do banco
+          {' · '}{scope.organizations.length} organização(ões) e {scope.visibleCycleCount} ciclo(s) visível(is) conforme permissões do banco
         </p>
       )}
       <p className="mt-2 text-sm leading-relaxed text-slate-600">Identidade real separada do modo de simulação. O acesso às decisões depende também do vínculo institucional.</p>
