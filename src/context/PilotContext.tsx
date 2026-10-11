@@ -283,7 +283,7 @@ interface PilotContextType {
   isLoadingCentral: boolean;
   isCentralAvailable: boolean;
   isCatalogLoading: boolean;
-  investigationProvenance: { source: 'CENTRAL' | 'LOCAL' | 'UNDETERMINED'; cycleId: string | null; reconciliation: 'PENDING' | 'NOT_VERIFIED' };
+  investigationProvenance: { source: 'CENTRAL' | 'LOCAL' | 'UNDETERMINED'; cycleId: string | null; reconciliation: 'PENDING' | 'NOT_VERIFIED'; assessmentRecordState?: 'NOT_RECORDED' | 'REQUIRES_REVIEW' | 'INCOMPATIBLE' | 'UNAVAILABLE' };
 }
 
 const PilotContext = createContext<PilotContextType | null>(null);
@@ -813,7 +813,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode; institutionalM
           );
 
           setIsCentralAvailable(true);
-          setInvestigationProvenance({ source: 'CENTRAL', cycleId, reconciliation: 'PENDING' });
+          setInvestigationProvenance({ source: 'CENTRAL', cycleId, reconciliation: 'PENDING', assessmentRecordState: ['NOT_RECORDED', 'REQUIRES_REVIEW', 'INCOMPATIBLE', 'UNAVAILABLE'].includes(rawBundle.assessmentInventory?.state) ? rawBundle.assessmentInventory.state : 'UNAVAILABLE' });
           console.info(`[VIPAZ Persistência] Ciclo ${cycleId} reidratado com autoridade central (${adapted.informationUnits.length} fatos da escuta, ${adapted.originalResponses.length} respostas).`);
           setIsLoadingCentral(false);
           return;

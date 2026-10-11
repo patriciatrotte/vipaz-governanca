@@ -118,12 +118,15 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
             </p>
           </div>
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 space-y-1" role="status">
-            <p className="text-xs font-semibold text-amber-950">Avaliação em conferência</p>
+            <p className="text-xs font-semibold text-amber-950">{investigationProvenance.assessmentRecordState === 'NOT_RECORDED' ? 'Avaliação ainda não registrada' : investigationProvenance.assessmentRecordState === 'INCOMPATIBLE' ? 'Registros de avaliação incompatíveis com o ciclo' : investigationProvenance.assessmentRecordState === 'UNAVAILABLE' ? 'Não foi possível conferir os registros de avaliação' : 'Avaliação em conferência'}</p>
             <p className="text-xs text-amber-900">
-              Os dados de avaliação, ações e histórico ainda precisam ser vinculados e conferidos
-              com o ciclo correto. Até lá, o relatório executivo e o registro de resultado
-              permanecem indisponíveis. As entrevistas já realizadas estão preservadas;
-              não é necessário repeti-las.
+              {investigationProvenance.assessmentRecordState === 'NOT_RECORDED'
+                ? 'Não há resultados ativos de critérios, capacidades ou snapshot registrados na base central para este ciclo. A avaliação ainda precisa ser realizada e validada com suas fontes e regras aplicáveis.'
+                : investigationProvenance.assessmentRecordState === 'UNAVAILABLE'
+                  ? 'A consulta aos registros de avaliação não foi concluída. Isso não permite afirmar que estejam ausentes.'
+                  : 'Os registros de avaliação precisam ser vinculados e conferidos com o ciclo, a versão metodológica, as fontes e a validação humana.'}
+              {' '}O relatório executivo e o registro de resultado permanecem indisponíveis.
+              As entrevistas já realizadas estão preservadas; não é necessário repeti-las.
             </p>
           </div>
           {originalResponses.some(response => response.doorId === 'D1.2') && (
