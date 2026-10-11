@@ -1565,17 +1565,15 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
       organizationName: org.name,
       municipality: org.municipality,
       dimensionId: 'D1',
-      cycleId: org.cycleId || 'ciclo-d1',
+      cycleId: currentCycleId || 'ciclo-d1',
       baseDate: new Date().toISOString().split('T')[0],
       methodologyVersion: 'D1 v1.0',
       validatedLevel: integration.humanValidation.validatedLevel,
       capacitiesAssessment: integration.capacities,
       demonstratedCapacities: demonstrated,
       structuringCapacities: structuring,
-      advancedElements: [
-        'Acolhimento gerencial pela Diretoria Geral com aprovação orçamentária efetiva (C5).',
-        'Rotinas automatizadas de backup em nuvem governamental já em operação na TI (C3).'
-      ],
+      // Sem evidências individualizadas confirmadas, não afirmar exemplos como fatos institucionais.
+      advancedElements: [],
       validatedGaps: gaps,
       relevantPendingItems: pendingItems,
       nextAchievement: integration.nextInstitutionalAchievement,
