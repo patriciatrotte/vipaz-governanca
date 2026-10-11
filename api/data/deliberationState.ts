@@ -43,6 +43,9 @@ export default async function handler(req: Request, res: Response) {
       return res.status(response.status).json({ error: 'institutional_access_denied' });
     }
     if (!response.ok) {
+      const error = await response.json().catch(() => null);
+      if (error?.code === '42501') return res.status(403).json({ error: 'institutional_access_denied' });
+      if (error?.message === 'Deliberation not found') return res.status(404).json({ error: 'deliberation_not_found' });
       // Do not leak internal PostgREST / database error details to the browser.
       return res.status(502).json({ error: 'institutional_state_unavailable' });
     }
