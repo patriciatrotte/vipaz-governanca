@@ -1,3 +1,4 @@
+import { D1_CANDIDATE_BASELINE } from '../data/d1CandidateBaseline';
 import React, { useEffect, useState } from 'react';
 import { getInstitutionalToken } from '../services/institutionalAuth';
 interface Source {id:string;statement:string;capacity_code:string;validation_status:string}
@@ -32,6 +33,12 @@ export function AssessmentDraftPanel({cycleId}:{cycleId:string}) {
   return <section className="rounded-xl border border-slate-200 p-4 space-y-3">
     <h3 className="font-bold text-slate-900">Rascunho de análise</h3>
     <p className="text-xs text-slate-600">Selecione as fontes e registre sua interpretação. A conclusão de capacidade ou maturidade depende das regras aplicáveis e da validação humana.</p>
+    <details className="rounded-lg bg-slate-50 p-3 text-sm">
+      <summary className="cursor-pointer font-semibold">Consultar a régua candidata D1</summary>
+      <p className="text-xs text-slate-600 mt-2">Baseline de 03/10/2026, versão 1.0. Esta referência de análise não altera a versão da investigação histórica e não autoriza conclusão automática.</p>
+      <dl className="space-y-2 mt-3">{D1_CANDIDATE_BASELINE.capacities.map(c=><div key={c.code}><dt className="font-semibold">{c.code} · {c.title}</dt><dd>{c.floor}</dd></div>)}</dl>
+      <p className="text-xs text-slate-600 mt-3">Estados: suficiente; suficiente com evolução possível; suficiente com comprovação pendente; insuficiente; não conclusivo. Informação insuficiente não demonstra ausência de capacidade. Requisito de prova estrita exige sua comprovação específica.</p>
+    </details>
     <div className="max-h-48 overflow-auto space-y-2">{sources.map(s=><label key={s.id} className="flex gap-2 text-sm"><input type="checkbox" checked={selected.includes(s.id)} onChange={e=>setSelected(prev=>e.target.checked?[...prev,s.id]:prev.filter(id=>id!==s.id))}/><span>{s.statement}<small className="block text-slate-500">{s.capacity_code} · {s.validation_status}</small></span></label>)}</div>
     <textarea aria-label="Interpretação preliminar" value={text} maxLength={12000} onChange={e=>setText(e.target.value)} placeholder="Interpretação preliminar, limites e pontos a conferir" className="w-full border rounded-lg p-3 min-h-28"/>
     <button type="button" disabled={busy||!selected.length||text.trim().length<20} onClick={save} className="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm disabled:opacity-40">{busy?'Salvando…':'Salvar rascunho'}</button>
