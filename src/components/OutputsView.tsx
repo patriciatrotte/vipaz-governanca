@@ -84,6 +84,10 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
     snapshot.cycleId !== currentCycle.id
   ));
 
+  const localValidationConfirmed = integration?.humanValidation?.isValidated === true;
+  const centralSnapshotChecked = snapshotLookup?.cycleId === (currentCycle?.id || '') && Boolean(currentCycle?.id);
+  const centralSnapshotFound = centralSnapshotChecked && snapshotLookup?.message.startsWith('Snapshot central localizado.') === true;
+
   // Matriz de Acesso do Piloto D1
   const isFacilitator = currentUser.role === 'FACILITADOR';
   const isGestor = currentUser.role === 'GESTOR_INSTITUCIONAL';
@@ -228,6 +232,12 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
 
       <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-700 space-y-2 print:hidden">
         <p className="font-semibold">Conferência do snapshot no Supabase</p>
+        <div className="space-y-1 text-xs" role="status">
+          <p>Contexto: {snapshotContextMismatch ? 'Incompatível — impressão bloqueada' : snapshot ? 'Identificadores de Câmara e ciclo compatíveis' : 'Sem snapshot local disponível'}</p>
+          <p>Validação humana: {localValidationConfirmed ? 'Marcada no estado local; sem confirmação central' : 'Não confirmada no estado local'}</p>
+          <p>Persistência central: {centralSnapshotFound ? 'Registro encontrado; conteúdo ainda não comparado' : centralSnapshotChecked ? 'Registro não confirmado nesta consulta' : 'Ainda não consultada para este ciclo'}</p>
+        </div>
+
         <p>Consulta somente leitura. Não altera os dados nem a versão impressa deste relatório.</p>
         <button type="button" disabled={snapshotLookupBusy || isLoadingCentral} onClick={checkCentralSnapshot} className="rounded-lg bg-slate-800 px-3 py-2 font-semibold text-white disabled:opacity-50">
           {snapshotLookupBusy ? 'Consultando…' : 'Consultar snapshot do ciclo'}
