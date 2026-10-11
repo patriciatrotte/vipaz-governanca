@@ -10,6 +10,7 @@ export function AssessmentDraftPanel({cycleId}:{cycleId:string}) {
   const [text,setText]=useState('');
   const [message,setMessage]=useState('');
   const [busy,setBusy]=useState(false);
+  const [loading,setLoading]=useState(true);
   const [capability,setCapability]=useState('');
   const [outcome,setOutcome]=useState('NAO_CONCLUSIVO');
   const [reviewed,setReviewed]=useState(false);
@@ -17,12 +18,14 @@ export function AssessmentDraftPanel({cycleId}:{cycleId:string}) {
   useEffect(()=>{setReviewed(false);},[capability,outcome,selected,text,justification]);
   useEffect(()=>{
     let cancelled=false;
+    setLoading(true);
     setSources([]);setDrafts([]);setSelected([]);setText('');setMessage('');setCapability('');setOutcome('NAO_CONCLUSIVO');setReviewed(false);setJustification('');
     const token=getInstitutionalToken();
     fetch(`/api/data/assessment-drafts?cycleId=${encodeURIComponent(cycleId)}`,{headers:token?{Authorization:`Bearer ${token}`}:{}})
       .then(async r=>{if(!r.ok) throw Error(); return r.json();})
       .then(data=>{if(!cancelled){setSources(data.sources);setDrafts(data.drafts);}})
-      .catch(()=>{if(!cancelled)setMessage('Não foi possível carregar os rascunhos e as fontes deste ciclo.');});
+      .catch(()=>{if(!cancelled)setMessage('Não foi possível carregar os rascunhos e as fontes deste ciclo.');})
+      .finally(()=>{if(!cancelled)setLoading(false);});
     return()=>{cancelled=true;};
   },[cycleId]);
   async function save() {
@@ -31,13 +34,20 @@ export function AssessmentDraftPanel({cycleId}:{cycleId:string}) {
       const token=getInstitutionalToken();
       const r=await fetch('/api/data/assessment-drafts',{method:'POST',headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{})},body:JSON.stringify({cycleId,sourceUnitIds:selected,analysisText:text,...(capability?{capabilityCode:capability,proposedOutcome:outcome,humanReviewed:reviewed,reviewJustification:justification}:{})})});
       if(!r.ok) throw Error();
-      const data=await r.json();setDrafts(prev=>[data.draft,...prev]);setText('');setSelected([]);setReviewed(false);setJustification('');setMessage('Rascunho salvo. Ainda não constitui avaliação validada.');
+      const data=await r.json();setDrafts(prev=>[data.draft,...prev]);setText('');setSelected([]);setReviewed(false);setJustification('');setMessage('Rascunho salvo em “Análises salvas neste ciclo”, acima. Ainda não constitui avaliação validada.');
     } catch {setMessage('Rascunho não salvo. Confira sua autorização e selecione fontes deste ciclo.');}
     finally {setBusy(false);}
   }
   return <section className="rounded-xl border border-slate-200 p-4 space-y-3">
-    <h3 className="font-bold text-slate-900">Rascunho de análise</h3>
-    <p className="text-xs text-slate-600">Selecione as fontes e registre sua interpretação. A conclusão de capacidade ou maturidade depende das regras aplicáveis e da validação humana.</p>
+    <h3 className="text-xl font-bold text-slate-900">Análise do facilitador</h3>
+    <p className="text-base leading-relaxed text-slate-600">Selecione as fontes e registre sua interpretação. A conclusão de capacidade ou maturidade depende das regras aplicáveis e da validação humana.</p>
+    <div className="rounded-xl bg-slate-50 p-4 space-y-3" aria-label="Análises salvas">
+      <h4 className="text-lg font-bold">Análises salvas neste ciclo ({drafts.length})</h4>
+      {loading ? <p role="status">Carregando fontes e análises…</p> : drafts.length===0 && <p className="text-sm text-slate-600">O rascunho aparecerá aqui depois de salvar.</p>}
+    {drafts.map(d=><article key={d.id} className="rounded-lg border border-slate-200 bg-white p-4 space-y-2"><p className="text-sm text-slate-500">Rascunho · versão {d.methodology_version} · {d.source_unit_ids.length} fontes · {new Date(d.created_at).toLocaleString('pt-BR')}</p>{d.capability_code && <p className="text-sm font-semibold">{d.capability_code} · proposta: {d.proposed_outcome?.replaceAll('_',' ').toLowerCase()} · {d.human_reviewed_at?'Interpretação conferida por humano':'Conferência humana pendente'}<span className="block font-normal">Régua candidata D1 de 03/10/2026 · versão 1.0</span></p>}<p className="text-base leading-relaxed whitespace-pre-wrap">{d.analysis_text}</p>{d.human_review_justification && <p className="text-sm whitespace-pre-wrap">Conferência: {d.human_review_justification}</p>}</article>)}
+    </div>
+    <h4 className="font-bold">Registrar nova análise</h4>
+    <p className="text-sm text-slate-600">1. Selecione as fontes. 2. Escolha a capacidade e escreva sua análise. 3. Salve. A conferência humana é opcional nesta etapa.</p>
     <details className="rounded-lg bg-slate-50 p-3 text-sm">
       <summary className="cursor-pointer font-semibold">Consultar a régua candidata D1</summary>
       <p className="text-xs text-slate-600 mt-2">Baseline de 03/10/2026, versão 1.0. Esta referência de análise não altera a versão da investigação histórica e não autoriza conclusão automática.</p>
@@ -61,8 +71,8 @@ export function AssessmentDraftPanel({cycleId}:{cycleId:string}) {
       <textarea aria-label="Justificativa da conferência humana" value={justification} maxLength={12000} onChange={e=>setJustification(e.target.value)} placeholder="Justificativa da conferência humana: sustentação, divergências e limites" className="w-full border rounded-lg p-3 min-h-20"/>
       <label className="flex gap-2 text-sm"><input type="checkbox" checked={reviewed} disabled={justification.trim().length<20} onChange={e=>setReviewed(e.target.checked)}/>Conferi as fontes e esta interpretação preliminar. Esta conferência não homologa a régua nem valida maturidade.</label>
     </div>}
-    <button type="button" disabled={busy||!selected.length||text.trim().length<20||(reviewed&&justification.trim().length<20)} onClick={save} className="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm disabled:opacity-40">{busy?'Salvando…':'Salvar rascunho'}</button>
+    <button type="button" disabled={loading||busy||!selected.length||text.trim().length<20||(reviewed&&justification.trim().length<20)} onClick={save} className="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm disabled:opacity-40">{busy?'Salvando…':'Salvar rascunho'}</button>
     {message&&<p role="status" className="text-sm">{message}</p>}
-    {drafts.map(d=><article key={d.id} className="border-t pt-3"><p className="text-xs text-slate-500">Rascunho · versão {d.methodology_version} · {d.source_unit_ids.length} fontes · {new Date(d.created_at).toLocaleString('pt-BR')}</p>{d.capability_code && <p className="text-xs font-semibold">{d.capability_code} · proposta: {d.proposed_outcome?.replaceAll('_',' ').toLowerCase()} · {d.human_reviewed_at?'Interpretação conferida por humano':'Conferência humana pendente'}<span className="block font-normal">Régua candidata D1 de 03/10/2026 · versão 1.0</span></p>}<p className="text-sm whitespace-pre-wrap">{d.analysis_text}</p>{d.human_review_justification && <p className="text-sm whitespace-pre-wrap">Conferência: {d.human_review_justification}</p>}</article>)}
+
   </section>;
 }
