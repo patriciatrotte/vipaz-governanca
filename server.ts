@@ -30,6 +30,7 @@ function getGeminiClient(): GoogleGenAI | null {
 import organizationsHandler from './api/data/organizations';
 import cyclesHandler from './api/data/cycles';
 import cycleBundleHandler from './api/data/cycleBundle';
+import deliberationStateHandler from './api/data/deliberationState';
 import dbHealthHandler from './api/db/health';
 
 // Health check
@@ -49,6 +50,7 @@ app.all('/api/data/organizations', (req: Request, res: Response) => organization
 app.all('/api/data/cycles', (req: Request, res: Response) => cyclesHandler(req, res));
 app.all('/api/data/cycle-bundle', (req: Request, res: Response) => cycleBundleHandler(req, res));
 app.all('/api/data/cycleBundle', (req: Request, res: Response) => cycleBundleHandler(req, res));
+app.all('/api/data/deliberation-state', (req: Request, res: Response) => deliberationStateHandler(req, res));
 
 // Endpoint: AI Probing Suggestion (Neutral, non-leading)
 app.post('/api/ai/probe', async (req: Request, res: Response) => {
