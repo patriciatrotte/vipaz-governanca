@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { clearInstitutionalSession, signInInstitutional } from '../services/institutionalAuth';
+import { clearInstitutionalSession, getInstitutionalScope, signInInstitutional } from '../services/institutionalAuth';
+import type { InstitutionalScope } from '../services/institutionalAuth';
 
 /** Separate authentication control; does not change simulated role or grant privileges. */
 export const InstitutionalLogin: React.FC = () => {
@@ -7,6 +8,7 @@ export const InstitutionalLogin: React.FC = () => {
   const [password, setPassword] = useState('');
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [scope, setScope] = useState<InstitutionalScope | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function submit(event: React.FormEvent) {
@@ -14,10 +16,18 @@ export const InstitutionalLogin: React.FC = () => {
     setBusy(true);
     setError('');
     try {
-      setSignedInEmail(await signInInstitutional(email.trim(), password));
+      const authenticatedEmail = await signInInstitutional(email.trim(), password);
+      setSignedInEmail(authenticatedEmail);
+      try {
+        setScope(await getInstitutionalScope());
+      } catch {
+        setScope(null);
+        setError('Identidade autenticada, mas não foi possível verificar as permissões. Nenhum acesso institucional foi concedido por esta tela.');
+      }
       setPassword('');
     } catch (err) {
       setSignedInEmail(null);
+      setScope(null);
       setError(err instanceof Error ? err.message : 'Erro de autenticação.');
     } finally {
       setBusy(false);
@@ -26,6 +36,7 @@ export const InstitutionalLogin: React.FC = () => {
 
   function logout() {
     clearInstitutionalSession();
+    setScope(null);
     setSignedInEmail(null);
     setPassword('');
     setError('');
@@ -56,6 +67,12 @@ export const InstitutionalLogin: React.FC = () => {
           </form>
         )}
       </div>
+      {signedInEmail && scope && (
+        <p className="mt-2 text-sm font-medium text-slate-700" aria-live="polite">
+          {scope.isGlobalAdmin ? 'Administração VIPAZ verificada' : 'Usuário institucional autenticado'}
+          {' · '}{scope.organizations.length} organização(ões) visível(is) conforme permissões do banco
+        </p>
+      )}
       <p className="mt-2 text-sm leading-relaxed text-slate-600">Identidade real separada do modo de simulação. O acesso às decisões depende também do vínculo institucional.</p>
       {error && <p role="alert" className="mt-2 text-red-700">{error}</p>}
     </section>
