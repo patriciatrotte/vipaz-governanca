@@ -58,3 +58,27 @@ export async function getDeliberationEffectiveState(deliberationId: string) {
   if (!response.ok) throw new Error('Consulta institucional indisponível ou não autorizada.');
   return response.json();
 }
+
+export interface InstitutionalScope {
+  isGlobalAdmin: boolean;
+  organizations: Array<{ id: string; name: string }>;
+}
+
+export async function getInstitutionalScope(): Promise<InstitutionalScope> {
+  const token = getInstitutionalAccessToken();
+  if (!token) throw new Error('Autenticação institucional necessária.');
+  const response = await fetch('/api/data/institutional-scope', {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store'
+  });
+  if (response.status === 401) {
+    clearInstitutionalSession();
+    throw new Error('Sessão expirada. Entre novamente.');
+  }
+  if (!response.ok) throw new Error('Não foi possível verificar o escopo de acesso.');
+  const result = await response.json();
+  if (typeof result?.isGlobalAdmin !== 'boolean' || !Array.isArray(result.organizations)) {
+    throw new Error('Resposta de autorização inválida.');
+  }
+  return result as InstitutionalScope;
+}
