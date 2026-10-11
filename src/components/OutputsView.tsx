@@ -97,6 +97,49 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
     }
   }
 
+  const [preflight, setPreflight] = useState<{ cycleId: string; message: string } | null>(null);
+  const [preflightBusy, setPreflightBusy] = useState(false);
+  async function checkSnapshotEligibility() {
+    const cycleId = currentCycle?.id || '';
+    const token = getInstitutionalAccessToken();
+    if (!cycleId || !token) {
+      setPreflight({ cycleId, message: !cycleId ? 'Selecione um ciclo.' : 'Entre com sua conta institucional.' });
+      return;
+    }
+    setPreflightBusy(true);
+    setPreflight(null);
+    try {
+      const response = await fetch('/api/data/snapshotPreflight?cycleId=' + encodeURIComponent(cycleId), {
+        headers: { Authorization: 'Bearer ' + token }, cache: 'no-store'
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        const reasons: Record<string, string> = {
+          invalid_cycle_id: 'Identificador do ciclo incompatível com o registro central.',
+          authentication_required: 'Sessão institucional ausente ou inválida.',
+          cycle_not_visible: 'O ciclo não está disponível para sua identidade institucional.',
+          access_denied: 'Acesso ao ciclo não autorizado.',
+          institutional_auth_not_configured: 'Autenticação institucional indisponível.',
+          cycle_scope_unavailable: 'Não foi possível verificar o ciclo no Supabase.',
+          preflight_unavailable: 'Serviço de verificação temporariamente indisponível.'
+        };
+        setPreflight({ cycleId, message: reasons[data?.error] || 'Não foi possível concluir a pré-verificação.' });
+        return;
+      }
+      const sameOrg = Boolean(currentOrg && data.organizationId === currentOrg.id);
+      const sameMethodology = Boolean(snapshot && data.methodologyVersion === snapshot.methodologyVersion);
+      setPreflight({ cycleId, message: !sameOrg
+        ? 'Impedimento: a Câmara selecionada não corresponde à organização do ciclo central.'
+        : !sameMethodology
+          ? 'Impedimento: versão metodológica do snapshot local não confirmada para o ciclo central.'
+          : 'Identidade e ciclo visíveis no Supabase. Emissão ainda bloqueada: falta autorização de escrita e validação metodológica central.' });
+    } catch {
+      setPreflight({ cycleId, message: 'Não foi possível acessar a pré-verificação.' });
+    } finally {
+      setPreflightBusy(false);
+    }
+  }
+
   // Integridade mínima do contexto: nunca apresentar snapshot de outro ciclo como documento deste ciclo.
   const snapshotContextMismatch = Boolean(snapshot && (
     !currentOrg || !currentCycle ||
@@ -252,6 +295,14 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
 
       <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-700 space-y-2 print:hidden">
         <p className="font-semibold">Conferência do snapshot no Supabase</p>
+        <div className="border-b border-slate-200 pb-3 space-y-2">
+          <p className="font-semibold">SNAP-01 · Pré-verificação para emissão institucional</p>
+          <p>Esta consulta não grava, aprova ou emite documentos.</p>
+          <button type="button" disabled={preflightBusy || isLoadingCentral} onClick={checkSnapshotEligibility} className="rounded-lg bg-slate-700 px-3 py-2 font-semibold text-white disabled:opacity-50">
+            {preflightBusy ? 'Verificando…' : 'Verificar condições para emissão'}
+          </button>
+          {preflight?.cycleId === (currentCycle?.id || '') && <p role="status">{preflight.message}</p>}
+        </div>
         <div className="space-y-1 text-xs" role="status">
           <p>Contexto: {snapshotContextMismatch ? 'Incompatível — impressão bloqueada' : snapshot ? 'Identificadores de Câmara e ciclo compatíveis' : 'Sem snapshot local disponível'}</p>
           <p>Validação humana: {localValidationConfirmed ? 'Marcada no estado local; sem confirmação central' : 'Não confirmada no estado local'}</p>
