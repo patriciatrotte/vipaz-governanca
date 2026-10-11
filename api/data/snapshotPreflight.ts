@@ -52,9 +52,10 @@ export default async function handler(req: Request, res: Response) {
         visibleCycle: true,
         authorizedToIssue: false,
         validatedMethodology: false,
-        centralSnapshotPersisted: false
+        centralSnapshotPersisted: null
       },
       eligibleToIssue: false,
+      checksMeaning: 'null means not checked; false means not authorized or not verified',
       reason: 'Emissão não habilitada: autorização de escrita e validação metodológica ainda não verificadas.'
     });
   } catch {
