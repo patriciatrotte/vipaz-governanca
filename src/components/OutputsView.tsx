@@ -73,13 +73,20 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
         snapshot.organizationId === currentOrg.id && snapshot.cycleId === cycleId);
       const methodologyMatches = Boolean(record && snapshot &&
         record.methodology_version === snapshot.methodologyVersion);
+      const contentComparison = !record || !localContextMatches || !methodologyMatches
+        ? 'Conteúdo não comparável nas condições atuais.'
+        : record.payload && typeof record.payload === 'object' && !Array.isArray(record.payload)
+          ? JSON.stringify(record.payload) === JSON.stringify(snapshot)
+            ? 'Conteúdo JSON idêntico na ordem serializada; autenticidade e aprovação institucional não verificadas.'
+            : 'Conteúdo JSON não idêntico ou estruturado de modo diferente; revisão necessária.'
+          : 'Payload central ausente ou incompatível; comparação indisponível.';
       const comparison = !record ? '' : !centralContextMatches
         ? ' ALERTA: o registro retornado não corresponde à Câmara e ao ciclo selecionados.'
         : !localContextMatches
           ? ' Não há snapshot local correspondente para comparar.'
           : !methodologyMatches
             ? ' Divergência de versão metodológica entre registro central e snapshot local.'
-            : ' Identificadores e versão metodológica compatíveis; conteúdo e validação ainda NÃO foram comparados.';
+            : ' Identificadores e versão metodológica compatíveis. ' + contentComparison;
       setSnapshotLookup({ cycleId, message: record
         ? 'Snapshot central localizado. Tipo: ' + String(record.snapshot_kind || 'não informado') + '; data: ' + String(record.captured_at || 'não informada') + '; versão: ' + String(record.methodology_version || 'não informada') + '.' + comparison
         : 'Nenhum snapshot central encontrado para este ciclo. A versão apresentada pode ser apenas local.' });
