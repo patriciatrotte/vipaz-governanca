@@ -13,7 +13,7 @@ export default async function handler(req: Request, res: Response) {
 
   res.setHeader('Cache-Control', 'no-store');
   const url = process.env.SUPABASE_URL?.replace(/\/$/, '');
-  const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
+  const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
   if (!url || !publishableKey) {
     return res.status(503).json({ error: 'institutional_auth_not_configured' });
   }
