@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import {
   Organization,
   EvaluationCycle,
@@ -533,6 +533,8 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
   const [currentCycleId, setCurrentCycleId] = useState<string | null>(null);
   const [isLoadingCentral, setIsLoadingCentral] = useState<boolean>(false);
+  // Generation guard: only the latest organization/cycle selection may commit async data.
+  const activeInvestigationRequest = useRef(0);
   const [isCentralAvailable, setIsCentralAvailable] = useState<boolean>(false);
   const [currentView, setCurrentViewState] = useState<AppView>('CENTRAL');
   const [activeDoorId, setActiveDoorId] = useState<DoorId>('D1.1');
@@ -733,9 +735,12 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Reidratação da sessão investigativa central (Bloco 1)
   const loadCentralInvestigation = async (cycleId: string, orgId: string) => {
+    const requestId = ++activeInvestigationRequest.current;
+    setIsCentralAvailable(false);
     setIsLoadingCentral(true);
     try {
       const res = await fetch(`/api/data/cycle-bundle?cycleId=${encodeURIComponent(cycleId)}`);
+      if (requestId !== activeInvestigationRequest.current) return;
       const contentType = res.headers.get('content-type') || '';
       const isJson = contentType.includes('application/json');
 
@@ -746,6 +751,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         );
       } else if (res.ok) {
         const rawBundle = await res.json();
+        if (requestId !== activeInvestigationRequest.current) return;
         const adapted = adaptCycleBundleToDomain(rawBundle);
 
         // Se houver qualquer registro central existente para este ciclo
@@ -802,6 +808,8 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.warn(`[VIPAZ Persistência] Falha de conexão com a base central. Acionando contingência de cache local para ciclo ${cycleId}:`, err);
     }
 
+    // Uma resposta antiga nunca deve aplicar cache de outra Câmara.
+    if (requestId !== activeInvestigationRequest.current) return;
     // Contingência observável: carrega do cache local do navegador
     setIsCentralAvailable(false);
     const localBundle = loadStateForOrg(orgId, cycleId);
@@ -811,6 +819,8 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Transição de contexto: Selecionar Organização
   const selectOrganization = (orgId: string) => {
+    // Invalidate pending fetches immediately, even when the selected organization has no cycle.
+    ++activeInvestigationRequest.current;
     if (currentOrgId && currentOrgId !== orgId) {
       saveStateForOrg(currentOrgId, getCurrentStateBundle());
     }
@@ -873,6 +883,9 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Transição de contexto: Voltar à Central
   const returnToOrganizationsHub = () => {
+    ++activeInvestigationRequest.current;
+    setIsLoadingCentral(false);
+    setIsCentralAvailable(false);
     if (currentOrgId) {
       saveStateForOrg(currentOrgId, getCurrentStateBundle());
     }
