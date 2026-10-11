@@ -61,6 +61,7 @@ export async function getDeliberationEffectiveState(deliberationId: string) {
 
 export interface InstitutionalScope {
   isGlobalAdmin: boolean;
+  visibleCycleCount: number;
   organizations: Array<{ id: string; name: string }>;
 }
 
@@ -77,7 +78,7 @@ export async function getInstitutionalScope(): Promise<InstitutionalScope> {
   }
   if (!response.ok) throw new Error('Não foi possível verificar o escopo de acesso.');
   const result = await response.json();
-  if (typeof result?.isGlobalAdmin !== 'boolean' || !Array.isArray(result.organizations)) {
+  if (typeof result?.isGlobalAdmin !== 'boolean' || typeof result?.visibleCycleCount !== 'number' || !Array.isArray(result.organizations)) {
     throw new Error('Resposta de autorização inválida.');
   }
   return result as InstitutionalScope;
