@@ -5,12 +5,14 @@
  */
 let institutionalAccessToken: string | null = null;
 let institutionalExpiresAt = 0;
+let institutionalEmail: string | null = null;
+export const getInstitutionalSignedInEmail = () => getInstitutionalAccessToken() ? institutionalEmail : null;
 
 export const getInstitutionalAccessToken = () => {
   if (institutionalAccessToken && Date.now() >= institutionalExpiresAt) clearInstitutionalSession();
   return institutionalAccessToken;
 };
-export const clearInstitutionalSession = () => { institutionalAccessToken = null; institutionalExpiresAt = 0; };
+export const clearInstitutionalSession = () => { institutionalAccessToken = null; institutionalExpiresAt = 0; institutionalEmail = null; };
 
 function config() {
   const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -41,6 +43,7 @@ export async function signInInstitutional(email: string, password: string): Prom
   if (!Number.isFinite(expiresIn) || expiresIn <= 30) throw new Error('Validade da sessão inválida.');
   institutionalExpiresAt = Date.now() + (expiresIn - 30) * 1000;
   institutionalAccessToken = data.access_token;
+  institutionalEmail = user.email;
   return user.email;
 }
 
