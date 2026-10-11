@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { PilotProvider, usePilot } from './context/PilotContext';
 import { Navbar } from './components/Navbar';
+import { InstitutionalLogin } from './components/InstitutionalLogin';
 import { InstitutionalSidebar } from './components/InstitutionalSidebar';
 import { InstitutionalOverviewView } from './components/InstitutionalOverviewView';
 import { DiagnosticModuleView } from './components/DiagnosticModuleView';
@@ -253,6 +254,7 @@ const AppContent: React.FC = () => {
           tabIndex={-1}
           className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 pt-4 sm:pt-6 pb-12 outline-none"
         >
+          <InstitutionalLogin />
           <OrganizationsHubView />
         </main>
 
@@ -291,6 +293,7 @@ const AppContent: React.FC = () => {
           tabIndex={-1}
           className="flex-1 min-w-0 max-w-7xl mx-auto px-3 sm:px-6 pt-4 sm:pt-6 pb-12 outline-none"
         >
+          <div className="mb-4"><InstitutionalLogin /></div>
           {/* Barra de Localização e Confirmação de Navegação */}
           {contextInfo && (
             <div 
