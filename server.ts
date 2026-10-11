@@ -31,7 +31,10 @@ import organizationsHandler from './api/data/organizations';
 import cyclesHandler from './api/data/cycles';
 import cycleBundleHandler from './api/data/cycleBundle';
 import dbHealthHandler from './api/db/health';
+import assessmentDraftsHandler from './api/data/assessment-drafts';
 import knowledgeHandler from './api/data/knowledge';
+
+app.all('/api/data/assessment-drafts', (req: Request, res: Response) => assessmentDraftsHandler(req, res));
 
 app.all('/api/data/knowledge', (req: Request, res: Response) => knowledgeHandler(req, res));
 
@@ -327,3 +330,4 @@ async function start() {
 }
 
 start();
+

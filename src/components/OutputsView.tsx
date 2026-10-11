@@ -1,3 +1,4 @@
+import { AssessmentDraftPanel } from './AssessmentDraftPanel';
 import React, { useState } from 'react';
 import { usePilot } from '../context/PilotContext';
 import { 
@@ -200,6 +201,7 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
               </p>
             </section>
           )}
+          {canViewTechnical && investigationProvenance.cycleId && <AssessmentDraftPanel key={investigationProvenance.cycleId} cycleId={investigationProvenance.cycleId} />}
           {canViewTechnical && (
             <button type="button" onClick={() => setActiveTab('TECHNICAL')}
               className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white">
@@ -305,6 +307,7 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
           )}
 
           {/* Aba 2: Rastreabilidade Técnica */}
+          {canViewTechnical && investigationProvenance.cycleId && <AssessmentDraftPanel key={investigationProvenance.cycleId} cycleId={investigationProvenance.cycleId} />}
           {canViewTechnical && (
             <button
               onClick={() => setActiveTab('TECHNICAL')}
@@ -927,3 +930,4 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
     </div>
   );
 };
+
