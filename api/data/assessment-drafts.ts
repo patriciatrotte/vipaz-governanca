@@ -12,9 +12,15 @@ export default async function handler(req: Request, res: Response) {
     const cycleId = req.method === 'GET' ? req.query.cycleId : req.body?.cycleId;
     if (typeof cycleId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cycleId)) return res.status(400).json({error:'invalid_cycle'});
     if (req.method === 'POST') {
-      const response = await fetch(`${url}/rest/v1/rpc/save_assessment_draft`, {
+      const structured = req.body.capabilityCode !== undefined;
+      const payload: Record<string, unknown> = {p_cycle_id:cycleId,p_source_unit_ids:req.body.sourceUnitIds,p_analysis_text:req.body.analysisText};
+      if (structured) {
+        if (typeof req.body.humanReviewed !== 'boolean') return res.status(400).json({error:'invalid_human_review'});
+        Object.assign(payload,{p_capability_code:req.body.capabilityCode,p_proposed_outcome:req.body.proposedOutcome,p_human_reviewed:req.body.humanReviewed,p_review_justification:req.body.reviewJustification || null});
+      }
+      const response = await fetch(`${url}/rest/v1/rpc/${structured?'save_candidate_assessment_draft':'save_assessment_draft'}`, {
         method:'POST',headers:{...headers,'Content-Type':'application/json'},
-        body:JSON.stringify({p_cycle_id:cycleId,p_source_unit_ids:req.body.sourceUnitIds,p_analysis_text:req.body.analysisText})
+        body:JSON.stringify(payload)
       });
       if (!response.ok) return res.status(response.status===403?403:400).json({error:'draft_not_saved'});
       return res.status(201).json({draft:await response.json()});
