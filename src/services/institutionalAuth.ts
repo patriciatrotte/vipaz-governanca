@@ -4,9 +4,13 @@
  * Never put a Supabase secret/service-role key in VITE_* variables.
  */
 let institutionalAccessToken: string | null = null;
+let institutionalExpiresAt = 0;
 
-export const getInstitutionalAccessToken = () => institutionalAccessToken;
-export const clearInstitutionalSession = () => { institutionalAccessToken = null; };
+export const getInstitutionalAccessToken = () => {
+  if (institutionalAccessToken && Date.now() >= institutionalExpiresAt) clearInstitutionalSession();
+  return institutionalAccessToken;
+};
+export const clearInstitutionalSession = () => { institutionalAccessToken = null; institutionalExpiresAt = 0; };
 
 function config() {
   const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -33,6 +37,9 @@ export async function signInInstitutional(email: string, password: string): Prom
   if (!verified.ok) throw new Error('Não foi possível confirmar a identidade.');
   const user = await verified.json();
   if (!user?.id || !user?.email) throw new Error('Identidade não confirmada.');
+  const expiresIn = Number(data.expires_in);
+  if (!Number.isFinite(expiresIn) || expiresIn <= 30) throw new Error('Validade da sessão inválida.');
+  institutionalExpiresAt = Date.now() + (expiresIn - 30) * 1000;
   institutionalAccessToken = data.access_token;
   return user.email;
 }
