@@ -27,7 +27,7 @@ import { CAPACITIES_DEFINITIONS, MATURITY_LEVELS_INFO } from '../data/methodolog
 import { formatMaturityLevel, cleanPresentationText, formatCapacityStatus } from '../utils/formatters';
 
 interface OutputsViewProps {
-  initialTab?: 'EXECUTIVE' | 'TECHNICAL' | 'SNAPSHOT_VIEW' | 'UPCOMING';
+  initialTab?: 'EXECUTIVE' | 'TECHNICAL' | 'INVESTIGATION' | 'SNAPSHOT_VIEW' | 'UPCOMING';
   onBackToHub?: () => void;
 }
 
@@ -166,12 +166,15 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
   // 2. Rastreabilidade Técnica: Equipe Metodológica Autorizada (Facilitador).
   const canViewTechnical = isFacilitator;
 
+  // Relatório factual da investigação: contém respostas e fontes, restrito ao facilitador.
+  const canViewInvestigation = isFacilitator;
+
   // 3. Snapshot D1: Facilitador, Gestor (institucional) e Interlocutor (institucional).
   const canViewSnapshot = isFacilitator || isGestor || isInterlocutor;
 
   // Determinar aba ativa padrão permitida para o perfil
   const defaultTab = initialTab || (canViewExecutive ? 'EXECUTIVE' : canViewTechnical ? 'TECHNICAL' : 'UNAUTHORIZED');
-  const [activeTab, setActiveTab] = useState<'EXECUTIVE' | 'TECHNICAL' | 'SNAPSHOT_VIEW' | 'UPCOMING'>(
+  const [activeTab, setActiveTab] = useState<'EXECUTIVE' | 'TECHNICAL' | 'INVESTIGATION' | 'SNAPSHOT_VIEW' | 'UPCOMING'>(
     defaultTab === 'UNAUTHORIZED' ? 'UPCOMING' : defaultTab
   );
 
@@ -267,7 +270,7 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
           )}
 
           <button
-            disabled={isLoadingCentral || snapshotContextMismatch}
+            disabled={isLoadingCentral || (snapshotContextMismatch && activeTab !== 'INVESTIGATION')}
             title={isLoadingCentral ? 'Aguarde a recuperação do ciclo' : 'Imprimir o relatório apresentado'}
             onClick={() => window.print()}
             className="bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-semibold px-3.5 py-2 rounded-lg border border-slate-700 transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
@@ -357,6 +360,13 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
             </button>
           )}
 
+          {canViewInvestigation && (
+            <button type="button" onClick={() => setActiveTab('INVESTIGATION')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold ${activeTab === 'INVESTIGATION' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:bg-slate-200/60'}`}>
+              Relatório da investigação
+            </button>
+          )}
+
           {/* Aba 3: Registro Imutável (Snapshot) */}
           {canViewSnapshot && (
             <button
@@ -400,6 +410,52 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
           <h3 className="font-bold text-red-900">Consolidação indisponível para este ciclo</h3>
           <p className="text-sm text-slate-700">O snapshot carregado pertence a outro contexto. Para evitar atribuir resultados, validações e ações à Câmara incorreta, a apresentação das saídas consolidadas foi suspensa. Os registros originais não foram apagados ou alterados.</p>
           <p className="text-xs text-slate-600">Consulte o snapshot central e a pré-verificação SNAP-01 acima. Uma nova consolidação só poderá ser apresentada após confirmação de origem e validação.</p>
+        </section>
+      )}
+
+      {activeTab === 'INVESTIGATION' && canViewInvestigation && (
+        <section className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-8 space-y-5 print:border-none print:shadow-none">
+          <header className="border-b-2 border-slate-900 pb-4">
+            <p className="text-xs uppercase tracking-wider text-slate-600">VIPAZ · Piloto D1 · Registro investigativo</p>
+            <h1 className="text-xl font-bold text-slate-950">Relatório da investigação em andamento</h1>
+            <p className="text-sm text-slate-700">{currentOrg.name} · {currentCycle?.name || 'Ciclo não identificado'}</p>
+            <p className="text-xs text-amber-900 mt-2">Documento de trabalho, não constitui relatório institucional validado nem conclusão de maturidade.</p>
+          </header>
+          {isLoadingCentral ? (
+            <p>Recuperando registros do ciclo. Aguarde para imprimir.</p>
+          ) : !isCentralAvailable ? (
+            <p className="text-amber-900">A origem central dos dados não foi confirmada. Verifique a procedência dos registros antes de utilizar este documento.</p>
+          ) : null}
+          <p className="text-sm text-slate-700">
+            {questionInstances.length} perguntas registradas · {originalResponses.length} respostas · {informationUnits.length} unidades de informação.
+          </p>
+          {questionInstances.length === 0 && originalResponses.length === 0 ? (
+            <p>Não há perguntas ou respostas carregadas para este ciclo.</p>
+          ) : (
+            <div className="space-y-6">
+              {questionInstances.map(question => {
+                const answers = originalResponses.filter(answer => answer.questionInstanceId === question.id);
+                return (
+                  <article key={question.id} className="border-b border-slate-200 pb-4 break-inside-avoid">
+                    <p className="text-xs font-bold text-slate-600">{question.doorId}</p>
+                    <h2 className="font-semibold text-slate-950">{question.text}</h2>
+                    {answers.length === 0 ? <p className="text-sm text-slate-500">Sem resposta registrada.</p> :
+                      answers.map(answer => (
+                        <div key={answer.id} className="mt-2 text-sm">
+                          <p className="text-xs text-slate-600">Resposta registrada · {answer.respondentRole}</p>
+                          <p className="whitespace-pre-wrap text-slate-900">{answer.originalText}</p>
+                          {informationUnits.filter(unit => unit.responseId === answer.id).map(unit => (
+                            <p key={unit.id} className="ml-3 mt-1 border-l-2 border-slate-300 pl-2 text-xs text-slate-700">
+                              Unidade de informação ({unit.validationStatus}): {unit.statement}
+                            </p>
+                          ))}
+                        </div>
+                      ))}
+                  </article>
+                );
+              })}
+            </div>
+          )}
         </section>
       )}
 
