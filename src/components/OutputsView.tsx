@@ -67,8 +67,21 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
       if (!response.ok) throw new Error(response.status === 403 ? 'Acesso não autorizado.' : response.status === 401 ? 'Sessão institucional inválida.' : 'Consulta central indisponível.');
       const data = await response.json();
       const record = data?.snapshot;
+      const centralContextMatches = Boolean(record && currentOrg &&
+        record.organization_id === currentOrg.id && record.cycle_id === cycleId);
+      const localContextMatches = Boolean(snapshot && currentOrg &&
+        snapshot.organizationId === currentOrg.id && snapshot.cycleId === cycleId);
+      const methodologyMatches = Boolean(record && snapshot &&
+        record.methodology_version === snapshot.methodologyVersion);
+      const comparison = !record ? '' : !centralContextMatches
+        ? ' ALERTA: o registro retornado não corresponde à Câmara e ao ciclo selecionados.'
+        : !localContextMatches
+          ? ' Não há snapshot local correspondente para comparar.'
+          : !methodologyMatches
+            ? ' Divergência de versão metodológica entre registro central e snapshot local.'
+            : ' Identificadores e versão metodológica compatíveis; conteúdo e validação ainda NÃO foram comparados.';
       setSnapshotLookup({ cycleId, message: record
-        ? 'Snapshot central localizado. Tipo: ' + String(record.snapshot_kind || 'não informado') + '; data: ' + String(record.captured_at || 'não informada') + '; versão: ' + String(record.methodology_version || 'não informada') + '. O relatório exibido ainda não foi reconstruído a partir desse registro.'
+        ? 'Snapshot central localizado. Tipo: ' + String(record.snapshot_kind || 'não informado') + '; data: ' + String(record.captured_at || 'não informada') + '; versão: ' + String(record.methodology_version || 'não informada') + '.' + comparison
         : 'Nenhum snapshot central encontrado para este ciclo. A versão apresentada pode ser apenas local.' });
     } catch (error) {
       setSnapshotLookup({ cycleId, message: error instanceof Error ? error.message : 'Erro de consulta.' });
