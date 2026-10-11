@@ -115,7 +115,7 @@ export const mapInformationUnitRowToDomain = (row: any): InformationUnit => {
     scope: normalizeInfoScope(row.scope || row.suggested_scope || row.suggestedScope),
     extractedBy: (row.extracted_by === 'IA_SUGESTAO' || row.extractedBy === 'IA_SUGESTAO') ? 'IA_SUGESTAO' : 'FACILITADOR',
     validationStatus: normalizeValidationStatus(row.validation_status || row.validationStatus),
-    relatedCapacity: (row.related_capacity || row.relatedCapacity || undefined) as CapacityId | undefined,
+    relatedCapacity: (row.capacity_code || row.related_capacity || row.relatedCapacity || undefined) as CapacityId | undefined,
     mentionedActors: Array.isArray(row.mentioned_actors) 
       ? row.mentioned_actors 
       : (Array.isArray(metadata.mentionedActors) ? metadata.mentionedActors : []),
