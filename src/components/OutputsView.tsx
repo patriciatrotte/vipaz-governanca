@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getInstitutionalAccessToken } from '../services/institutionalAuth';
 import { usePilot } from '../context/PilotContext';
 import { 
   Building2, 
@@ -32,7 +33,8 @@ interface OutputsViewProps {
 
 export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHub }) => {
   const { 
-    currentOrg, 
+    currentOrg,
+    currentCycle,
     integration, 
     snapshot, 
     informationUnits, 
@@ -46,6 +48,34 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
     isLoadingCentral,
     isCentralAvailable
   } = usePilot();
+
+  const [snapshotLookup, setSnapshotLookup] = useState<{ cycleId: string; message: string } | null>(null);
+  const [snapshotLookupBusy, setSnapshotLookupBusy] = useState(false);
+  async function checkCentralSnapshot() {
+    const cycleId = currentCycle?.id || '';
+    const token = getInstitutionalAccessToken();
+    if (!cycleId || !token) {
+      setSnapshotLookup({ cycleId, message: !cycleId ? 'Nenhum ciclo selecionado.' : 'Autenticação institucional necessária.' });
+      return;
+    }
+    setSnapshotLookupBusy(true);
+    setSnapshotLookup(null);
+    try {
+      const response = await fetch('/api/data/verifiedSnapshot?cycleId=' + encodeURIComponent(cycleId), {
+        headers: { Authorization: 'Bearer ' + token }, cache: 'no-store'
+      });
+      if (!response.ok) throw new Error(response.status === 403 ? 'Acesso não autorizado.' : response.status === 401 ? 'Sessão institucional inválida.' : 'Consulta central indisponível.');
+      const data = await response.json();
+      const record = data?.snapshot;
+      setSnapshotLookup({ cycleId, message: record
+        ? 'Snapshot central localizado. Tipo: ' + String(record.snapshot_kind || 'não informado') + '; data: ' + String(record.captured_at || 'não informada') + '; versão: ' + String(record.methodology_version || 'não informada') + '. O relatório exibido ainda não foi reconstruído a partir desse registro.'
+        : 'Nenhum snapshot central encontrado para este ciclo. A versão apresentada pode ser apenas local.' });
+    } catch (error) {
+      setSnapshotLookup({ cycleId, message: error instanceof Error ? error.message : 'Erro de consulta.' });
+    } finally {
+      setSnapshotLookupBusy(false);
+    }
+  }
 
   // Matriz de Acesso do Piloto D1
   const isFacilitator = currentUser.role === 'FACILITADOR';
@@ -181,6 +211,15 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
           : isCentralAvailable
             ? 'Dados investigativos recuperados da base central. A integração metodológica, o snapshot e as ações deste relatório ainda podem depender do estado local; confira sua validação antes de usar como documento institucional.'
             : 'Base central não confirmada para este ciclo. O relatório pode estar utilizando dados locais de contingência; não o trate como emissão oficial do Supabase sem conferência.'}
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-700 space-y-2 print:hidden">
+        <p className="font-semibold">Conferência do snapshot no Supabase</p>
+        <p>Consulta somente leitura. Não altera os dados nem a versão impressa deste relatório.</p>
+        <button type="button" disabled={snapshotLookupBusy || isLoadingCentral} onClick={checkCentralSnapshot} className="rounded-lg bg-slate-800 px-3 py-2 font-semibold text-white disabled:opacity-50">
+          {snapshotLookupBusy ? 'Consultando…' : 'Consultar snapshot do ciclo'}
+        </button>
+        {snapshotLookup?.cycleId === (currentCycle?.id || '') && <p role="status">{snapshotLookup.message}</p>}
       </div>
 
       {/* NAVEGAÇÃO INTERNA DO HUB (ABAS POR PERFIL) */}
