@@ -783,7 +783,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
           // Atualiza cache local de contingência espelhando o estado central autoritativo
           saveStateForOrg(orgId, {
-            ...getCurrentStateBundle(),
+            ...derived,
             ...adapted
           });
 
