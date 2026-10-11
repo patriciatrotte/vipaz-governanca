@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { clearInstitutionalSession, getInstitutionalScope, signInInstitutional } from '../services/institutionalAuth';
+import { clearInstitutionalSession, getInstitutionalSignedInEmail, getInstitutionalScope, signInInstitutional } from '../services/institutionalAuth';
 import type { InstitutionalScope } from '../services/institutionalAuth';
 
 /** Separate authentication control; does not change simulated role or grant privileges. */
 export const InstitutionalLogin: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
+  const [signedInEmail, setSignedInEmail] = useState<string | null>(() => getInstitutionalSignedInEmail());
   const [error, setError] = useState('');
   const [scope, setScope] = useState<InstitutionalScope | null>(null);
   const [busy, setBusy] = useState(false);
