@@ -698,28 +698,27 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
         setOrganizations(current => {
           const remoteMapped: Organization[] = (Array.isArray(remoteOrgs) ? remoteOrgs : []).map(mapOrganizationRowToDomain);
-          const byId = new Map(current.map(org => [org.id, org]));
-          remoteMapped.forEach(org => {
-            byId.set(org.id, { ...(byId.get(org.id) || {} as Organization), ...org });
-            if (org.legacyId) {
-              byId.set(org.legacyId, { ...(byId.get(org.legacyId) || {} as Organization), ...org });
-            }
-          });
-          const merged = Array.from(new Set(byId.values()));
+          const remoteById = new Map(remoteMapped.map(org => [org.id, org]));
+          const remoteLegacyIds = new Set(remoteMapped.map(org => org.legacyId).filter(Boolean));
+          // UUID central é canônico. Legados correspondentes não viram outro cartão.
+          const localOnly = current.filter(org =>
+            !remoteById.has(org.id) && !remoteLegacyIds.has(org.id) &&
+            !remoteMapped.some(remote => org.legacyId === remote.id || (org.legacyId && org.legacyId === remote.legacyId))
+          );
+          const merged = [...remoteMapped, ...localOnly];
           localStorage.setItem('PILOTO_ORGANIZATIONS', JSON.stringify(merged));
           return merged;
         });
 
         setCycles(current => {
           const remoteMapped: EvaluationCycle[] = (Array.isArray(remoteCycles) ? remoteCycles : []).map(mapCycleRowToDomain);
-          const byId = new Map(current.map(cycle => [cycle.id, cycle]));
-          remoteMapped.forEach(cycle => {
-            byId.set(cycle.id, { ...(byId.get(cycle.id) || {} as EvaluationCycle), ...cycle });
-            if (cycle.legacyId) {
-              byId.set(cycle.legacyId, { ...(byId.get(cycle.legacyId) || {} as EvaluationCycle), ...cycle });
-            }
-          });
-          const merged = Array.from(new Set(byId.values()));
+          const remoteById = new Map(remoteMapped.map(cycle => [cycle.id, cycle]));
+          const remoteLegacyIds = new Set(remoteMapped.map(cycle => cycle.legacyId).filter(Boolean));
+          const localOnly = current.filter(cycle =>
+            !remoteById.has(cycle.id) && !remoteLegacyIds.has(cycle.id) &&
+            !remoteMapped.some(remote => cycle.legacyId === remote.id || (cycle.legacyId && cycle.legacyId === remote.legacyId))
+          );
+          const merged = [...remoteMapped, ...localOnly];
           localStorage.setItem('PILOTO_CYCLES', JSON.stringify(merged));
           return merged;
         });
