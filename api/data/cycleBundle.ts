@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { assessRecordInventory } from '../../src/services/persistence/assessmentInventory.js';
 import { AccessError, requireCycleReadAccess } from '../_lib/cycleAccess.js';
 
 const getSupabaseConfig = () => {
@@ -24,11 +25,12 @@ const fetchRows = async (
   url: string,
   key: string,
   tableName: string,
-  filter: string
+  filter: string,
+  orderColumn = 'created_at'
 ): Promise<any[]> => {
   const endpoint =
     `${url}/rest/v1/${tableName}?${filter}` +
-    `&order=created_at.asc`;
+    `&order=${orderColumn}.asc`;
 
   const response = await fetch(endpoint, {
     headers: buildHeaders(key),
@@ -236,7 +238,28 @@ export default async function handler(
         null,
     }));
 
+    // A failure in the assessment inventory must not hide preserved interviews.
+    let assessmentInventory: any = { state: 'UNAVAILABLE', canPublish: false };
+    try {
+      const [cycleRows, criteria, capabilities, snapshots] = await Promise.all([
+        fetchRows(url, key, 'governance_cycles', eqFilter('id', cleanCycleId)),
+        fetchRows(url, key, 'criterion_results', eqFilter('cycle_id', cleanCycleId)),
+        fetchRows(url, key, 'capability_results', eqFilter('cycle_id', cleanCycleId)),
+        fetchRows(url, key, 'cycle_snapshots', eqFilter('cycle_id', cleanCycleId), 'captured_at'),
+      ]);
+      if (cycleRows.length === 1) {
+        const cycle = cycleRows[0];
+        const versions = await fetchRows(url, key, 'methodology_versions',
+          `${eqFilter('methodology_code', cycle.methodology_code)}&${eqFilter('version', cycle.methodology_version)}`);
+        const versionId = versions.length === 1 ? versions[0].id : undefined;
+        assessmentInventory = assessRecordInventory({ ...cycle, methodology_version_id: versionId }, criteria, capabilities, snapshots);
+      }
+    } catch {
+      console.warn('[cycle-bundle] Assessment inventory unavailable; investigation remains readable.');
+    }
+
     return res.status(200).json({
+      assessmentInventory,
       cycleId: cleanCycleId,
       questionInstances,
       responses: responsesWithQuestionCode,
