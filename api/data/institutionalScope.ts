@@ -18,18 +18,21 @@ export default async function handler(req: Request, res: Response) {
   const headers = { apikey: key, Authorization: `Bearer ${match[1]}` };
   try {
     // Both requests execute as the actual signed-in user. RLS decides scope.
-    const [orgResponse, rolesResponse] = await Promise.all([
+    const [orgResponse, rolesResponse, cyclesResponse] = await Promise.all([
       fetch(`${url}/rest/v1/organizations?select=id,name&order=name.asc`, { headers, signal: AbortSignal.timeout(10000) }),
-      fetch(`${url}/rest/v1/global_user_roles?select=role_code&role_code=eq.ADMIN_VIPAZ&status=eq.ACTIVE`, { headers, signal: AbortSignal.timeout(10000) })
+      fetch(`${url}/rest/v1/global_user_roles?select=role_code&role_code=eq.ADMIN_VIPAZ&status=eq.ACTIVE`, { headers, signal: AbortSignal.timeout(10000) }),
+      fetch(`${url}/rest/v1/governance_cycles?select=id,organization_id&order=created_at.asc`, { headers, signal: AbortSignal.timeout(10000) })
     ]);
-    if ([orgResponse.status, rolesResponse.status].includes(401)) return res.status(401).json({ error: 'authentication_required' });
+    if ([orgResponse.status, rolesResponse.status, cyclesResponse.status].includes(401)) return res.status(401).json({ error: 'authentication_required' });
     if ([orgResponse.status, rolesResponse.status].includes(403)) return res.status(403).json({ error: 'access_denied' });
-    if (!orgResponse.ok || !rolesResponse.ok) return res.status(502).json({ error: 'organization_scope_unavailable' });
+    if (!orgResponse.ok || !rolesResponse.ok || !cyclesResponse.ok) return res.status(502).json({ error: 'organization_scope_unavailable' });
     const organizations = await orgResponse.json();
     const roles = await rolesResponse.json();
+    const cycles = await cyclesResponse.json();
     return res.status(200).json({
       isGlobalAdmin: Array.isArray(roles) && roles.some(role => role.role_code === 'ADMIN_VIPAZ'),
-      organizations: Array.isArray(organizations) ? organizations : []
+      organizations: Array.isArray(organizations) ? organizations : [],
+      visibleCycleCount: Array.isArray(cycles) ? cycles.length : 0
     });
   } catch {
     return res.status(503).json({ error: 'organization_scope_unavailable' });
