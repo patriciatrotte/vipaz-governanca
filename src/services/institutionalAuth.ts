@@ -67,7 +67,7 @@ export interface InstitutionalScope {
 export async function getInstitutionalScope(): Promise<InstitutionalScope> {
   const token = getInstitutionalAccessToken();
   if (!token) throw new Error('Autenticação institucional necessária.');
-  const response = await fetch('/api/data/institutional-scope', {
+  const response = await fetch('/api/data/institutionalScope', {
     headers: { Authorization: `Bearer ${token}` },
     cache: 'no-store'
   });
