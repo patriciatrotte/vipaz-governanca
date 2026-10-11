@@ -293,6 +293,14 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
             : 'Base central não confirmada para este ciclo. O relatório pode estar utilizando dados locais de contingência; não o trate como emissão oficial do Supabase sem conferência.'}
       </div>
 
+      <section aria-label="Situação dos dados do ciclo" className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs text-slate-800 space-y-1 print:border print:bg-white">
+        <p className="font-bold">Situação da investigação e consolidação</p>
+        <p>Investigação: {isLoadingCentral ? 'carregando dados do ciclo' : isCentralAvailable ? 'dados investigativos recuperados do Supabase' : 'origem central não confirmada; pode haver cache local'}.</p>
+        <p>Registros disponíveis nesta visualização: {informationUnits.length} unidades de informação, {originalResponses.length} respostas, {evidences.length} evidências.</p>
+        <p>Consolidação metodológica: {integration.humanValidation.isValidated ? 'marcada como validada no estado da aplicação; conferir origem e autoridade' : 'não validada no estado carregado; isso não significa ausência de investigação'}.</p>
+        <p>Emissão institucional: não comprovada nesta visualização. Consulte o registro central e a pré-verificação SNAP-01.</p>
+      </section>
+
       <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-700 space-y-2 print:hidden">
         <p className="font-semibold">Conferência do snapshot no Supabase</p>
         <div className="border-b border-slate-200 pb-3 space-y-2">
@@ -466,13 +474,13 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
                       )}
                     </div>
                   ) : (
-                    'Maturidade ainda não apurada'
+                    'Maturidade não consolidada neste relatório'
                   )}
                 </div>
                 <p className="text-xs text-slate-700 font-serif leading-relaxed max-w-2xl mt-1">
                   {isValidated 
                     ? (validatedLevelInfo?.shortDesc || integration.humanValidation.validationNotes || validatedLevelInfo?.criteriaText)
-                    : 'A apuração dos aspectos da Dimensão D1 ainda se encontra em fase de consolidação analítica e saneamento de pendências. Nenhum nível provisório é inferido antes da validação metodológica formal.'}
+                    : 'O estado carregado não contém validação metodológica confirmada para este ciclo. A investigação pode conter registros e evidências já coletados; a ausência de consolidação aqui não significa ausência de avaliação.'}
                 </p>
               </div>
 
