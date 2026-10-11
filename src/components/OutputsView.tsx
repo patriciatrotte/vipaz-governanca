@@ -77,6 +77,13 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
     }
   }
 
+  // Integridade mínima do contexto: nunca apresentar snapshot de outro ciclo como documento deste ciclo.
+  const snapshotContextMismatch = Boolean(snapshot && (
+    !currentOrg || !currentCycle ||
+    snapshot.organizationId !== currentOrg.id ||
+    snapshot.cycleId !== currentCycle.id
+  ));
+
   // Matriz de Acesso do Piloto D1
   const isFacilitator = currentUser.role === 'FACILITADOR';
   const isGestor = currentUser.role === 'GESTOR_INSTITUCIONAL';
@@ -193,7 +200,7 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
           )}
 
           <button
-            disabled={isLoadingCentral}
+            disabled={isLoadingCentral || snapshotContextMismatch}
             title={isLoadingCentral ? 'Aguarde a recuperação do ciclo' : 'Imprimir o relatório apresentado'}
             onClick={() => window.print()}
             className="bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-semibold px-3.5 py-2 rounded-lg border border-slate-700 transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
@@ -203,6 +210,12 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
           </button>
         </div>
       </div>
+
+      {snapshotContextMismatch && (
+        <div role="alert" className="rounded-xl border-2 border-red-500 bg-red-50 px-4 py-3 text-sm font-semibold text-red-900 print:border print:bg-white">
+          Atenção: o snapshot disponível não corresponde à organização e ao ciclo selecionados. A impressão foi bloqueada até a correção da origem dos dados. Não utilize esta consolidação como documento institucional.
+        </div>
+      )}
 
       {/* Transparência de proveniência: recuperação central não garante consolidação metodológica central. */}
       <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-950 print:border print:bg-white" role="status">
