@@ -387,10 +387,18 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
         )}
       </div>
 
+      {snapshotContextMismatch && activeTab !== 'UPCOMING' && (
+        <section role="alert" className="rounded-xl border border-red-300 bg-white px-5 py-5 space-y-2 print:hidden">
+          <h3 className="font-bold text-red-900">Consolidação indisponível para este ciclo</h3>
+          <p className="text-sm text-slate-700">O snapshot carregado pertence a outro contexto. Para evitar atribuir resultados, validações e ações à Câmara incorreta, a apresentação das saídas consolidadas foi suspensa. Os registros originais não foram apagados ou alterados.</p>
+          <p className="text-xs text-slate-600">Consulte o snapshot central e a pré-verificação SNAP-01 acima. Uma nova consolidação só poderá ser apresentada após confirmação de origem e validação.</p>
+        </section>
+      )}
+
       {/* ======================================================== */}
       {/* 1. RETRATO EXECUTIVO DA GOVERNANÇA                       */}
       {/* ======================================================== */}
-      {activeTab === 'EXECUTIVE' && canViewExecutive && (
+      {!snapshotContextMismatch && activeTab === 'EXECUTIVE' && canViewExecutive && (
         <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-8 shadow-xs space-y-6 print:border-none print:p-0 print:shadow-none">
           {/* Banner de Proteção Institucional */}
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-700 flex items-center gap-2.5 no-print">
@@ -626,7 +634,7 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
       {/* ======================================================== */}
       {/* 2. RASTREABILIDADE TÉCNICA DE AUDITORIA                  */}
       {/* ======================================================== */}
-      {activeTab === 'TECHNICAL' && canViewTechnical && (
+      {!snapshotContextMismatch && activeTab === 'TECHNICAL' && canViewTechnical && (
         <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-xs space-y-6 print:border-none print:p-0 print:shadow-none">
           {/* Cabeçalho da Rastreabilidade */}
           <div className="border-b-2 border-slate-900 pb-4">
@@ -787,7 +795,7 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
       {/* ======================================================== */}
       {/* 3. REGISTRO SNAPSHOT D1 (LINK / ATALHO DENTRO DO HUB)   */}
       {/* ======================================================== */}
-      {activeTab === 'SNAPSHOT_VIEW' && canViewSnapshot && (
+      {!snapshotContextMismatch && activeTab === 'SNAPSHOT_VIEW' && canViewSnapshot && (
         <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-xs space-y-6">
           <div className="border-b border-slate-200 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
