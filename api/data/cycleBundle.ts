@@ -248,7 +248,11 @@ export default async function handler(
         fetchRows(url, key, 'cycle_snapshots', eqFilter('cycle_id', cleanCycleId), 'captured_at'),
       ]);
       if (cycleRows.length === 1) {
-        assessmentInventory = assessRecordInventory(cycleRows[0], criteria, capabilities, snapshots);
+        const cycle = cycleRows[0];
+        const versions = await fetchRows(url, key, 'methodology_versions',
+          `${eqFilter('methodology_code', cycle.methodology_code)}&${eqFilter('version', cycle.methodology_version)}`);
+        const versionId = versions.length === 1 ? versions[0].id : undefined;
+        assessmentInventory = assessRecordInventory({ ...cycle, methodology_version_id: versionId }, criteria, capabilities, snapshots);
       }
     } catch {
       console.warn('[cycle-bundle] Assessment inventory unavailable; investigation remains readable.');
