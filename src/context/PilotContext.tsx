@@ -535,6 +535,8 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isLoadingCentral, setIsLoadingCentral] = useState<boolean>(false);
   // Generation guard: only the latest organization/cycle selection may commit async data.
   const activeInvestigationRequest = useRef(0);
+  // Prevent automatic cache writes until the selected cycle has a safe persistence context.
+  const allowSelectedCycleCacheWrite = useRef(false);
   const [isCentralAvailable, setIsCentralAvailable] = useState<boolean>(false);
   const [currentView, setCurrentViewState] = useState<AppView>('CENTRAL');
   const [activeDoorId, setActiveDoorId] = useState<DoorId>('D1.1');
@@ -645,7 +647,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Salva no localStorage quando o estado metodológico de uma organização ativa é modificado
   // Salvaguarda obrigatória: NUNCA salvar enquanto a carga central estiver ativa (impede race condition)
   useEffect(() => {
-    if (!currentOrgId || isLoadingCentral) return;
+    if (!currentOrgId || isLoadingCentral || !allowSelectedCycleCacheWrite.current) return;
     saveStateForOrg(currentOrgId, getCurrentStateBundle());
   }, [
     currentOrgId,
@@ -736,6 +738,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Reidratação da sessão investigativa central (Bloco 1)
   const loadCentralInvestigation = async (cycleId: string, orgId: string) => {
     const requestId = ++activeInvestigationRequest.current;
+    allowSelectedCycleCacheWrite.current = false;
     setIsCentralAvailable(false);
     setIsLoadingCentral(true);
     try {
@@ -791,6 +794,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           // A contingência é atualizada apenas quando o snapshot local pertence
           // comprovadamente à organização e ao ciclo selecionados.
           if (consistent) {
+            allowSelectedCycleCacheWrite.current = true;
             saveStateForOrg(orgId, {
               ...derived,
               ...adapted
@@ -821,6 +825,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIsCentralAvailable(false);
     const localBundle = loadStateForOrg(orgId, cycleId);
     applyStateBundle(localBundle);
+    allowSelectedCycleCacheWrite.current = true;
     setIsLoadingCentral(false);
   };
 
@@ -828,9 +833,10 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const selectOrganization = (orgId: string) => {
     // Invalidate pending fetches immediately, even when the selected organization has no cycle.
     ++activeInvestigationRequest.current;
-    if (currentOrgId && currentOrgId !== orgId) {
+    if (currentOrgId && currentOrgId !== orgId && allowSelectedCycleCacheWrite.current) {
       saveStateForOrg(currentOrgId, getCurrentStateBundle());
     }
+    allowSelectedCycleCacheWrite.current = false;
 
     const org = organizations.find(o => o.id === orgId || (o.legacyId && o.legacyId === orgId));
     const effectiveOrgId = org?.id || orgId;
@@ -885,6 +891,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } else {
       const localBundle = loadStateForOrg(effectiveOrgId);
       applyStateBundle(localBundle);
+      allowSelectedCycleCacheWrite.current = true;
     }
   };
 
@@ -893,9 +900,10 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     ++activeInvestigationRequest.current;
     setIsLoadingCentral(false);
     setIsCentralAvailable(false);
-    if (currentOrgId) {
+    if (currentOrgId && allowSelectedCycleCacheWrite.current) {
       saveStateForOrg(currentOrgId, getCurrentStateBundle());
     }
+    allowSelectedCycleCacheWrite.current = false;
     setCurrentOrgId(null);
     setCurrentCycleId(null);
     setCurrentView('CENTRAL');
