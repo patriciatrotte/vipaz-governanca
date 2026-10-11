@@ -727,6 +727,26 @@ export const OutputsView: React.FC<OutputsViewProps> = ({ initialTab, onBackToHu
             </span>
           </div>
 
+          {/* Inventário das unidades ainda sem associação explícita às capacidades.
+              Não inferir vínculos nem classificar capacidades automaticamente. */}
+          {informationUnits.some(unit => !CAPACITIES_DEFINITIONS.some(cap => cap.id === unit.relatedCapacity)) && (
+            <section className="border border-amber-200 bg-amber-50/40 rounded-xl p-4 space-y-3">
+              <h2 className="font-bold text-sm text-slate-900">Unidades de informação sem vínculo explícito a C1–C6</h2>
+              <p className="text-xs text-slate-700">
+                Registros recuperados da investigação, ainda não associados a uma capacidade nesta base.
+                A ausência de associação não significa ausência de informação, nem autoriza conclusão de maturidade.
+              </p>
+              <div className="space-y-2">
+                {informationUnits.filter(unit => !CAPACITIES_DEFINITIONS.some(cap => cap.id === unit.relatedCapacity)).map(unit => (
+                  <div key={unit.id} className="bg-white border border-slate-200 rounded-lg p-3 text-xs break-inside-avoid">
+                    <p className="font-semibold text-slate-800">{unit.doorId} · {unit.validationStatus} · {unit.sourceRole}</p>
+                    <p className="mt-1 whitespace-pre-wrap text-slate-800">{unit.statement}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Lista de Capacidades C1 a C6 com Tripla Diferenciação */}
           <div className="space-y-5">
             {CAPACITIES_DEFINITIONS.map(cap => {
