@@ -772,6 +772,15 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           setEvidences(adapted.evidences);
           setPendingItems(adapted.pendingItems);
 
+          // Sincroniza derivados somente se o snapshot local corresponder ao ciclo selecionado.
+          const local = loadStateForOrg(orgId, cycleId);
+          const consistent = local.snapshot?.organizationId === orgId && local.snapshot?.cycleId === cycleId;
+          const derived = consistent ? local : getEmptyOrgState(orgId, cycleId);
+          setIntegration(derived.integration);
+          setSnapshot(derived.snapshot);
+          setGaps(derived.gaps);
+          setActions(derived.actions);
+
           // Atualiza cache local de contingência espelhando o estado central autoritativo
           saveStateForOrg(orgId, {
             ...getCurrentStateBundle(),
