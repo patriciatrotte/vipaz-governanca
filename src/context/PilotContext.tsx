@@ -786,11 +786,18 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           setGaps(derived.gaps);
           setActions(derived.actions);
 
-          // Atualiza cache local de contingência espelhando o estado central autoritativo
-          saveStateForOrg(orgId, {
-            ...derived,
-            ...adapted
-          });
+          // Não sobrescrever consolidações locais pré-existentes com valores vazios.
+          // A reidratação central contém dados investigativos, não o snapshot validado.
+          // A contingência é atualizada apenas quando o snapshot local pertence
+          // comprovadamente à organização e ao ciclo selecionados.
+          if (consistent) {
+            saveStateForOrg(orgId, {
+              ...derived,
+              ...adapted
+            });
+          } else {
+            console.info('[VIPAZ Persistência] Consolidação local preservada: snapshot do ciclo não confirmado. Dados centrais carregados somente em memória.');
+          }
 
           setIsCentralAvailable(true);
           console.info(`[VIPAZ Persistência] Ciclo ${cycleId} reidratado com autoridade central (${adapted.informationUnits.length} fatos da escuta, ${adapted.originalResponses.length} respostas).`);
