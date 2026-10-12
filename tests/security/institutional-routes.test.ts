@@ -91,3 +91,58 @@ test('cycles POST: propagates forbidden response without claiming creation', asy
     if (prevKey === undefined) delete process.env.SUPABASE_PUBLISHABLE_KEY; else process.env.SUPABASE_PUBLISHABLE_KEY = prevKey;
   }
 });
+
+test('investigation-session POST: hides upstream database error details', async () => {
+  const oldFetch = globalThis.fetch;
+  const oldUrl = process.env.SUPABASE_URL;
+  const oldKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+  const oldFlag = process.env.VIPAZ_ATOMIC_INVESTIGATION_ENABLED;
+  process.env.SUPABASE_URL = 'https://example.supabase.co';
+  process.env.SUPABASE_PUBLISHABLE_KEY = 'public-test-key';
+  process.env.VIPAZ_ATOMIC_INVESTIGATION_ENABLED = 'true';
+  globalThis.fetch = (async () => new Response(
+    JSON.stringify({ message: 'sensitive internal SQL diagnostics', hint: 'secret schema' }),
+    { status: 403 }
+  )) as typeof fetch;
+  try {
+    const { res, result } = responseRecorder();
+    await investigationSession({
+      method: 'POST',
+      headers: { authorization: 'Bearer institutional-test-jwt' },
+      body: { cycleId: '11111111-1111-4111-8111-111111111111', sessionLegacyId: 'test-session' }
+    } as any, res as any);
+    assert.equal(result().status, 403);
+    assert.deepEqual(result().body, { error: 'atomic_investigation_write_failed' });
+  } finally {
+    globalThis.fetch = oldFetch;
+    if (oldUrl === undefined) delete process.env.SUPABASE_URL; else process.env.SUPABASE_URL = oldUrl;
+    if (oldKey === undefined) delete process.env.SUPABASE_PUBLISHABLE_KEY; else process.env.SUPABASE_PUBLISHABLE_KEY = oldKey;
+    if (oldFlag === undefined) delete process.env.VIPAZ_ATOMIC_INVESTIGATION_ENABLED; else process.env.VIPAZ_ATOMIC_INVESTIGATION_ENABLED = oldFlag;
+  }
+});
+
+test('investigation-session POST: hides network exception details', async () => {
+  const oldFetch = globalThis.fetch;
+  const oldUrl = process.env.SUPABASE_URL;
+  const oldKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+  const oldFlag = process.env.VIPAZ_ATOMIC_INVESTIGATION_ENABLED;
+  process.env.SUPABASE_URL = 'https://example.supabase.co';
+  process.env.SUPABASE_PUBLISHABLE_KEY = 'public-test-key';
+  process.env.VIPAZ_ATOMIC_INVESTIGATION_ENABLED = 'true';
+  globalThis.fetch = (async () => { throw new Error('internal connection string secret'); }) as typeof fetch;
+  try {
+    const { res, result } = responseRecorder();
+    await investigationSession({
+      method: 'POST',
+      headers: { authorization: 'Bearer institutional-test-jwt' },
+      body: { cycleId: '11111111-1111-4111-8111-111111111111', sessionLegacyId: 'test-session' }
+    } as any, res as any);
+    assert.equal(result().status, 502);
+    assert.deepEqual(result().body, { error: 'atomic_investigation_write_failed' });
+  } finally {
+    globalThis.fetch = oldFetch;
+    if (oldUrl === undefined) delete process.env.SUPABASE_URL; else process.env.SUPABASE_URL = oldUrl;
+    if (oldKey === undefined) delete process.env.SUPABASE_PUBLISHABLE_KEY; else process.env.SUPABASE_PUBLISHABLE_KEY = oldKey;
+    if (oldFlag === undefined) delete process.env.VIPAZ_ATOMIC_INVESTIGATION_ENABLED; else process.env.VIPAZ_ATOMIC_INVESTIGATION_ENABLED = oldFlag;
+  }
+});
