@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { getInstitutionalAccessToken } from '../services/institutionalAuth';
+import { getInstitutionalAccessToken, subscribeInstitutionalSession } from '../services/institutionalAuth';
 import {
   Organization,
   EvaluationCycle,
@@ -685,10 +685,12 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     let cancelled = false;
 
     const syncCentralCatalog = async () => {
+      const token = getInstitutionalAccessToken();
+      if (!token) return; // Never fetch the institutional catalog anonymously.
       try {
         const [orgResponse, cycleResponse] = await Promise.all([
-          fetch('/api/data/organizations'),
-          fetch('/api/data/cycles')
+          fetch('/api/data/organizations', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }),
+          fetch('/api/data/cycles', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
         ]);
         if (!orgResponse.ok || !cycleResponse.ok) {
           if (orgResponse.status === 503 || cycleResponse.status === 503) {
@@ -735,7 +737,8 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     syncCentralCatalog();
-    return () => { cancelled = true; };
+    const unsubscribe = subscribeInstitutionalSession(() => { void syncCentralCatalog(); });
+    return () => { cancelled = true; unsubscribe(); };
   }, []);
 
   // Reidratação da sessão investigativa central (Bloco 1)
