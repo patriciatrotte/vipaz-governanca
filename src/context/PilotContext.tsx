@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { getInstitutionalAccessToken } from '../services/institutionalAuth';
 import {
   Organization,
   EvaluationCycle,
@@ -1312,8 +1313,37 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
       id: unit.id || `uinfo-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       timestamp: unit.timestamp || new Date().toISOString()
     };
-    setInformationUnits(prev => [...prev, newUnit]);
-    ensureCycleInProgress();
+    // A gravação central é obrigatória: não confirmar a unidade antes do retorno do Supabase.
+    const token = getInstitutionalAccessToken();
+    const cycleId = currentCycle?.id;
+    if (!token || !cycleId) {
+      window.alert('Registro não salvo: entre com sua conta institucional e selecione um ciclo central.');
+      return;
+    }
+    void (async () => {
+      try {
+        const response = await fetch('/api/data/information-unit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+          body: JSON.stringify({
+            cycleId, legacyId: newUnit.id, responseId: newUnit.responseId,
+            doorId: newUnit.doorId, statement: newUnit.statement,
+            sourceName: newUnit.sourceName, sourceRole: newUnit.sourceRole,
+            scope: newUnit.scope, extractedBy: newUnit.extractedBy,
+            validationStatus: newUnit.validationStatus, relatedCapacity: newUnit.relatedCapacity
+          })
+        });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        // Não misturar um retorno tardio com outra Câmara.
+        if (currentCycleId === cycleId) {
+          setInformationUnits(prev => [...prev, newUnit]);
+          ensureCycleInProgress();
+        }
+      } catch (error) {
+        console.error('[VIPAZ Persistência] Unidade não gravada no Supabase:', error);
+        window.alert('Não foi possível salvar a unidade no Supabase. O registro não foi confirmado. Tente novamente.');
+      }
+    })();
   };
 
   const updateUnitValidation = (unitId: string, status: InformationUnit['validationStatus']) => {
