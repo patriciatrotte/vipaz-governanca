@@ -99,3 +99,58 @@ test('disabled atomic mode blocks cycle creation without database calls', async 
     }
   }
 });
+
+test('whole-cycle opening fails closed with no database calls by default', async () => {
+  const { default: openCycle } = await import('../../api/data/open-cycle');
+  const prev = process.env.VIPAZ_ATOMIC_CYCLE_OPEN_ENABLED;
+  const originalFetch = globalThis.fetch;
+  delete process.env.VIPAZ_ATOMIC_CYCLE_OPEN_ENABLED;
+  let calls = 0;
+  globalThis.fetch = (async () => { calls++; throw new Error('unexpected network call'); }) as typeof fetch;
+  let status = 200;
+  let response: any;
+  const res = { setHeader() { return this; }, status(n: number) { status=n; return this; }, json(x: unknown) { response=x; return this; } };
+  try {
+    await openCycle({method:'POST',headers:{authorization:'Bearer test-token'},body:{}} as any,res as any);
+    assert.equal(status,503);
+    assert.equal(response.error,'atomic_cycle_open_not_enabled');
+    assert.equal(calls,0);
+  } finally {
+    globalThis.fetch=originalFetch;
+    if(prev===undefined) delete process.env.VIPAZ_ATOMIC_CYCLE_OPEN_ENABLED;
+    else process.env.VIPAZ_ATOMIC_CYCLE_OPEN_ENABLED=prev;
+  }
+});
+
+test('enabled whole-cycle opening sends exactly one authenticated RPC', async () => {
+  const { default: openCycle } = await import('../../api/data/open-cycle');
+  const keys=['VIPAZ_ATOMIC_CYCLE_OPEN_ENABLED','SUPABASE_URL','SUPABASE_PUBLISHABLE_KEY'];
+  const prev=keys.map(k=>process.env[k]);
+  const originalFetch=globalThis.fetch;
+  process.env.VIPAZ_ATOMIC_CYCLE_OPEN_ENABLED='true';
+  process.env.SUPABASE_URL='https://example.invalid';
+  process.env.SUPABASE_PUBLISHABLE_KEY='public-key';
+  let calls=0;
+  globalThis.fetch=(async (url: string | URL | Request, init?: RequestInit) => {
+    calls++;
+    assert.equal(String(url),'https://example.invalid/rest/v1/rpc/vipaz_open_cycle_atomic');
+    assert.equal(init?.method,'POST');
+    assert.equal((init?.headers as Record<string,string>).Authorization,'Bearer test-token');
+    const payload=JSON.parse(String(init?.body));
+    assert.equal(payload.p_cycle_legacy_id,'cycle-stable-1');
+    return new Response(JSON.stringify({cycle:{id:'cycle-uuid'},session:{id:'session-uuid'},participant:null,created:true}),{status:200});
+  }) as typeof fetch;
+  let status=0;
+  const res={setHeader(){return this;},status(n:number){status=n;return this;},json(_x:unknown){return this;}};
+  try {
+    await openCycle({method:'POST',headers:{authorization:'Bearer test-token'},body:{
+      organizationId:'org-uuid',cycleLegacyId:'cycle-stable-1',cycleName:'Ciclo',methodologyVersion:'1.0',
+      sessionLegacyId:'session-stable-1'
+    }} as any,res as any);
+    assert.equal(status,200);
+    assert.equal(calls,1);
+  } finally {
+    globalThis.fetch=originalFetch;
+    keys.forEach((k,i)=>{if(prev[i]===undefined)delete process.env[k];else process.env[k]=prev[i];});
+  }
+});
