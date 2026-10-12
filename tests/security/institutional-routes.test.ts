@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import organizations from '../../api/data/organizations';
 import cycles from '../../api/data/cycles';
 import investigationSession from '../../api/data/investigation-session';
+import institutionalScope from '../../api/data/institutionalScope';
 
 type Handler = (req: any, res: any) => Promise<unknown>;
 
@@ -178,6 +179,49 @@ test('cycles GET: upstream diagnostics are not returned to the caller', async ()
     await cycles({ method: 'GET', headers: { authorization: 'Bearer test-jwt' } } as any, res as any);
     assert.equal(result().status, 502);
     assert.deepEqual(result().body, { error: 'cycles_read_failed' });
+  } finally {
+    globalThis.fetch = oldFetch;
+    if (oldUrl === undefined) delete process.env.SUPABASE_URL; else process.env.SUPABASE_URL = oldUrl;
+    if (oldKey === undefined) delete process.env.SUPABASE_PUBLISHABLE_KEY; else process.env.SUPABASE_PUBLISHABLE_KEY = oldKey;
+  }
+});
+
+test('institutional scope: requires Bearer before contacting database', async () => {
+  const oldFetch = globalThis.fetch;
+  let called = false;
+  globalThis.fetch = (async () => { called = true; throw new Error('unexpected'); }) as typeof fetch;
+  try {
+    const { res, result } = responseRecorder();
+    await institutionalScope({ method: 'GET', headers: {} } as any, res as any);
+    assert.equal(result().status, 401);
+    assert.equal(called, false);
+  } finally { globalThis.fetch = oldFetch; }
+});
+
+test('institutional scope: only returns RLS-visible organizations and cycles', async () => {
+  const oldFetch = globalThis.fetch;
+  const oldUrl = process.env.SUPABASE_URL;
+  const oldKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+  process.env.SUPABASE_URL = 'https://example.supabase.co';
+  process.env.SUPABASE_PUBLISHABLE_KEY = 'public-test-key';
+  const paths: string[] = [];
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = String(input);
+    paths.push(url);
+    assert.equal((init?.headers as Record<string, string>)?.Authorization, 'Bearer scoped-user-token');
+    if (url.includes('/organizations?')) return new Response(JSON.stringify([{ id: 'org-a', name: 'Organization A' }]), { status: 200 });
+    if (url.includes('/global_user_roles?')) return new Response('[]', { status: 200 });
+    if (url.includes('/governance_cycles?')) return new Response(JSON.stringify([{ id: 'cycle-a', organization_id: 'org-a' }]), { status: 200 });
+    throw new Error('unexpected endpoint');
+  }) as typeof fetch;
+  try {
+    const { res, result } = responseRecorder();
+    await institutionalScope({ method: 'GET', headers: { authorization: 'Bearer scoped-user-token' } } as any, res as any);
+    assert.equal(result().status, 200);
+    assert.deepEqual(result().body, {
+      isGlobalAdmin: false, organizations: [{ id: 'org-a', name: 'Organization A' }], visibleCycleCount: 1
+    });
+    assert.equal(paths.length, 3);
   } finally {
     globalThis.fetch = oldFetch;
     if (oldUrl === undefined) delete process.env.SUPABASE_URL; else process.env.SUPABASE_URL = oldUrl;
