@@ -130,12 +130,14 @@ export default async function handler(
           fetchRows(
             url,
             key,
+            token,
             'responses',
             questionInstanceFilter
           ),
           fetchRows(
             url,
             key,
+            token,
             'additional_questions',
             questionInstanceFilter
           ),
@@ -147,18 +149,21 @@ export default async function handler(
       fetchRows(
         url,
         key,
+        token,
         'information_units',
         eqFilter('cycle_id', cleanCycleId)
       ),
       fetchRows(
         url,
         key,
+        token,
         'evidences',
         eqFilter('cycle_id', cleanCycleId)
       ),
       fetchRows(
         url,
         key,
+        token,
         'pending_items',
         eqFilter('cycle_id', cleanCycleId)
       ),
