@@ -106,12 +106,12 @@ export const buildSupabaseHeaders = (key: string): Record<string, string> => {
 export const mapInformationUnitRowToDomain = (row: any): InformationUnit => {
   const metadata = typeof row.metadata === 'object' && row.metadata !== null ? row.metadata : {};
   return {
-    id: String(row.id || ''),
-    responseId: String(row.response_id || row.responseId || ''),
-    doorId: normalizeDoorId(row.door_id || row.question_code || row.doorId),
+    id: String(row.legacy_id || row.id || ''),
+    responseId: String(metadata.response_legacy_id || row.response_id || row.responseId || ''),
+    doorId: normalizeDoorId(metadata.door_id || row.door_id || row.question_code || row.doorId),
     statement: String(row.statement || '').trim(),
     sourceName: String(row.source_name || row.sourceName || row.respondent_name || 'Respondente Principal').trim(),
-    sourceRole: String(row.source_role || row.sourceRole || row.respondent_role || 'Participante').trim(),
+    sourceRole: String(metadata.source_role || row.source_role || row.sourceRole || row.respondent_role || 'Participante').trim(),
     scope: normalizeInfoScope(row.scope || row.suggested_scope || row.suggestedScope),
     extractedBy: (row.extracted_by === 'IA_SUGESTAO' || row.extractedBy === 'IA_SUGESTAO') ? 'IA_SUGESTAO' : 'FACILITADOR',
     validationStatus: normalizeValidationStatus(row.validation_status || row.validationStatus),
@@ -141,12 +141,12 @@ export const mapResponseRowToDomain = (row: any): OriginalResponse => {
   const parentId = row.parent_response_id || row.parentResponseId || metadata.parentResponseId;
 
   return {
-    id: String(row.id || ''),
-    questionInstanceId: String(row.question_instance_id || row.questionInstanceId || row.door_id || row.question_code || ''),
+    id: String(row.legacy_id || row.id || ''),
+    questionInstanceId: String(row.question_instance_legacy_id || row.question_instance_id || row.questionInstanceId || row.door_id || row.question_code || ''),
     doorId: normalizeDoorId(row.door_id || row.question_code || row.doorId),
     respondentId: String(row.respondent_id || row.respondentId || row.participant_id || 'respondent-01'),
-    respondentName: String(row.respondent_name || row.respondentName || 'Respondente Principal').trim(),
-    respondentRole: String(row.respondent_role || row.respondentRole || 'Participante Designado').trim(),
+    respondentName: String(row.source_name || row.respondent_name || row.respondentName || 'Respondente Principal').trim(),
+    respondentRole: String(row.source_role || row.respondent_role || row.respondentRole || 'Participante Designado').trim(),
     originalText: String(row.original_text || row.response_text || row.text || row.originalText || '').trim(),
     timestamp: String(row.created_at || row.timestamp || new Date().toISOString()),
     modality: (row.modality === 'ORAL_GRAVADA' || row.modality === 'TEXTO_DIRETO') 
@@ -250,11 +250,11 @@ export const mapQuestionInstancesToDomain = (rows: any[]): {
   for (const row of rows) {
     const doorId = normalizeDoorId(row.door_id || row.question_code || row.doorId);
     questionInstances.push({
-      id: String(row.id || ''),
+      id: String(row.legacy_id || row.id || ''),
       doorId,
-      text: String(row.text || row.question_text || ''),
-      respondentName: String(row.respondent_name || 'Respondente Principal'),
-      respondentRole: String(row.respondent_role || 'Participante'),
+      text: String(row.question_text_snapshot || row.text || row.question_text || ''),
+      respondentName: String(row.respondent_name || row.metadata?.respondent_name || 'Respondente Principal'),
+      respondentRole: String(row.respondent_role || row.metadata?.respondent_role || 'Participante'),
       sessionId: String(row.session_id || row.sessionId || ''),
       timestamp: String(row.created_at || row.timestamp || new Date().toISOString()),
       modality: (row.modality || 'ENTREVISTA') as 'ENTREVISTA' | 'FORMULARIO_DIRIGIDO' | 'COMPLEMENTACAO',
