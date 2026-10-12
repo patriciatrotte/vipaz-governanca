@@ -707,7 +707,21 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (cancelled) return;
 
         setOrganizations(current => {
-          const remoteMapped: Organization[] = (Array.isArray(remoteOrgs) ? remoteOrgs : []).map(mapOrganizationRowToDomain);
+          const remoteMapped: Organization[] = (Array.isArray(remoteOrgs) ? remoteOrgs : []).map((row: unknown) => {
+            const remote = mapOrganizationRowToDomain(row);
+            // Supabase organizations has no main_interlocutor_* columns.
+            // Preserve existing pilot contact data only for the same verified legacy identity.
+            const local = current.find(candidate =>
+              candidate.id === remote.id ||
+              (remote.legacyId && (candidate.id === remote.legacyId || candidate.legacyId === remote.legacyId))
+            );
+            return local ? {
+              ...remote,
+              mainInterlocutorName: local.mainInterlocutorName,
+              mainInterlocutorRole: local.mainInterlocutorRole,
+              mainInterlocutorEmail: local.mainInterlocutorEmail
+            } : remote;
+          });
           const remoteById = new Map(remoteMapped.map(org => [org.id, org]));
           const remoteLegacyIds = new Set(remoteMapped.map(org => org.legacyId).filter(Boolean));
           // UUID central é canônico. Legados correspondentes não viram outro cartão.
@@ -987,6 +1001,10 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
   // Persist only an operation identifier and non-personal cycle metadata.
   // Namespace by verified institutional login and canonical organization.
   // The database remains authoritative for identity and permissions.
+  // A legacy-only organization is not a valid foreign key in Supabase.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(org.id)) {
+    throw new Error('Organização ainda sem UUID central confirmado. Atualize o catálogo institucional antes de abrir um ciclo.');
+  }
   const signedInEmail = getInstitutionalSignedInEmail();
   const token = getInstitutionalAccessToken();
   if (!signedInEmail || !token) {
