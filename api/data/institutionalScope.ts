@@ -12,9 +12,9 @@ export default async function handler(req: Request, res: Response) {
   }
   const url = process.env.SUPABASE_URL?.replace(/\/$/, '');
   const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
-  if (!url || !key) return res.status(503).json({ error: 'institutional_auth_not_configured' });
   const match = /^Bearer\s+([^\s]+)$/i.exec(req.headers.authorization || '');
   if (!match) return res.status(401).json({ error: 'authentication_required' });
+  if (!url || !key) return res.status(503).json({ error: 'institutional_auth_not_configured' });
   const headers = { apikey: key, Authorization: `Bearer ${match[1]}` };
   try {
     // Both requests execute as the actual signed-in user. RLS decides scope.

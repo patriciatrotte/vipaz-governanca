@@ -1,0 +1,82 @@
+name: VIPAZ Core Quality Gate
+
+on:
+  pull_request:
+    branches:
+      - feature/vipaz-institutional-auth-20261010
+  push:
+    branches:
+      - fix/vipaz-authz-catalog-integration-20261012
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  security-and-types:
+    name: Security regressions and TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: TypeScript validation
+        run: npm run lint
+      - name: Institutional security regressions
+        run: npm test
+      - name: Production build
+        run: npm run build
+
+  disposable-db-integration:
+    name: Disposable PostgreSQL atomicity tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test-only-password
+          POSTGRES_DB: vipaz_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d vipaz_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: test-only-password
+      PGDATABASE: vipaz_ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Bootstrap isolated schema
+        run: psql -v ON_ERROR_STOP=1 -f tests/db/fixture.sql
+      - name: Install draft function in isolated database
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261012_vipaz_atomic_investigation_DRAFT.sql
+      - name: Verify atomicity and idempotency
+        run: psql -v ON_ERROR_STOP=1 -f tests/db/atomic-investigation.sql
+      - name: Install whole-cycle draft in isolated database
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261012_vipaz_open_cycle_atomic_DRAFT.sql
+      - name: Verify whole-cycle rollback and idempotency
+        run: psql -v ON_ERROR_STOP=1 -f tests/db/open-cycle-atomic.sql
+      - name: Install participant confirmation draft in isolated database
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261012_vipaz_confirm_participant_DRAFT.sql
+      - name: Verify explicit confirmation, audit and denial
+        run: psql -v ON_ERROR_STOP=1 -f tests/db/confirm-participant.sql
+      - name: Install native confirmation uniqueness draft in isolated database
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261012_vipaz_confirmed_operation_uniqueness_DRAFT.sql
+      - name: Verify native confirmation operation uniqueness
+        run: psql -v ON_ERROR_STOP=1 -f tests/db/confirmed-operation-uniqueness.sql
+      - name: Verify synthetic institutional and partner isolation
+        run: psql -v ON_ERROR_STOP=1 -f tests/db/authorization-scenarios.sql

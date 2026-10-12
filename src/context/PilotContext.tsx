@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { getInstitutionalAccessToken } from '../services/institutionalAuth';
+import { getInstitutionalAccessToken, getInstitutionalSignedInUserId, subscribeInstitutionalSession } from '../services/institutionalAuth';
 import {
   Organization,
   EvaluationCycle,
@@ -39,6 +39,7 @@ import {
 } from '../types';
 
 import { isViewAllowedForRole, getDefaultViewForRole } from '../utils/rolePermissions';
+import { getOrCreatePendingCycle, pendingCycleKey } from '../services/persistence/pendingCycleOpen';
 import {
   adaptCycleBundleToDomain,
   mapOrganizationRowToDomain,
@@ -135,7 +136,7 @@ interface PilotContextType {
     mainInterlocutorRole?: string;
     mainInterlocutorEmail?: string;
   }) => Promise<Organization>;
-  startD1Cycle: (organizationId: string) => EvaluationCycle;
+  startD1Cycle: (organizationId: string) => Promise<EvaluationCycle>;
   completeInterview: () => void;
   getOrganizationSummary: (orgId: string) => {
     cycleName: string;
@@ -685,10 +686,12 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     let cancelled = false;
 
     const syncCentralCatalog = async () => {
+      const token = getInstitutionalAccessToken();
+      if (!token) return; // Never fetch the institutional catalog anonymously.
       try {
         const [orgResponse, cycleResponse] = await Promise.all([
-          fetch('/api/data/organizations'),
-          fetch('/api/data/cycles')
+          fetch('/api/data/organizations', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }),
+          fetch('/api/data/cycles', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
         ]);
         if (!orgResponse.ok || !cycleResponse.ok) {
           if (orgResponse.status === 503 || cycleResponse.status === 503) {
@@ -704,7 +707,21 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (cancelled) return;
 
         setOrganizations(current => {
-          const remoteMapped: Organization[] = (Array.isArray(remoteOrgs) ? remoteOrgs : []).map(mapOrganizationRowToDomain);
+          const remoteMapped: Organization[] = (Array.isArray(remoteOrgs) ? remoteOrgs : []).map((row: unknown) => {
+            const remote = mapOrganizationRowToDomain(row);
+            // Supabase organizations has no main_interlocutor_* columns.
+            // Preserve existing pilot contact data only for the same verified legacy identity.
+            const local = current.find(candidate =>
+              candidate.id === remote.id ||
+              (remote.legacyId && (candidate.id === remote.legacyId || candidate.legacyId === remote.legacyId))
+            );
+            return local ? {
+              ...remote,
+              mainInterlocutorName: local.mainInterlocutorName,
+              mainInterlocutorRole: local.mainInterlocutorRole,
+              mainInterlocutorEmail: local.mainInterlocutorEmail
+            } : remote;
+          });
           const remoteById = new Map(remoteMapped.map(org => [org.id, org]));
           const remoteLegacyIds = new Set(remoteMapped.map(org => org.legacyId).filter(Boolean));
           // UUID central é canônico. Legados correspondentes não viram outro cartão.
@@ -735,7 +752,8 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     syncCentralCatalog();
-    return () => { cancelled = true; };
+    const unsubscribe = subscribeInstitutionalSession(() => { void syncCentralCatalog(); });
+    return () => { cancelled = true; unsubscribe(); };
   }, []);
 
   // Reidratação da sessão investigativa central (Bloco 1)
@@ -944,7 +962,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       const response = await fetch('/api/data/organizations', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getInstitutionalAccessToken() || ''}` },
         body: JSON.stringify({
           legacyId: newOrg.id,
           name: newOrg.name,
@@ -980,73 +998,79 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
     throw new Error('Organização não encontrada para iniciar o ciclo D1.');
   }
 
-  const newCycleId =
-    `cycle-d1-${organizationId.replace('org-camara-', '')}-${Date.now().toString(36)}`;
-
+  // Persist only an operation identifier and non-personal cycle metadata.
+  // Namespace by verified institutional login and canonical organization.
+  // The database remains authoritative for identity and permissions.
+  // A legacy-only organization is not a valid foreign key in Supabase.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(org.id)) {
+    throw new Error('Organização ainda sem UUID central confirmado. Atualize o catálogo institucional antes de abrir um ciclo.');
+  }
+  const signedInUserId = getInstitutionalSignedInUserId();
+  const token = getInstitutionalAccessToken();
+  if (!signedInUserId || !token) {
+    throw new Error('Autenticação institucional necessária para iniciar o ciclo.');
+  }
+  const pendingKey = pendingCycleKey(signedInUserId, org.id);
+  const pending = getOrCreatePendingCycle(localStorage, pendingKey, () => ({
+    cycleLegacyId: `cycle-d1-${crypto.randomUUID()}`,
+    cycleName: `Ciclo D1 Inicial ${new Date().getFullYear()}.${new Date().getMonth() < 6 ? '1' : '2'}`,
+    methodologyVersion: METHODOLOGY_VERSION
+  }));
+  const newCycleId = pending.cycleLegacyId;
   const now = new Date().toISOString();
 
   const newCycle: EvaluationCycle = {
     id: newCycleId,
     organizationId,
     dimension: 'D1',
-    methodologyVersion: METHODOLOGY_VERSION,
-    name: `Ciclo D1 Inicial ${new Date().getFullYear()}.${new Date().getMonth() < 6 ? '1' : '2'}`,
+    methodologyVersion: pending.methodologyVersion,
+    name: pending.cycleName,
     cycleType: 'INITIAL_ASSESSMENT',
     status: 'NAO_INICIADO',
     createdAt: now,
     updatedAt: now
   };
 
-  // 1. Confirma primeiro o ciclo na base central.
-  const cycleResponse = await fetch('/api/data/cycles', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      legacyId: newCycle.id,
-      organizationLegacyId: organizationId,
-      dimension: newCycle.dimension,
-      methodologyVersion: newCycle.methodologyVersion,
-      name: newCycle.name,
-      cycleType: newCycle.cycleType,
-      status: newCycle.status
-    })
-  });
-
-  if (!cycleResponse.ok) {
-    const details = await cycleResponse.text();
-    throw new Error(
-      `Falha ao confirmar ciclo na base central: ${details}`
-    );
-  }
-
-  // 2. Com o ciclo confirmado, cria a sessão investigativa
-  //    e registra o interlocutor como participante.
+  // Uma única chamada: o banco confirma ciclo, sessão e participante na mesma transação.
   const sessionLegacyId = `session-${newCycle.id}`;
-  const participantLegacyId = `interview-respondent-${organizationId}`;
-
-  const sessionResponse = await fetch('/api/data/investigation-session', {
+  // The locally stored pilot contact is not an authenticated/confirmed participant.
+  // Open the investigation without creating an institutional participation implicitly.
+  const participantLegacyId: string | null = null;
+  const openResponse = await fetch('/api/data/open-cycle', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getInstitutionalAccessToken() || ''}` },
     body: JSON.stringify({
+      organizationId: org.id,
       cycleLegacyId: newCycle.id,
+      cycleName: newCycle.name,
+      methodologyVersion: newCycle.methodologyVersion,
       sessionLegacyId,
       participantLegacyId,
-      facilitatorName: 'Dra. Helena Brandão',
-      interlocutorName: org.mainInterlocutorName,
-      interlocutorRole: org.mainInterlocutorRole
+      facilitatorName: 'Facilitador VIPAZ',
+      interlocutorName: null,
+      interlocutorRole: null
     })
   });
-
-  if (!sessionResponse.ok) {
-    const details = await sessionResponse.text();
-    throw new Error(
-      `Ciclo confirmado, mas houve falha ao criar a sessão investigativa: ${details}`
-    );
+  if (!openResponse.ok) {
+    throw new Error('Não foi possível confirmar a abertura integral do ciclo. Nenhum estado local foi alterado.');
   }
+  const openResult = await openResponse.json();
+  const centralCycleId = String(openResult?.cycle?.id || '');
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(centralCycleId)
+      || !openResult?.session?.id) {
+    throw new Error('Resposta central inválida na abertura integral do ciclo. É necessária reconciliação.');
+  }
+  const confirmedCycle: EvaluationCycle = {
+    ...newCycle,
+    id: centralCycleId,
+    legacyId: newCycle.id,
+    investigationSessionId: String(openResult.session.id),
+    organizationId: org.id
+  };
 
   // 3. Somente depois das confirmações centrais,
   //    incorpora o ciclo ao estado operacional local.
-  const updatedCycles = [...cycles, newCycle];
+  const updatedCycles = [...cycles.filter(c => c.id !== centralCycleId && c.legacyId !== newCycle.id), confirmedCycle];
   setCycles(updatedCycles);
 
   try {
@@ -1059,9 +1083,9 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
     if (o.id === organizationId) {
       return {
         ...o,
-        cycleId: newCycleId,
+        cycleId: centralCycleId,
         activeCycleName: newCycle.name,
-        cycleIds: [...(o.cycleIds || []), newCycleId]
+        cycleIds: [...(o.cycleIds || []), centralCycleId]
       };
     }
     return o;
@@ -1079,14 +1103,19 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
   }
 
   // 4. Inicializa o estado operacional da investigação.
-  const emptyState = getEmptyOrgState(organizationId, newCycleId);
+  const emptyState = getEmptyOrgState(organizationId, centralCycleId);
   saveStateForOrg(organizationId, emptyState);
 
   // 5. Seleciona a organização somente após a cadeia central
   //    ciclo -> sessão -> participante estar confirmada.
-  selectOrganization(organizationId);
+  // Avoid selecting from the stale pre-update cycles closure.
+  setCurrentCycleId(centralCycleId);
 
-  return newCycle;
+  // Clear only after the complete operation and local state are confirmed.
+  // If this cleanup fails, a future retry reuses the same database operation.
+  try { localStorage.removeItem(pendingKey); } catch { /* safe to retry */ }
+
+  return confirmedCycle;
 };
 
   // Transição substantiva do ciclo: sai de NAO_INICIADO para EM_ANDAMENTO mediante o primeiro ato investigativo substantivo persistido
@@ -1210,7 +1239,8 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
 
     const token = getInstitutionalAccessToken();
     const cycleId = currentCycle?.id;
-    if (!token || !cycleId) {
+    const sessionId = currentCycle?.investigationSessionId;
+    if (!token || !cycleId || !sessionId) {
       window.alert('Resposta não salva: autentique-se institucionalmente e selecione um ciclo central.');
       return;
     }
@@ -1220,7 +1250,7 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
           body: JSON.stringify({
-            cycleId, doorId, questionLegacyId: newQuestionInstance.id,
+            cycleId, sessionId, doorId, questionLegacyId: newQuestionInstance.id,
             responseLegacyId: newResponse.id, questionText: newQuestionInstance.text,
             responseText: newResponse.originalText, respondentName: user.name,
             respondentRole: user.department || user.role

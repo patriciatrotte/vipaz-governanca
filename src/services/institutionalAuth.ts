@@ -6,13 +6,30 @@
 let institutionalAccessToken: string | null = null;
 let institutionalExpiresAt = 0;
 let institutionalEmail: string | null = null;
+let institutionalUserId: string | null = null;
+export const getInstitutionalSignedInUserId = () => getInstitutionalAccessToken() ? institutionalUserId : null;
 export const getInstitutionalSignedInEmail = () => getInstitutionalAccessToken() ? institutionalEmail : null;
 
 export const getInstitutionalAccessToken = () => {
   if (institutionalAccessToken && Date.now() >= institutionalExpiresAt) clearInstitutionalSession();
   return institutionalAccessToken;
 };
-export const clearInstitutionalSession = () => { institutionalAccessToken = null; institutionalExpiresAt = 0; institutionalEmail = null; };
+const institutionalSessionListeners = new Set<() => void>();
+export const subscribeInstitutionalSession = (listener: () => void) => {
+  institutionalSessionListeners.add(listener);
+  return () => { institutionalSessionListeners.delete(listener); };
+};
+const notifyInstitutionalSession = () => {
+  institutionalSessionListeners.forEach(listener => listener());
+};
+export const clearInstitutionalSession = () => {
+  const wasSignedIn = Boolean(institutionalAccessToken);
+  institutionalAccessToken = null;
+  institutionalExpiresAt = 0;
+  institutionalEmail = null;
+  institutionalUserId = null;
+  if (wasSignedIn) notifyInstitutionalSession();
+};
 
 function config() {
   const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -44,6 +61,8 @@ export async function signInInstitutional(email: string, password: string): Prom
   institutionalExpiresAt = Date.now() + (expiresIn - 30) * 1000;
   institutionalAccessToken = data.access_token;
   institutionalEmail = user.email;
+  institutionalUserId = String(user.id);
+  notifyInstitutionalSession();
   return user.email;
 }
 
