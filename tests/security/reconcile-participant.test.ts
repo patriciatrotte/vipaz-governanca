@@ -19,8 +19,9 @@ test('reconciliation rejects anonymous before network',async()=>environment(asyn
  const r=response();await handler(req(false),r.res as any);assert.equal(r.status(),401);assert.equal(calls,0);
 }));
 test('reconciliation uses JWT and returns only confirmed matching session',async()=>environment(async()=>{
- globalThis.fetch=(async(_url:string|URL|Request,init?:RequestInit)=>{
+ globalThis.fetch=(async(url:string|URL|Request,init?:RequestInit)=>{
   assert.equal((init?.headers as Record<string,string>).Authorization,'Bearer jwt');
+  if(String(url).includes('/global_user_roles?'))return new Response('[{"role_code":"ADMIN_VIPAZ"}]',{status:200});
   return new Response(JSON.stringify([{id:SESSION,legacy_id:OP,session_id:SESSION,name:'Pessoa',role:null,
    metadata:{confirmation_status:'CONFIRMED',confirmation_note:'Verificado',confirmed_by:'user'}}]),{status:200});
  }) as typeof fetch;
@@ -32,14 +33,34 @@ test('reconciliation refuses ambiguous or mismatched operation',async()=>environ
   [{id:SESSION,session_id:SESSION,metadata:{confirmation_status:'UNVERIFIED'}}],
   [{id:SESSION,session_id:SESSION,metadata:{confirmation_status:'CONFIRMED'}},{id:SESSION,session_id:SESSION,metadata:{confirmation_status:'CONFIRMED'}}]
  ]){
-  globalThis.fetch=(async()=>new Response(JSON.stringify(rows),{status:200})) as typeof fetch;
+  globalThis.fetch=(async(url:string|URL|Request)=>new Response(String(url).includes('/global_user_roles?')?'[{"role_code":"ADMIN_VIPAZ"}]':JSON.stringify(rows),{status:200})) as typeof fetch;
   const r=response();await handler(req(),r.res as any);assert.equal(r.status(),409);
  }
 }));
 test('reconciliation returns NOT_FOUND for empty result but never for denied access',async()=>environment(async()=>{
- globalThis.fetch=(async()=>new Response('[]',{status:200})) as typeof fetch;
+ globalThis.fetch=(async(url:string|URL|Request)=>new Response(String(url).includes('/global_user_roles?')?'[{"role_code":"ADMIN_VIPAZ"}]':'[]',{status:200})) as typeof fetch;
  const absent=response();await handler(req(),absent.res as any);assert.equal(absent.body().state,'NOT_FOUND');
  globalThis.fetch=(async()=>new Response('{"message":"private"}',{status:403})) as typeof fetch;
  const denied=response();await handler(req(),denied.res as any);assert.equal(denied.status(),403);
  assert.equal(denied.body().state,undefined);
+}));
+
+test('non-admin with session SELECT privilege cannot read confirmation details',async()=>environment(async()=>{
+ let participantReads=0;
+ globalThis.fetch=(async(url:string|URL|Request)=>{
+  if(String(url).includes('/global_user_roles?'))return new Response('[]',{status:200});
+  participantReads++;
+  throw Error('participant details must not be fetched');
+ }) as typeof fetch;
+ const r=response();await handler(req(),r.res as any);
+ assert.equal(r.status(),403);assert.equal(participantReads,0);
+}));
+test('role lookup failure blocks reconciliation before participant query',async()=>environment(async()=>{
+ let participantReads=0;
+ globalThis.fetch=(async(url:string|URL|Request)=>{
+  if(String(url).includes('/global_user_roles?'))return new Response('{}',{status:502});
+  participantReads++;throw Error('unexpected participant query');
+ }) as typeof fetch;
+ const r=response();await handler(req(),r.res as any);
+ assert.equal(r.status(),502);assert.equal(participantReads,0);
 }));
