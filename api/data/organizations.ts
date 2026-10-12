@@ -11,7 +11,7 @@ export default async function handler(req: Request, res: Response) {
 
   if (req.method === 'GET') {
     const r = await fetch(`${url}/rest/v1/organizations?select=*&order=created_at.asc`, { headers: authHeaders });
-    if (!r.ok) return res.status(r.status === 401 ? 401 : r.status === 403 ? 403 : 502).json({ error: 'organizations_read_failed', details: await r.text() });
+    if (!r.ok) return res.status(r.status === 401 ? 401 : r.status === 403 ? 403 : 502).json({ error: 'organizations_read_failed' });
     return res.status(200).json(await r.json());
   }
 
@@ -32,9 +32,7 @@ export default async function handler(req: Request, res: Response) {
       body: JSON.stringify(payload)
     });
     if (!r.ok) {
-      const details = await r.text();
-      console.error('Supabase organization write failed:', r.status, details);
-      return res.status(502).json({ error: 'organization_write_failed', details });
+      return res.status(r.status === 401 ? 401 : r.status === 403 ? 403 : 502).json({ error: 'organization_write_failed' });
     }
     const rows = await r.json();
     return res.status(200).json(rows[0] || null);
