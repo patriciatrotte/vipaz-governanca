@@ -66,3 +66,5 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261012_vipaz_atomic_investigation_DRAFT.sql
       - name: Verify atomicity and idempotency
         run: psql -v ON_ERROR_STOP=1 -f tests/db/atomic-investigation.sql
+      - name: Verify synthetic institutional and partner isolation
+        run: psql -v ON_ERROR_STOP=1 -f tests/db/authorization-scenarios.sql
