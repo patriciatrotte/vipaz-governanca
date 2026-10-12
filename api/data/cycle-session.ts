@@ -19,8 +19,12 @@ export default async function handler(req: Request, res: Response) {
     });
     if(!upstream.ok)return res.status(upstream.status===401?401:upstream.status===403?403:502).json({error:'session_lookup_failed'});
     const rows=await upstream.json();
-    if(!Array.isArray(rows)||rows.length!==1||rows[0]?.cycle_id!==cycleId){
-      return res.status(rows.length===0?404:409).json({error:rows.length===0?'session_not_found':'session_ambiguous'});
+    if(!Array.isArray(rows))return res.status(502).json({error:'session_lookup_invalid_response'});
+    if(rows.length===0)return res.status(404).json({error:'session_not_found'});
+    if(rows.length!==1||rows[0]?.cycle_id!==cycleId||
+       typeof rows[0]?.id!=='string'||
+       !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rows[0].id)){
+      return res.status(409).json({error:'session_ambiguous'});
     }
     return res.status(200).json({session:rows[0]});
   }catch{return res.status(502).json({error:'session_lookup_failed'});}
