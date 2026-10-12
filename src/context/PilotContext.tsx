@@ -1000,33 +1000,33 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
     updatedAt: now
   };
 
-  // 1. Confirma primeiro o ciclo na base central.
-  const cycleResponse = await fetch('/api/data/cycles', {
+  // Uma única chamada: o banco confirma ciclo, sessão e participante na mesma transação.
+  const sessionLegacyId = `session-${newCycle.id}`;
+  const participantLegacyId = org.mainInterlocutorName
+    ? `interview-respondent-${newCycle.id}` : null;
+  const openResponse = await fetch('/api/data/open-cycle', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getInstitutionalAccessToken() || ''}` },
     body: JSON.stringify({
-      legacyId: newCycle.id,
       organizationId: org.id,
-      organizationLegacyId: org.legacyId || organizationId,
-      dimension: newCycle.dimension,
+      cycleLegacyId: newCycle.id,
+      cycleName: newCycle.name,
       methodologyVersion: newCycle.methodologyVersion,
-      name: newCycle.name,
-      cycleType: newCycle.cycleType,
-      status: newCycle.status
+      sessionLegacyId,
+      participantLegacyId,
+      facilitatorName: 'Dra. Helena Brandão',
+      interlocutorName: org.mainInterlocutorName || null,
+      interlocutorRole: org.mainInterlocutorRole || null
     })
   });
-
-  if (!cycleResponse.ok) {
-    const details = await cycleResponse.text();
-    throw new Error(
-      `Falha ao confirmar ciclo na base central: ${details}`
-    );
+  if (!openResponse.ok) {
+    throw new Error('Não foi possível confirmar a abertura integral do ciclo. Nenhum estado local foi alterado.');
   }
-
-  const centralCycleRow = await cycleResponse.json();
-  const centralCycleId = String(centralCycleRow?.id || '');
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(centralCycleId)) {
-    throw new Error('Ciclo criado, mas a base central não retornou um UUID válido. A operação exige reconciliação antes de prosseguir.');
+  const openResult = await openResponse.json();
+  const centralCycleId = String(openResult?.cycle?.id || '');
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(centralCycleId)
+      || !openResult?.session?.id) {
+    throw new Error('Resposta central inválida na abertura integral do ciclo. É necessária reconciliação.');
   }
   const confirmedCycle: EvaluationCycle = {
     ...newCycle,
@@ -1034,33 +1034,6 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
     legacyId: newCycle.id,
     organizationId: org.id
   };
-
-  // 2. Com o ciclo confirmado, cria a sessão investigativa
-  //    e registra o interlocutor como participante.
-  const sessionLegacyId = `session-${newCycle.id}`;
-  // Identifica a participação neste ciclo, não a pessoa ou a organização.
-  const participantLegacyId = `interview-respondent-${newCycle.id}`;
-
-  const sessionResponse = await fetch('/api/data/investigation-session', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getInstitutionalAccessToken() || ''}` },
-    body: JSON.stringify({
-      cycleId: centralCycleId,
-      cycleLegacyId: newCycle.id,
-      sessionLegacyId,
-      participantLegacyId,
-      facilitatorName: 'Dra. Helena Brandão',
-      interlocutorName: org.mainInterlocutorName,
-      interlocutorRole: org.mainInterlocutorRole
-    })
-  });
-
-  if (!sessionResponse.ok) {
-    const details = await sessionResponse.text();
-    throw new Error(
-      `Ciclo confirmado, mas houve falha ao criar a sessão investigativa: ${details}`
-    );
-  }
 
   // 3. Somente depois das confirmações centrais,
   //    incorpora o ciclo ao estado operacional local.
