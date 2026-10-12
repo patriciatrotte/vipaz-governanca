@@ -1,18 +1,21 @@
 import type { Request, Response } from 'express';
-import { buildSupabaseHeaders } from '../../src/services/persistence/supabaseAdapters.js';
 
 export default async function handler(req: Request, res: Response) {
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SECRET_KEY;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
+  const token = /^Bearer\\s+([^\\s]+)$/i.exec(req.headers.authorization || '')?.[1];
+  res.setHeader('Cache-Control', 'no-store');
+  if (!token) return res.status(401).json({ error: 'authentication_required' });
+  const authHeaders = { apikey: key || '', Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
   if (!url || !key) return res.status(503).json({ error: 'database_not_configured' });
 
   if (req.method === 'GET') {
     try {
       // Tenta com join de organizations para resgatar legacy_id se existir
-      let r = await fetch(`${url}/rest/v1/governance_cycles?select=*,organizations(id,legacy_id,name)&order=created_at.asc`, { headers: buildSupabaseHeaders(key) });
+      let r = await fetch(`${url}/rest/v1/governance_cycles?select=*,organizations(id,legacy_id,name)&order=created_at.asc`, { headers: authHeaders });
       if (!r.ok) {
         // Fallback para select simples se o join falhar
-        r = await fetch(`${url}/rest/v1/governance_cycles?select=*&order=created_at.asc`, { headers: buildSupabaseHeaders(key) });
+        r = await fetch(`${url}/rest/v1/governance_cycles?select=*&order=created_at.asc`, { headers: authHeaders });
       }
       if (!r.ok) {
         return res.status(502).json({ error: 'cycles_read_failed', details: await r.text() });
@@ -26,7 +29,10 @@ export default async function handler(req: Request, res: Response) {
   if (req.method === 'POST') {
     try {
       const body = req.body || {};
-      const orgLookup = await fetch(`${url}/rest/v1/organizations?legacy_id=eq.${encodeURIComponent(body.organizationLegacyId)}&select=id&limit=1`, { headers: buildSupabaseHeaders(key) });
+      const orgFilter = body.organizationId
+        ? `id=eq.${encodeURIComponent(body.organizationId)}`
+        : `legacy_id=eq.${encodeURIComponent(body.organizationLegacyId || '')}`;
+      const orgLookup = await fetch(`${url}/rest/v1/organizations?${orgFilter}&select=id&limit=1`, { headers: authHeaders });
       if (!orgLookup.ok) return res.status(502).json({ error: 'organization_lookup_failed', details: await orgLookup.text() });
       const orgs = await orgLookup.json();
       if (!orgs[0]) return res.status(404).json({ error: 'organization_not_found' });
@@ -45,10 +51,10 @@ const payload = {
 };
       const r = await fetch(`${url}/rest/v1/governance_cycles?select=*`, {
         method: 'POST',
-        headers: { ...buildSupabaseHeaders(key), Prefer: 'return=representation,resolution=merge-duplicates' },
+        headers: { ...authHeaders, Prefer: 'return=representation,resolution=merge-duplicates' },
         body: JSON.stringify(payload)
       });
-      if (!r.ok) return res.status(502).json({ error: 'cycle_write_failed', details: await r.text() });
+      if (!r.ok) return res.status(r.status === 401 ? 401 : r.status === 403 ? 403 : 502).json({ error: 'cycle_write_failed', details: await r.text() });
       const rows = await r.json();
       return res.status(200).json(rows[0] || null);
     } catch (err: any) {
