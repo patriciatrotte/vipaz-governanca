@@ -182,8 +182,13 @@ export default async function handler(
       }
     }
 
+    const questionLegacyIdByInstanceId = new Map<string, string>();
+    for (const row of questionInstances) {
+      if (row.id) questionLegacyIdByInstanceId.set(String(row.id), String(row.legacy_id || row.id));
+    }
     const responsesWithQuestionCode = responses.map(row => ({
       ...row,
+      question_instance_legacy_id: questionLegacyIdByInstanceId.get(String(row.question_instance_id || '')) || row.question_instance_id,
       question_code:
         row.question_code ||
         questionCodeByInstanceId.get(
