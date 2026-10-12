@@ -11,7 +11,7 @@ export default async function handler(req: Request, res: Response) {
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cycleId)){
     return res.status(400).json({error:'invalid_cycle_id'});
   }
-  if(sessionLegacyId && (!/^session-d1-[0-9a-f-]{36}$/i.test(sessionLegacyId)||sessionLegacyId.length>64)){
+  if(sessionLegacyId && (!/^session-cycle-d1-[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(sessionLegacyId)||sessionLegacyId.length>64)){
     return res.status(400).json({error:'invalid_session_identity'});
   }
   const url=process.env.SUPABASE_URL;
