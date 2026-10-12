@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { getInstitutionalAccessToken, getInstitutionalSignedInEmail, subscribeInstitutionalSession } from '../services/institutionalAuth';
+import { getInstitutionalAccessToken, getInstitutionalSignedInUserId, subscribeInstitutionalSession } from '../services/institutionalAuth';
 import {
   Organization,
   EvaluationCycle,
@@ -1007,10 +1007,10 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
   }
   const signedInEmail = getInstitutionalSignedInEmail();
   const token = getInstitutionalAccessToken();
-  if (!signedInEmail || !token) {
+  if (!signedInUserId || !token) {
     throw new Error('Autenticação institucional necessária para iniciar o ciclo.');
   }
-  const pendingKey = pendingCycleKey(signedInEmail, org.id);
+  const pendingKey = pendingCycleKey(signedInUserId, org.id);
   const pending = getOrCreatePendingCycle(localStorage, pendingKey, () => ({
     cycleLegacyId: `cycle-d1-${crypto.randomUUID()}`,
     cycleName: `Ciclo D1 Inicial ${new Date().getFullYear()}.${new Date().getMonth() < 6 ? '1' : '2'}`,
