@@ -1033,8 +1033,9 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
 
   // Uma única chamada: o banco confirma ciclo, sessão e participante na mesma transação.
   const sessionLegacyId = `session-${newCycle.id}`;
-  const participantLegacyId = org.mainInterlocutorName
-    ? `interview-respondent-${newCycle.id}` : null;
+  // The locally stored pilot contact is not an authenticated/confirmed participant.
+  // Open the investigation without creating an institutional participation implicitly.
+  const participantLegacyId: string | null = null;
   const openResponse = await fetch('/api/data/open-cycle', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getInstitutionalAccessToken() || ''}` },
@@ -1046,8 +1047,8 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
       sessionLegacyId,
       participantLegacyId,
       facilitatorName: 'Dra. Helena Brandão',
-      interlocutorName: org.mainInterlocutorName || null,
-      interlocutorRole: org.mainInterlocutorRole || null
+      interlocutorName: null,
+      interlocutorRole: null
     })
   });
   if (!openResponse.ok) {
