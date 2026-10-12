@@ -745,7 +745,12 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIsCentralAvailable(false);
     setIsLoadingCentral(true);
     try {
-      const res = await fetch(`/api/data/cycle-bundle?cycleId=${encodeURIComponent(cycleId)}`);
+      const token = getInstitutionalAccessToken();
+      if (!token) throw new Error('Autenticação institucional necessária para ler o ciclo.');
+      const res = await fetch(`/api/data/cycle-bundle?cycleId=${encodeURIComponent(cycleId)}`, {
+        headers: { Authorization: 'Bearer ' + token },
+        cache: 'no-store'
+      });
       if (requestId !== activeInvestigationRequest.current) return;
       const contentType = res.headers.get('content-type') || '';
       const isJson = contentType.includes('application/json');
