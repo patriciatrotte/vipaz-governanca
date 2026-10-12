@@ -102,11 +102,9 @@ BEGIN
           'source_type','INSTITUTIONAL_INTERLOCUTOR','institutional_function',p_participant_role))
       RETURNING * INTO v_participant;
     END IF;
-  ELSE
-    IF EXISTS (SELECT 1 FROM public.interview_participants WHERE session_id=v_session.id) THEN
-      RAISE EXCEPTION 'participant_identity_conflict' USING ERRCODE='23505';
-    END IF;
   END IF;
+  -- A retry of an opening without a participant must remain idempotent even
+  -- when the institution has subsequently confirmed participants separately.
   RETURN jsonb_build_object('cycle',to_jsonb(v_cycle),'session',to_jsonb(v_session),
     'participant',CASE WHEN p_participant_name IS NULL THEN NULL ELSE to_jsonb(v_participant) END,
     'created',v_created);
