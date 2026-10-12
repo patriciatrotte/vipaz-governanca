@@ -43,20 +43,16 @@ export default async function handler(req: Request, res: Response) {
       })
     });
     if (!upstream.ok) {
-      const details = await upstream.text();
       const status = upstream.status === 401 ? 401 : upstream.status === 403 ? 403 :
         upstream.status === 404 ? 503 : upstream.status === 409 ? 409 : 502;
-      return res.status(status).json({ error: 'atomic_investigation_write_failed', details });
+      return res.status(status).json({ error: 'atomic_investigation_write_failed' });
     }
     const result = await upstream.json();
     if (!result || !result.session?.id) {
       return res.status(502).json({ error: 'atomic_investigation_invalid_response' });
     }
     return res.status(200).json(result);
-  } catch (error: unknown) {
-    return res.status(502).json({
-      error: 'atomic_investigation_write_failed',
-      details: error instanceof Error ? error.message : 'unknown_error'
-    });
+  } catch {
+    return res.status(502).json({ error: 'atomic_investigation_write_failed' });
   }
 }
