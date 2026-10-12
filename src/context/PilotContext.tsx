@@ -1046,7 +1046,7 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
       methodologyVersion: newCycle.methodologyVersion,
       sessionLegacyId,
       participantLegacyId,
-      facilitatorName: 'Dra. Helena Brandão',
+      facilitatorName: 'Facilitador VIPAZ',
       interlocutorName: null,
       interlocutorRole: null
     })
