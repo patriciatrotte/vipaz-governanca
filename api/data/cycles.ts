@@ -18,11 +18,11 @@ export default async function handler(req: Request, res: Response) {
         r = await fetch(`${url}/rest/v1/governance_cycles?select=*&order=created_at.asc`, { headers: authHeaders });
       }
       if (!r.ok) {
-        return res.status(502).json({ error: 'cycles_read_failed', details: await r.text() });
+        return res.status(502).json({ error: 'cycles_read_failed' });
       }
       return res.status(200).json(await r.json());
     } catch (err: any) {
-      return res.status(502).json({ error: 'cycles_read_failed', details: String(err?.message || '') });
+      return res.status(502).json({ error: 'cycles_read_failed' });
     }
   }
 
@@ -33,7 +33,7 @@ export default async function handler(req: Request, res: Response) {
         ? `id=eq.${encodeURIComponent(body.organizationId)}`
         : `legacy_id=eq.${encodeURIComponent(body.organizationLegacyId || '')}`;
       const orgLookup = await fetch(`${url}/rest/v1/organizations?${orgFilter}&select=id&limit=1`, { headers: authHeaders });
-      if (!orgLookup.ok) return res.status(502).json({ error: 'organization_lookup_failed', details: await orgLookup.text() });
+      if (!orgLookup.ok) return res.status(502).json({ error: 'organization_lookup_failed' });
       const orgs = await orgLookup.json();
       if (!orgs[0]) return res.status(404).json({ error: 'organization_not_found' });
 
@@ -54,11 +54,11 @@ const payload = {
         headers: { ...authHeaders, Prefer: 'return=representation,resolution=merge-duplicates' },
         body: JSON.stringify(payload)
       });
-      if (!r.ok) return res.status(r.status === 401 ? 401 : r.status === 403 ? 403 : 502).json({ error: 'cycle_write_failed', details: await r.text() });
+      if (!r.ok) return res.status(r.status === 401 ? 401 : r.status === 403 ? 403 : 502).json({ error: 'cycle_write_failed' });
       const rows = await r.json();
       return res.status(200).json(rows[0] || null);
     } catch (err: any) {
-      return res.status(502).json({ error: 'cycle_write_failed', details: String(err?.message || '') });
+      return res.status(502).json({ error: 'cycle_write_failed' });
     }
   }
 
