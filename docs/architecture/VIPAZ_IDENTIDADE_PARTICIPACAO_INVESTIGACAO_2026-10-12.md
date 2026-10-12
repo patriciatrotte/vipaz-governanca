@@ -32,3 +32,12 @@ Preservar `interview_participants.id` como identificador do registro de particip
 - Migração/rollback avaliados em banco descartável antes de aprovação de produção.
 
 Nenhuma migração aplicada e nenhum dado de piloto alterado.
+
+## Achado de implementação e correção limitada (2026-10-12)
+Inspeção do `src/context/PilotContext.tsx`, função `startD1Cycle`:
+- Antes: `participantLegacyId = interview-respondent-${organizationId}`, constante entre ciclos da mesma instituição.
+- A sessão já usava `session-${newCycle.id}`; portanto, um segundo ciclo poderia gerar sessão diferente com o mesmo identificador de participante e provocar `participant_identity_conflict` na RPC DRAFT.
+- Correção no frontend: `participantLegacyId = interview-respondent-${newCycle.id}`. É uma identidade **do registro de participação no ciclo**, não da pessoa; mantém a estabilidade para tentativas com o mesmo ID de ciclo.
+- Limite: o identificador de ciclo ainda incorpora `Date.now()`, e o fluxo confirma ciclo antes de criar sessão. Em caso de retry de **toda a operação** após falha, um novo ID de ciclo pode ser gerado. Isso permanece uma lacuna separada de idempotência ponta a ponta.
+- A RPC continua desabilitada por flag e as migrações continuam DRAFT; nenhuma alteração retroativa dos IDs legados nos cinco pilotos.
+- A alteração não resolve por si a escolha futura de unicidade global versus por sessão, mas remove a colisão determinística entre ciclos criada pelo código atual.
