@@ -146,3 +146,41 @@ test('investigation-session POST: hides network exception details', async () => 
     if (oldFlag === undefined) delete process.env.VIPAZ_ATOMIC_INVESTIGATION_ENABLED; else process.env.VIPAZ_ATOMIC_INVESTIGATION_ENABLED = oldFlag;
   }
 });
+
+test('organizations POST: upstream diagnostics are not returned to the caller', async () => {
+  const oldFetch = globalThis.fetch;
+  const oldUrl = process.env.SUPABASE_URL;
+  const oldKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+  process.env.SUPABASE_URL = 'https://example.supabase.co';
+  process.env.SUPABASE_PUBLISHABLE_KEY = 'public-test-key';
+  globalThis.fetch = (async () => new Response('private database diagnostic', { status: 403 })) as typeof fetch;
+  try {
+    const { res, result } = responseRecorder();
+    await organizations({ method: 'POST', headers: { authorization: 'Bearer test-jwt' }, body: { legacyId: 'org-test', name: 'Test' } } as any, res as any);
+    assert.equal(result().status, 403);
+    assert.deepEqual(result().body, { error: 'organization_write_failed' });
+  } finally {
+    globalThis.fetch = oldFetch;
+    if (oldUrl === undefined) delete process.env.SUPABASE_URL; else process.env.SUPABASE_URL = oldUrl;
+    if (oldKey === undefined) delete process.env.SUPABASE_PUBLISHABLE_KEY; else process.env.SUPABASE_PUBLISHABLE_KEY = oldKey;
+  }
+});
+
+test('cycles GET: upstream diagnostics are not returned to the caller', async () => {
+  const oldFetch = globalThis.fetch;
+  const oldUrl = process.env.SUPABASE_URL;
+  const oldKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+  process.env.SUPABASE_URL = 'https://example.supabase.co';
+  process.env.SUPABASE_PUBLISHABLE_KEY = 'public-test-key';
+  globalThis.fetch = (async () => new Response('private SQL schema details', { status: 403 })) as typeof fetch;
+  try {
+    const { res, result } = responseRecorder();
+    await cycles({ method: 'GET', headers: { authorization: 'Bearer test-jwt' } } as any, res as any);
+    assert.equal(result().status, 502);
+    assert.deepEqual(result().body, { error: 'cycles_read_failed' });
+  } finally {
+    globalThis.fetch = oldFetch;
+    if (oldUrl === undefined) delete process.env.SUPABASE_URL; else process.env.SUPABASE_URL = oldUrl;
+    if (oldKey === undefined) delete process.env.SUPABASE_PUBLISHABLE_KEY; else process.env.SUPABASE_PUBLISHABLE_KEY = oldKey;
+  }
+});
