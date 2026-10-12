@@ -21,14 +21,14 @@ export default async function handler(req: Request, res: Response) {
     const payload = {
       legacy_id: b.legacyId,
       cycle_id: b.cycleId,
-      dimension_code: b.doorId,
+      dimension_code: 'D1',
       capacity_code: typeof b.relatedCapacity === 'string' ? b.relatedCapacity : null,
       statement: b.statement,
       scope: typeof b.scope === 'string' ? b.scope : null,
       validation_status: typeof b.validationStatus === 'string' ? b.validationStatus : 'EM_ANALISE',
       source_name: typeof b.sourceName === 'string' ? b.sourceName : null,
       extracted_by: typeof b.extractedBy === 'string' ? b.extractedBy : null,
-      metadata: { source_role: b.sourceRole || null, response_legacy_id: b.responseId || null, source: 'VIPAZ_NATIVE' }
+      metadata: { door_id: b.doorId, source_role: b.sourceRole || null, response_legacy_id: b.responseId || null, source: 'VIPAZ_NATIVE' }
     };
     const response = await fetch(url + '/rest/v1/information_units?select=id,legacy_id', {
       method: 'POST',
