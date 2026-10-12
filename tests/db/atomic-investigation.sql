@@ -93,3 +93,32 @@ BEGIN
  END;
 END $$;
 RESET ROLE;
+
+-- Cross-institution proxy: distinct governance cycles must not reuse the same session identity.
+-- This tests RPC conflict handling, NOT Supabase organization membership or RLS.
+INSERT INTO public.governance_cycles(id) VALUES ('33333333-3333-4333-8333-333333333333');
+SET vipaz.test_admin = 'yes';
+DO $$
+DECLARE
+ n integer;
+BEGIN
+ BEGIN
+   PERFORM public.vipaz_create_investigation_atomic(
+     '33333333-3333-4333-8333-333333333333',
+     's-1', 'Facilitador', 'p-1', 'Pessoa', 'Responsavel');
+   RAISE EXCEPTION 'cross-cycle session identity was accepted';
+ EXCEPTION WHEN unique_violation THEN NULL;
+ END;
+ SELECT count(*) INTO n FROM public.investigation_sessions
+ WHERE cycle_id = '33333333-3333-4333-8333-333333333333';
+ IF n <> 0 THEN RAISE EXCEPTION 'cross-cycle data persisted'; END IF;
+END $$;
+SET vipaz.test_admin = 'no';
+DO $$
+DECLARE n integer;
+BEGIN
+ SELECT count(*) INTO n FROM public.investigation_sessions
+ WHERE legacy_id = 'role-denied';
+ IF n <> 0 THEN RAISE EXCEPTION 'unauthorized session persisted'; END IF;
+END $$;
+SELECT 'Cross-cycle identity and denial checks passed' AS result;
