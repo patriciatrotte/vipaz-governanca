@@ -16,9 +16,17 @@ export default async function handler(req: Request, res: Response) {
   const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
   if (!url || !key) return res.status(503).json({ error: 'database_not_configured' });
   const body = req.body || {};
-  if (!body.organizationId || !body.cycleLegacyId || !body.cycleName ||
-      !body.methodologyVersion || !body.sessionLegacyId ||
-      Boolean(body.interlocutorName) !== Boolean(body.participantLegacyId)) {
+  const isUuid = (value: unknown) => typeof value === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+  const nonBlank = (value: unknown) => typeof value === 'string' && value.trim().length > 0;
+  const hasParticipant = nonBlank(body.interlocutorName);
+  if (!isUuid(body.organizationId) || !nonBlank(body.cycleLegacyId) ||
+      !nonBlank(body.cycleName) || !nonBlank(body.methodologyVersion) ||
+      !nonBlank(body.sessionLegacyId) ||
+      hasParticipant !== nonBlank(body.participantLegacyId) ||
+      (body.interlocutorName != null && !hasParticipant) ||
+      (body.participantLegacyId != null && !nonBlank(body.participantLegacyId)) ||
+      (body.interlocutorRole != null && !nonBlank(body.interlocutorRole))) {
     return res.status(400).json({ error: 'invalid_cycle_open_identity' });
   }
   try {
