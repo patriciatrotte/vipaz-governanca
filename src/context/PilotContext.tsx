@@ -1006,7 +1006,8 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getInstitutionalAccessToken() || ''}` },
     body: JSON.stringify({
       legacyId: newCycle.id,
-      organizationLegacyId: organizationId,
+      organizationId: org.id,
+      organizationLegacyId: org.legacyId || organizationId,
       dimension: newCycle.dimension,
       methodologyVersion: newCycle.methodologyVersion,
       name: newCycle.name,
@@ -1022,6 +1023,18 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
     );
   }
 
+  const centralCycleRow = await cycleResponse.json();
+  const centralCycleId = String(centralCycleRow?.id || '');
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(centralCycleId)) {
+    throw new Error('Ciclo criado, mas a base central não retornou um UUID válido. A operação exige reconciliação antes de prosseguir.');
+  }
+  const confirmedCycle: EvaluationCycle = {
+    ...newCycle,
+    id: centralCycleId,
+    legacyId: newCycle.id,
+    organizationId: org.id
+  };
+
   // 2. Com o ciclo confirmado, cria a sessão investigativa
   //    e registra o interlocutor como participante.
   const sessionLegacyId = `session-${newCycle.id}`;
@@ -1031,6 +1044,7 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getInstitutionalAccessToken() || ''}` },
     body: JSON.stringify({
+      cycleId: centralCycleId,
       cycleLegacyId: newCycle.id,
       sessionLegacyId,
       participantLegacyId,
@@ -1049,7 +1063,7 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
 
   // 3. Somente depois das confirmações centrais,
   //    incorpora o ciclo ao estado operacional local.
-  const updatedCycles = [...cycles, newCycle];
+  const updatedCycles = [...cycles.filter(c => c.id !== centralCycleId && c.legacyId !== newCycle.id), confirmedCycle];
   setCycles(updatedCycles);
 
   try {
@@ -1062,9 +1076,9 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
     if (o.id === organizationId) {
       return {
         ...o,
-        cycleId: newCycleId,
+        cycleId: centralCycleId,
         activeCycleName: newCycle.name,
-        cycleIds: [...(o.cycleIds || []), newCycleId]
+        cycleIds: [...(o.cycleIds || []), centralCycleId]
       };
     }
     return o;
@@ -1082,14 +1096,15 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
   }
 
   // 4. Inicializa o estado operacional da investigação.
-  const emptyState = getEmptyOrgState(organizationId, newCycleId);
+  const emptyState = getEmptyOrgState(organizationId, centralCycleId);
   saveStateForOrg(organizationId, emptyState);
 
   // 5. Seleciona a organização somente após a cadeia central
   //    ciclo -> sessão -> participante estar confirmada.
-  selectOrganization(organizationId);
+  // Avoid selecting from the stale pre-update cycles closure.
+  setCurrentCycleId(centralCycleId);
 
-  return newCycle;
+  return confirmedCycle;
 };
 
   // Transição substantiva do ciclo: sai de NAO_INICIADO para EM_ANDAMENTO mediante o primeiro ato investigativo substantivo persistido
