@@ -55,7 +55,7 @@ test('organizations GET: forwards Bearer to RLS API and returns only scoped rows
   }) as typeof fetch;
   try {
     const { res, result } = responseRecorder();
-    await organizations({ method: 'GET', headers: { authorization: 'Bearer institutional-test-jwt' } }, res);
+    await organizations({ method: 'GET', headers: { authorization: 'Bearer institutional-test-jwt' } } as any, res as any);
     assert.equal(called, true);
     assert.equal(result().status, 200);
     assert.deepEqual(result().body, [{ id: 'visible-org' }]);
@@ -81,7 +81,7 @@ test('cycles POST: propagates forbidden response without claiming creation', asy
   }) as typeof fetch;
   try {
     const { res, result } = responseRecorder();
-    await cycles({ method: 'POST', headers: { authorization: 'Bearer unauthorized-test-jwt' }, body: { organizationId: '00000000-0000-4000-8000-000000000001', legacyId: 'test-cycle', name: 'Test' } }, res);
+    await cycles({ method: 'POST', headers: { authorization: 'Bearer unauthorized-test-jwt' }, body: { organizationId: '00000000-0000-4000-8000-000000000001', legacyId: 'test-cycle', name: 'Test' } } as any, res as any);
     assert.equal(calls, 2);
     assert.equal(result().status, 403);
     assert.equal(result().body.error, 'cycle_write_failed');
