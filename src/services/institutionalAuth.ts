@@ -12,7 +12,21 @@ export const getInstitutionalAccessToken = () => {
   if (institutionalAccessToken && Date.now() >= institutionalExpiresAt) clearInstitutionalSession();
   return institutionalAccessToken;
 };
-export const clearInstitutionalSession = () => { institutionalAccessToken = null; institutionalExpiresAt = 0; institutionalEmail = null; };
+const institutionalSessionListeners = new Set<() => void>();
+export const subscribeInstitutionalSession = (listener: () => void) => {
+  institutionalSessionListeners.add(listener);
+  return () => { institutionalSessionListeners.delete(listener); };
+};
+const notifyInstitutionalSession = () => {
+  institutionalSessionListeners.forEach(listener => listener());
+};
+export const clearInstitutionalSession = () => {
+  const wasSignedIn = Boolean(institutionalAccessToken);
+  institutionalAccessToken = null;
+  institutionalExpiresAt = 0;
+  institutionalEmail = null;
+  if (wasSignedIn) notifyInstitutionalSession();
+};
 
 function config() {
   const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -44,6 +58,7 @@ export async function signInInstitutional(email: string, password: string): Prom
   institutionalExpiresAt = Date.now() + (expiresIn - 30) * 1000;
   institutionalAccessToken = data.access_token;
   institutionalEmail = user.email;
+  notifyInstitutionalSession();
   return user.email;
 }
 
