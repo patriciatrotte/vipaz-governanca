@@ -1,27 +1,24 @@
 import type { Request, Response } from 'express';
 
-const getSupabaseConfig = () => {
+const getSupabaseConfig = (authorization: string | undefined) => {
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SECRET_KEY;
-
-  if (!url || !key) {
-    throw new Error('Supabase server configuration is missing.');
-  }
-
-  return {
-    url: url.replace(/\/$/, ''),
-    key,
-  };
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
+  const token = /^Bearer\\s+([^\\s]+)$/i.exec(authorization || '')?.[1];
+  if (!url || !key) throw new Error('Supabase public configuration is missing.');
+  if (!token) throw new Error('authentication_required');
+  return { url: url.replace(/\\/$/, ''), key, token };
 };
 
-const buildHeaders = (key: string) => ({
+const buildHeaders = (key: string, token: string) => ({
   apikey: key,
+  Authorization: 'Bearer ' + token,
   'Content-Type': 'application/json',
 });
 
 const fetchRows = async (
   url: string,
   key: string,
+  token: string,
   tableName: string,
   filter: string
 ): Promise<any[]> => {
@@ -30,7 +27,7 @@ const fetchRows = async (
     `&order=created_at.asc`;
 
   const response = await fetch(endpoint, {
-    headers: buildHeaders(key),
+    headers: buildHeaders(key, token),
   });
 
   if (!response.ok) {
@@ -88,12 +85,13 @@ export default async function handler(
   }
 
   try {
-    const { url, key } = getSupabaseConfig();
+    const { url, key, token } = getSupabaseConfig(req.headers.authorization);
 
     // 1. O ciclo se relaciona diretamente com investigation_sessions.
     const investigationSessions = await fetchRows(
       url,
       key,
+      token,
       'investigation_sessions',
       eqFilter('cycle_id', cleanCycleId)
     );
@@ -110,6 +108,7 @@ export default async function handler(
       ? await fetchRows(
           url,
           key,
+          token,
           'question_instances',
           sessionFilter
         )
@@ -246,7 +245,7 @@ export default async function handler(
   } catch (error) {
     console.error('[cycle-bundle] Central read failed:', error);
 
-    return res.status(502).json({
+    return res.status(error instanceof Error && error.message === 'authentication_required' ? 401 : 502).json({
       error: 'Failed to load central cycle bundle.',
       detail:
         error instanceof Error
