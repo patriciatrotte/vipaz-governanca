@@ -649,6 +649,8 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // Salvaguarda obrigatória: NUNCA salvar enquanto a carga central estiver ativa (impede race condition)
   useEffect(() => {
     if (!currentOrgId || isLoadingCentral || !allowSelectedCycleCacheWrite.current) return;
+    // Ciclos institucionais são exclusivamente centrais; não persistir no navegador.
+    if (currentCycleId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(currentCycleId)) return;
     saveStateForOrg(currentOrgId, getCurrentStateBundle());
   }, [
     currentOrgId,
@@ -758,57 +760,24 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (requestId !== activeInvestigationRequest.current) return;
         const adapted = adaptCycleBundleToDomain(rawBundle);
 
-        // Se houver qualquer registro central existente para este ciclo
-        const hasCentralRecords = 
-          adapted.informationUnits.length > 0 ||
-          adapted.originalResponses.length > 0 ||
-          adapted.questionInstances.length > 0 ||
-          adapted.evidences.length > 0 ||
-          adapted.pendingItems.length > 0 ||
-          adapted.probings.length > 0 ||
-          adapted.pedagogicalInterventions.length > 0 ||
-          adapted.distributedRequests.length > 0;
-
-        if (hasCentralRecords) {
-          // Aplica o estado adaptado com autoridade central primária
-          setDoorStatuses(adapted.doorStatuses);
-          setQuestionInstances(adapted.questionInstances);
-          setOriginalResponses(adapted.originalResponses);
-          setInformationUnits(adapted.informationUnits);
-          setProbings(adapted.probings);
-          setPedagogicalInterventions(adapted.pedagogicalInterventions);
-          setDistributedRequests(adapted.distributedRequests);
-          setEvidences(adapted.evidences);
-          setPendingItems(adapted.pendingItems);
-
-          // Sincroniza derivados somente se o snapshot local corresponder ao ciclo selecionado.
-          const local = loadStateForOrg(orgId, cycleId);
-          const consistent = local.snapshot?.organizationId === orgId && local.snapshot?.cycleId === cycleId;
-          const derived = consistent ? local : getEmptyOrgState(orgId, cycleId);
-          setIntegration(derived.integration);
-          setSnapshot(derived.snapshot);
-          setGaps(derived.gaps);
-          setActions(derived.actions);
-
-          // Não sobrescrever consolidações locais pré-existentes com valores vazios.
-          // A reidratação central contém dados investigativos, não o snapshot validado.
-          // A contingência é atualizada apenas quando o snapshot local pertence
-          // comprovadamente à organização e ao ciclo selecionados.
-          if (consistent) {
-            allowSelectedCycleCacheWrite.current = true;
-            saveStateForOrg(orgId, {
-              ...derived,
-              ...adapted
-            });
-          } else {
-            console.info('[VIPAZ Persistência] Consolidação local preservada: snapshot do ciclo não confirmado. Dados centrais carregados somente em memória.');
-          }
-
-          setIsCentralAvailable(true);
-          console.info(`[VIPAZ Persistência] Ciclo ${cycleId} reidratado com autoridade central (${adapted.informationUnits.length} fatos da escuta, ${adapted.originalResponses.length} respostas).`);
-          setIsLoadingCentral(false);
-          return;
-        }
+        // A consulta bem-sucedida é autoritativa mesmo quando o ciclo está vazio.
+        // Nunca misturar dados locais de outro ciclo ou registros não confirmados.
+        setDoorStatuses(adapted.doorStatuses);
+        setQuestionInstances(adapted.questionInstances);
+        setOriginalResponses(adapted.originalResponses);
+        setInformationUnits(adapted.informationUnits);
+        setProbings(adapted.probings);
+        setPedagogicalInterventions(adapted.pedagogicalInterventions);
+        setDistributedRequests(adapted.distributedRequests);
+        setEvidences(adapted.evidences);
+        setPendingItems(adapted.pendingItems);
+        setIntegration(getEmptyOrgState(orgId, cycleId).integration);
+        setSnapshot(getEmptyOrgState(orgId, cycleId).snapshot);
+        setGaps(getEmptyOrgState(orgId, cycleId).gaps);
+        setActions(getEmptyOrgState(orgId, cycleId).actions);
+        setIsCentralAvailable(true);
+        setIsLoadingCentral(false);
+        return;
       } else {
         if (res.status === 503) {
           console.warn(`[VIPAZ Persistência] Base central não configurada (HTTP 503). Acionando contingência de cache local para ciclo ${cycleId}.`);
@@ -824,6 +793,13 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (requestId !== activeInvestigationRequest.current) return;
     // Contingência observável: carrega do cache local do navegador
     setIsCentralAvailable(false);
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(cycleId)) {
+      // Fail closed: central indisponível não equivale a autorização para usar cache.
+      applyStateBundle(getEmptyOrgState(orgId, cycleId));
+      window.alert('Não foi possível carregar este ciclo no Supabase. Os dados locais não serão exibidos como registros institucionais.');
+      setIsLoadingCentral(false);
+      return;
+    }
     const localBundle = loadStateForOrg(orgId, cycleId);
     applyStateBundle(localBundle);
     allowSelectedCycleCacheWrite.current = true;
