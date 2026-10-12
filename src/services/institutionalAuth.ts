@@ -6,6 +6,8 @@
 let institutionalAccessToken: string | null = null;
 let institutionalExpiresAt = 0;
 let institutionalEmail: string | null = null;
+let institutionalUserId: string | null = null;
+export const getInstitutionalSignedInUserId = () => getInstitutionalAccessToken() ? institutionalUserId : null;
 export const getInstitutionalSignedInEmail = () => getInstitutionalAccessToken() ? institutionalEmail : null;
 
 export const getInstitutionalAccessToken = () => {
@@ -25,6 +27,7 @@ export const clearInstitutionalSession = () => {
   institutionalAccessToken = null;
   institutionalExpiresAt = 0;
   institutionalEmail = null;
+  institutionalUserId = null;
   if (wasSignedIn) notifyInstitutionalSession();
 };
 
@@ -58,6 +61,7 @@ export async function signInInstitutional(email: string, password: string): Prom
   institutionalExpiresAt = Date.now() + (expiresIn - 30) * 1000;
   institutionalAccessToken = data.access_token;
   institutionalEmail = user.email;
+  institutionalUserId = String(user.id);
   notifyInstitutionalSession();
   return user.email;
 }
