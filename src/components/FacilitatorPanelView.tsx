@@ -76,7 +76,9 @@ export const FacilitatorPanelView: React.FC = () => {
     const cycleId=currentCycle?.id;
     const token=getInstitutionalAccessToken();
     if(!cycleId||!token||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cycleId))return;
-    void fetch(`/api/data/cycle-session?cycleId=${encodeURIComponent(cycleId)}`,{
+    const sessionLegacyId=currentCycle?.legacyId?.startsWith('cycle-d1-')?`session-${currentCycle.legacyId}`:null;
+    if(!sessionLegacyId)return; // Historical cycles require explicit session selection.
+    void fetch(`/api/data/cycle-session?cycleId=${encodeURIComponent(cycleId)}&sessionLegacyId=${encodeURIComponent(sessionLegacyId)}`,{
       headers:{Authorization:`Bearer ${token}`},cache:'no-store'
     }).then(async response=>{
       if(!response.ok)throw Error('session lookup unavailable');
@@ -85,7 +87,7 @@ export const FacilitatorPanelView: React.FC = () => {
       if(!cancelled&&typeof data?.session?.id==='string')setCanonicalSessionId(data.session.id);
     }).catch(()=>{if(!cancelled)setCanonicalSessionId(null);});
     return ()=>{cancelled=true;};
-  },[currentCycle?.id]);
+  },[currentCycle?.id,currentCycle?.legacyId]);
 
   // Localiza a resposta original selecionada no fluxo de investigação
   const focusedResponse = activeResponseId 
