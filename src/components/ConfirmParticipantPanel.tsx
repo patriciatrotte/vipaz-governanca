@@ -7,6 +7,8 @@ export const ConfirmParticipantPanel: React.FC<{ sessionId: string }> = ({ sessi
   const [role,setRole]=useState('');
   const [note,setNote]=useState('');
   const [confirmed,setConfirmed]=useState(false);
+  const [readyForNext,setReadyForNext]=useState(false);
+  const [confirmedCount,setConfirmedCount]=useState(0);
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState('');
   const submit=async (event:React.FormEvent) => {
@@ -41,8 +43,9 @@ export const ConfirmParticipantPanel: React.FC<{ sessionId: string }> = ({ sessi
           return;
         }
         setConfirmed(true);
+        setConfirmedCount(count=>count+1);
         setMessage('Confirmação anterior recuperada do registro central.');
-        try{localStorage.removeItem(key);}catch{}
+        try{localStorage.removeItem(key);setReadyForNext(true);}catch{setReadyForNext(false);setMessage('Confirmação recuperada, mas a operação local não pôde ser encerrada. Não inicie outra pessoa neste navegador.');}
         return;
       }
       if(reconciliation?.state!=='NOT_FOUND'){
@@ -60,10 +63,15 @@ export const ConfirmParticipantPanel: React.FC<{ sessionId: string }> = ({ sessi
       if(!response.ok){setMessage(response.status===503?'Confirmação ainda não habilitada neste ambiente.':'Não foi possível confirmar. Nenhum sucesso foi presumido.');return;}
       const result=await response.json();
       if(result?.participant?.metadata?.confirmation_status!=='CONFIRMED')throw Error('unexpected response');
-      setConfirmed(true);setMessage('Participação confirmada no registro central.');
-      try{localStorage.removeItem(key);}catch{ /* Central confirmation succeeded; leave retry marker for reconciliation. */ }
+      setConfirmed(true);setConfirmedCount(count=>count+1);setMessage('Participação confirmada no registro central.');
+      try{localStorage.removeItem(key);setReadyForNext(true);}catch{setReadyForNext(false);setMessage('Participação confirmada no registro central, mas a operação local não pôde ser encerrada. Não inicie outra pessoa neste navegador.');}
     }catch{setMessage('Falha na confirmação. O identificador foi preservado; repita somente com os mesmos dados ou solicite reconciliação.');}
     finally{setBusy(false);}
+  };
+  const nextParticipant=()=>{
+    if(!confirmed||!readyForNext||busy)return;
+    setName('');setRole('');setNote('');setConfirmed(false);setReadyForNext(false);
+    setMessage('Nova confirmação: verifique a identidade e a atuação da próxima pessoa.');
   };
   return <section className="rounded-xl border border-slate-300 p-4 my-4">
     <h3 className="font-semibold">Confirmar participação institucional</h3>
@@ -75,5 +83,7 @@ export const ConfirmParticipantPanel: React.FC<{ sessionId: string }> = ({ sessi
       <button type="submit" disabled={busy||confirmed} className="rounded bg-slate-800 text-white p-2">{busy?'Confirmando...':'Confirmar participação'}</button>
     </form>
     {message&&<p role="status" className="text-sm mt-2">{message}</p>}
+    {confirmedCount>0&&<p className="text-sm mt-2">Confirmações concluídas nesta visita: {confirmedCount}. Este número não substitui a consulta ao registro central.</p>}
+    {confirmed&&readyForNext&&<button type="button" onClick={nextParticipant} className="rounded border border-slate-600 p-2 mt-2">Confirmar outra pessoa nesta sessão</button>}
   </section>;
 };
