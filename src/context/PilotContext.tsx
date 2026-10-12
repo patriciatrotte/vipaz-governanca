@@ -1005,7 +1005,7 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(org.id)) {
     throw new Error('Organização ainda sem UUID central confirmado. Atualize o catálogo institucional antes de abrir um ciclo.');
   }
-  const signedInEmail = getInstitutionalSignedInEmail();
+  const signedInUserId = getInstitutionalSignedInUserId();
   const token = getInstitutionalAccessToken();
   if (!signedInUserId || !token) {
     throw new Error('Autenticação institucional necessária para iniciar o ciclo.');
