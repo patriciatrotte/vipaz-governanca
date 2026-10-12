@@ -144,11 +144,36 @@ test('enabled whole-cycle opening sends exactly one authenticated RPC', async ()
   const res={setHeader(){return this;},status(n:number){status=n;return this;},json(_x:unknown){return this;}};
   try {
     await openCycle({method:'POST',headers:{authorization:'Bearer test-token'},body:{
-      organizationId:'org-uuid',cycleLegacyId:'cycle-stable-1',cycleName:'Ciclo',methodologyVersion:'1.0',
+      organizationId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',cycleLegacyId:'cycle-stable-1',cycleName:'Ciclo',methodologyVersion:'1.0',
       sessionLegacyId:'session-stable-1'
     }} as any,res as any);
     assert.equal(status,200);
     assert.equal(calls,1);
+  } finally {
+    globalThis.fetch=originalFetch;
+    keys.forEach((k,i)=>{if(prev[i]===undefined)delete process.env[k];else process.env[k]=prev[i];});
+  }
+});
+
+test('whole-cycle opening rejects legacy organization IDs before any RPC', async () => {
+  const { default: openCycle } = await import('../../api/data/open-cycle');
+  const keys=['VIPAZ_ATOMIC_CYCLE_OPEN_ENABLED','SUPABASE_URL','SUPABASE_PUBLISHABLE_KEY'];
+  const prev=keys.map(k=>process.env[k]);
+  const originalFetch=globalThis.fetch;
+  process.env.VIPAZ_ATOMIC_CYCLE_OPEN_ENABLED='true';
+  process.env.SUPABASE_URL='https://example.invalid';
+  process.env.SUPABASE_PUBLISHABLE_KEY='public-key';
+  let calls=0;
+  globalThis.fetch=(async()=>{calls++;throw Error('unexpected network call');}) as typeof fetch;
+  let status=0;
+  const res={setHeader(){return this;},status(n:number){status=n;return this;},json(_x:unknown){return this;}};
+  try {
+    await openCycle({method:'POST',headers:{authorization:'Bearer test-token'},body:{
+      organizationId:'org-camara-legado',cycleLegacyId:'cycle-stable-1',cycleName:'Ciclo',
+      methodologyVersion:'1.0',sessionLegacyId:'session-stable-1'
+    }} as any,res as any);
+    assert.equal(status,400);
+    assert.equal(calls,0);
   } finally {
     globalThis.fetch=originalFetch;
     keys.forEach((k,i)=>{if(prev[i]===undefined)delete process.env[k];else process.env[k]=prev[i];});
