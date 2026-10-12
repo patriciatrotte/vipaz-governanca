@@ -74,3 +74,28 @@ test('enabled investigation calls one RPC and never performs direct table writes
     if (oldKey === undefined) delete process.env.SUPABASE_PUBLISHABLE_KEY; else process.env.SUPABASE_PUBLISHABLE_KEY = oldKey;
   }
 });
+
+test('disabled atomic mode blocks cycle creation without database calls', async () => {
+  const { default: cycleHandler } = await import('../../api/data/cycles');
+  const prior = [process.env.VIPAZ_ATOMIC_INVESTIGATION_ENABLED,process.env.SUPABASE_URL,process.env.SUPABASE_PUBLISHABLE_KEY];
+  const originalFetch = globalThis.fetch;
+  process.env.VIPAZ_ATOMIC_INVESTIGATION_ENABLED = 'false';
+  process.env.SUPABASE_URL = 'https://example.invalid';
+  process.env.SUPABASE_PUBLISHABLE_KEY = 'public-key';
+  let calls = 0;
+  globalThis.fetch = (async () => { calls++; throw new Error('unexpected fetch'); }) as typeof fetch;
+  let status = 200;
+  let response: any;
+  const res = { setHeader() { return this; }, status(n: number) { status=n; return this; }, json(x: unknown) { response=x; return this; } };
+  try {
+    await cycleHandler({method:'POST',headers:{authorization:'Bearer test-token'},body:{organizationId:'org-1',legacyId:'cycle-1'}} as any,res as any);
+    assert.equal(status,503);
+    assert.equal(response.error,'atomic_investigation_not_enabled');
+    assert.equal(calls,0);
+  } finally {
+    globalThis.fetch=originalFetch;
+    for (const [i,k] of ['VIPAZ_ATOMIC_INVESTIGATION_ENABLED','SUPABASE_URL','SUPABASE_PUBLISHABLE_KEY'].entries()) {
+      if (prior[i] === undefined) delete process.env[k]; else process.env[k]=prior[i];
+    }
+  }
+});
