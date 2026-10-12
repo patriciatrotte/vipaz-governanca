@@ -1227,14 +1227,37 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
       modality: 'SESSAO_CONDUZIDA'
     };
 
-    setQuestionInstances(prev => [...prev, newQuestionInstance]);
-    setOriginalResponses(prev => [...prev, newResponse]);
-    ensureCycleInProgress();
-
-    // Atualiza estado da porta para EM_DESCOBERTA se estava NÃO_INICIADA
-    if (doorStatuses[doorId] === 'NAO_INICIADA') {
-      updateDoorStatus(doorId, 'EM_DESCOBERTA');
+    const token = getInstitutionalAccessToken();
+    const cycleId = currentCycle?.id;
+    if (!token || !cycleId) {
+      window.alert('Resposta não salva: autentique-se institucionalmente e selecione um ciclo central.');
+      return;
     }
+    void (async () => {
+      try {
+        const response = await fetch('/api/data/interview-record', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+          body: JSON.stringify({
+            cycleId, doorId, questionLegacyId: newQuestionInstance.id,
+            responseLegacyId: newResponse.id, questionText: newQuestionInstance.text,
+            responseText: newResponse.originalText, respondentName: user.name,
+            respondentRole: user.department || user.role
+          })
+        });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        // A gravação é confirmada antes de atualizar a interface.
+        if (currentCycleId === cycleId) {
+          setQuestionInstances(prev => [...prev, newQuestionInstance]);
+          setOriginalResponses(prev => [...prev, newResponse]);
+          ensureCycleInProgress();
+          if (doorStatuses[doorId] === 'NAO_INICIADA') updateDoorStatus(doorId, 'EM_DESCOBERTA');
+        }
+      } catch (error) {
+        console.error('[VIPAZ Persistência] Entrevista não gravada:', error);
+        window.alert('Não foi possível salvar a resposta no Supabase. O registro não foi confirmado.');
+      }
+    })();
   };
 
   const addRetificationResponse = (previousResponseId: string, newText: string) => {
