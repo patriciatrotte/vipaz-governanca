@@ -1,9 +1,12 @@
 import type { Request, Response } from 'express';
-import { buildSupabaseHeaders } from '../../src/services/persistence/supabaseAdapters.js';
 
 export default async function handler(req: Request, res: Response) {
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SECRET_KEY;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
+  const token = /^Bearer\\s+([^\\s]+)$/i.exec(req.headers.authorization || '')?.[1];
+  res.setHeader('Cache-Control', 'no-store');
+  if (!token) return res.status(401).json({ error: 'authentication_required' });
+  const authHeaders = { apikey: key || '', Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
   if (!url || !key) {
     return res.status(503).json({ error: 'database_not_configured' });
@@ -17,13 +20,13 @@ export default async function handler(req: Request, res: Response) {
   try {
     const body = req.body || {};
 
-    if (!body.cycleLegacyId) {
+    if (!body.cycleLegacyId && !body.cycleId) {
       return res.status(400).json({ error: 'cycle_legacy_id_required' });
     }
 
     const cycleLookup = await fetch(
-      `${url}/rest/v1/governance_cycles?legacy_id=eq.${encodeURIComponent(body.cycleLegacyId)}&select=id&limit=1`,
-      { headers: buildSupabaseHeaders(key) }
+      `${url}/rest/v1/governance_cycles?${body.cycleId ? 'id' : 'legacy_id'}=eq.${encodeURIComponent(body.cycleId || body.cycleLegacyId)}&select=id&limit=1`,
+      { headers: authHeaders }
     );
 
     if (!cycleLookup.ok) {
@@ -56,7 +59,7 @@ export default async function handler(req: Request, res: Response) {
       {
         method: 'POST',
         headers: {
-          ...buildSupabaseHeaders(key),
+          ...authHeaders,
           Prefer: 'return=representation'
         },
         body: JSON.stringify(sessionPayload)
@@ -102,7 +105,7 @@ export default async function handler(req: Request, res: Response) {
         {
           method: 'POST',
           headers: {
-            ...buildSupabaseHeaders(key),
+            ...authHeaders,
             Prefer: 'return=representation'
           },
           body: JSON.stringify(participantPayload)
