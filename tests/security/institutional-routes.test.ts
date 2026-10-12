@@ -70,9 +70,11 @@ test('organizations GET: forwards Bearer to RLS API and returns only scoped rows
 test('cycles POST: propagates forbidden response without claiming creation', async () => {
   const prevUrl = process.env.SUPABASE_URL;
   const prevKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+  const prevFlag = process.env.VIPAZ_ATOMIC_INVESTIGATION_ENABLED;
   const oldFetch = globalThis.fetch;
   process.env.SUPABASE_URL = 'https://example.supabase.co';
   process.env.SUPABASE_PUBLISHABLE_KEY = 'public-test-key';
+  process.env.VIPAZ_ATOMIC_INVESTIGATION_ENABLED = 'true';
   let calls = 0;
   globalThis.fetch = (async (_url: string | URL | Request, init?: RequestInit) => {
     calls++;
@@ -90,6 +92,7 @@ test('cycles POST: propagates forbidden response without claiming creation', asy
     globalThis.fetch = oldFetch;
     if (prevUrl === undefined) delete process.env.SUPABASE_URL; else process.env.SUPABASE_URL = prevUrl;
     if (prevKey === undefined) delete process.env.SUPABASE_PUBLISHABLE_KEY; else process.env.SUPABASE_PUBLISHABLE_KEY = prevKey;
+    if (prevFlag === undefined) delete process.env.VIPAZ_ATOMIC_INVESTIGATION_ENABLED; else process.env.VIPAZ_ATOMIC_INVESTIGATION_ENABLED = prevFlag;
   }
 });
 
