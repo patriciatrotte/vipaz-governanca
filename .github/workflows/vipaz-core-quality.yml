@@ -74,5 +74,9 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261012_vipaz_confirm_participant_DRAFT.sql
       - name: Verify explicit confirmation, audit and denial
         run: psql -v ON_ERROR_STOP=1 -f tests/db/confirm-participant.sql
+      - name: Install native confirmation uniqueness draft in isolated database
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261012_vipaz_confirmed_operation_uniqueness_DRAFT.sql
+      - name: Verify native confirmation operation uniqueness
+        run: psql -v ON_ERROR_STOP=1 -f tests/db/confirmed-operation-uniqueness.sql
       - name: Verify synthetic institutional and partner isolation
         run: psql -v ON_ERROR_STOP=1 -f tests/db/authorization-scenarios.sql
