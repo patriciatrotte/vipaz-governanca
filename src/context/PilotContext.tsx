@@ -1038,7 +1038,8 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
   // 2. Com o ciclo confirmado, cria a sessão investigativa
   //    e registra o interlocutor como participante.
   const sessionLegacyId = `session-${newCycle.id}`;
-  const participantLegacyId = `interview-respondent-${organizationId}`;
+  // Identifica a participação neste ciclo, não a pessoa ou a organização.
+  const participantLegacyId = `interview-respondent-${newCycle.id}`;
 
   const sessionResponse = await fetch('/api/data/investigation-session', {
     method: 'POST',
