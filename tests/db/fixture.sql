@@ -7,7 +7,18 @@ CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS
 $$ SELECT nullif(current_setting('vipaz.test_uid', true), '')::uuid $$;
 CREATE FUNCTION vipaz_private.is_global_admin() RETURNS boolean LANGUAGE sql STABLE AS
 $$ SELECT current_setting('vipaz.test_admin', true) = 'yes' $$;
-CREATE TABLE public.governance_cycles (id uuid PRIMARY KEY);
+CREATE TABLE public.organizations (id uuid PRIMARY KEY);
+INSERT INTO public.organizations(id) VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'),('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+CREATE TABLE public.governance_cycles (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  legacy_id text UNIQUE,
+  organization_id uuid REFERENCES public.organizations(id),
+  name text,
+  methodology_code text,
+  methodology_version text,
+  status text,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb
+);
 CREATE TABLE public.investigation_sessions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   legacy_id text UNIQUE,
