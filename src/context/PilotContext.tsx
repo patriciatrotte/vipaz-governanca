@@ -1064,6 +1064,7 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
     ...newCycle,
     id: centralCycleId,
     legacyId: newCycle.id,
+    investigationSessionId: String(openResult.session.id),
     organizationId: org.id
   };
 
