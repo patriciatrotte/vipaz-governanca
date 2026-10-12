@@ -947,7 +947,7 @@ export const PilotProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       const response = await fetch('/api/data/organizations', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getInstitutionalAccessToken() || ''}` },
         body: JSON.stringify({
           legacyId: newOrg.id,
           name: newOrg.name,
@@ -1003,7 +1003,7 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
   // 1. Confirma primeiro o ciclo na base central.
   const cycleResponse = await fetch('/api/data/cycles', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getInstitutionalAccessToken() || ''}` },
     body: JSON.stringify({
       legacyId: newCycle.id,
       organizationLegacyId: organizationId,
@@ -1029,7 +1029,7 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
 
   const sessionResponse = await fetch('/api/data/investigation-session', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getInstitutionalAccessToken() || ''}` },
     body: JSON.stringify({
       cycleLegacyId: newCycle.id,
       sessionLegacyId,
