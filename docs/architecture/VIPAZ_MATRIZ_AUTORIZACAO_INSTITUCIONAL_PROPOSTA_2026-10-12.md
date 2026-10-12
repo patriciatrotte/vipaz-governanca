@@ -1,44 +1,57 @@
-# VIPAZ — Matriz de autorização institucional (proposta v0.1)
-Data: 2026-10-12. Estado: **PROPOSTA PARA VALIDAÇÃO**, não representa política implantada.
+# VIPAZ — Matriz de perfis e autorização (reconciliação v0.2)
+Data: 2026-10-12. Estado: **RECONCILIAÇÃO DE DECISÕES; NÃO É MIGRAÇÃO**.
 
-## Princípios
-- Negação por padrão; identidade vem do Supabase Auth, nunca de perfis simulados no cliente.
-- O vínculo institucional deve ser ativo, não revogado e válido na data da operação.
-- A autorização deve ser verificada no banco para cada recurso, considerando organização, ciclo e sessão.
-- Acesso de leitura não implica autorização para escrever; facilitação não implica administração.
-- Não confundir o administrador da plataforma com o responsável pela decisão institucional.
-- Mudanças de autorização exigem testes de acesso cruzado, registro de decisão e revisão de segurança.
+## Correção de rumo
+Esta versão substitui a hipótese genérica da v0.1 de que o facilitador seria um papel institucional. Conforme esclarecimento da direção do produto, **Facilitador VIPAZ e Administrador VIPAZ são papéis da operação VIPAZ**, enquanto **Gestor Institucional** representa a organização. Uma empresa como a Invicta atua como **parceiro multi-institucional**, não como gestor de todas as organizações atendidas.
 
-## Matriz-alvo — sujeita à validação de negócio e modelagem dos papéis
-| Operação | Administrador VIPAZ | Gestor institucional autorizado | Facilitador vinculado ao ciclo | Membro somente leitura | Sem vínculo |
+A nomenclatura exata e os códigos técnicos dos papéis de parceiro e interlocutor devem ser confirmados nos registros metodológicos originais; não se deve presumir que o nome de exibição seja o valor de `role_code` no banco.
+
+## Identidade, declaração e autorização
+1. Cadastro/login: autentica a identidade; pode registrar a função declarada e a instituição informada.
+2. Vínculo: convite, aprovação ou atribuição confirmam quem a pessoa representa e quais instituições/ciclos pode acessar.
+3. Autorização: regras no banco validam papel, escopo, situação ativa, validade e revogação em **cada operação**.
+4. Experiência: exibir o ambiente pertinente ao papel confirmado, sem transformar a complexidade dos vínculos em etapas desnecessárias.
+
+**Autodeclaração não é concessão de privilégio.** Uma pessoa pode acumular vínculos e papéis; a autorização deve considerar o contexto da operação.
+
+## Perfis conceituais já definidos — reconciliação
+| Perfil | Âmbito | Observação |
+|---|---|---|
+| Administrador VIPAZ | Global/plataforma | Código `ADMIN_VIPAZ` já referenciado no código; exige vínculo global válido |
+| Facilitador VIPAZ | Operação VIPAZ | Atua nos ciclos atribuídos; **não é papel institucional autodeclarado** |
+| Parceiro da VIPAZ (ex.: Invicta) | Parceiro e carteira de organizações vinculadas | Não confundir carteira com administração institucional; confirmar denominação/código anteriores |
+| Gestor Institucional | Organização específica | Papel declarado no cadastro requer vínculo confirmado com a organização |
+| Participante / Interlocutor Principal | Investigação institucional | Papel de participação na investigação não implica administração de usuários ou organização |
+| Encarregado | Função institucional | Não presumir perfil de acesso autônomo sem decisão expressa |
+
+## Matriz funcional para especificação (não implementada)
+| Ação | Administrador VIPAZ | Facilitador VIPAZ | Parceiro VIPAZ | Gestor institucional | Interlocutor |
 |---|---|---|---|---|---|
-| Consultar organização vinculada | Sim, mediante papel global válido | Sim, na própria organização | Sim, se necessário ao ciclo | Sim, no próprio escopo | Não |
-| Consultar ciclo e sessões | Sim, mediante papel global válido | Sim, na própria organização | Sim, nos ciclos atribuídos | Sim, nos ciclos explicitamente liberados | Não |
-| Criar organização | Sim, operação administrativa | Não, salvo delegação formal futura | Não | Não | Não |
-| Criar ciclo | Sim, operação administrativa | Proposta: sim, na própria organização | Não | Não | Não |
-| Criar sessão e participante | Sim, operação administrativa | Proposta: sim, na própria organização | Proposta: sim, no ciclo atribuído | Não | Não |
-| Alterar evidência ou resposta | Somente com atribuição operacional explícita | Proposta: conforme atribuição | Proposta: conforme atribuição | Não | Não |
-| Administrar vínculos e papéis | Sim, com trilha de auditoria | Proposta: apenas papéis delegáveis da própria organização | Não | Não | Não |
+| Configurar operação e vínculos globais | Sim | Não | Não | Não | Não |
+| Visualizar instituições | Conforme escopo global autorizado | Apenas as atribuídas | Apenas as vinculadas à carteira | Apenas sua instituição | Apenas o necessário à participação |
+| Visualizar ciclos | Conforme escopo global autorizado | Apenas os atribuídos | Apenas os autorizados na carteira | Apenas sua instituição | Apenas os pertinentes à participação |
+| Criar ciclo/sessão | **Pendente regra operacional** | **Pendente regra operacional** | **Pendente delegação** | **Pendente decisão** | Não por padrão |
+| Inserir resposta/evidência | Conforme atribuição específica | Conforme atribuição específica | Conforme atribuição específica | Conforme atribuição específica | Conforme participação autorizada |
+| Gerir vínculos institucionais | Conforme atribuição administrativa | Não por padrão | Não por padrão | **Pendente regra de confirmação/delegação** | Não |
 
-**Não implementar os campos “Proposta” sem decisão explícita.** A função RPC atualmente proposta permite escrita somente ao administrador global; a matriz não deve ser confundida com sua implementação.
+As células pendentes **não autorizam escrita**. A função RPC DRAFT existente permite apenas administrador global e não representa a matriz completa.
 
-## Casos de teste obrigatórios
-1. Usuário da organização A não consulta organização, ciclos, sessões, participantes ou evidências de B.
-2. Usuário de A não cria sessão vinculada a ciclo de B, mesmo conhecendo o UUID.
-3. Usuário com vínculo revogado ou expirado perde acesso, inclusive em sessão já aberta.
-4. Usuário sem vínculo recebe recusa; perfil simulado no frontend não eleva privilégios.
-5. Facilitador do ciclo A1 não recebe acesso automático ao ciclo A2.
-6. Administrador global inválido, expirado ou revogado não recebe acesso global.
-7. Respostas de erro não expõem dados da instituição B.
-8. Uma operação rejeitada não deixa sessão ou participante parcialmente persistido.
+## Evidência de implementação já observada
+- `api/data/institutionalScope.ts` consulta organizações, ciclos e papel `ADMIN_VIPAZ` usando JWT do solicitante, deixando RLS decidir visibilidade.
+- `src/services/institutionalAuth.ts` autentica via Supabase Auth e verifica identidade; token em memória.
+- O banco possui `global_user_roles` (2 registros no resumo de metadados), `organization_memberships` (0), `vipaz_partner_memberships` (0) e `vipaz_partner_organization_links` (0); todas com RLS habilitada. Contagens são informadas por metadados e não substituem homologação transacional.
+- Os campos `role_code` existem, mas **a lista exata de valores aceitos e suas políticas efetivas ainda não foi verificada**.
+- Atribuição de facilitador a ciclo não foi comprovada pela inspeção realizada.
 
-## Lacunas para homologação
-- Confirmar estrutura e valores reais dos papéis e vínculos em banco por consulta somente leitura.
-- Testar RLS com usuários JWT reais em ambiente isolado, não com GUC simulada.
-- Validar função SECURITY DEFINER, proprietário e concessões EXECUTE.
-- Conferir ausência de duplicidade de `interview_participants.legacy_id` antes de eventual restrição UNIQUE.
-- Definir quem autoriza delegações, revogações e acessos extraordinários.
-- Documentar trilha de auditoria e retenção de evidências.
+## Critérios de aceite para testes futuros
+1. Autodeclarar `Gestor Institucional` sem vínculo confirmado não concede acesso.
+2. Gestor A não lê ou escreve dados de B.
+3. Parceiro com carteira A+B não vê C.
+4. Facilitador VIPAZ atribuído ao ciclo A1 não acessa automaticamente A2.
+5. Interlocutor responde apenas no escopo autorizado e não administra a instituição.
+6. Revogação/expiração corta acesso, mesmo com token previamente emitido.
+7. Perfil simulado no frontend não altera autorização no banco.
+8. Falha de autorização não deixa escrita parcial.
 
-## Decisão de produto
-Manter a escrita institucional desabilitada até homologação. Preservar cinco pilotos e não aplicar SQL DRAFT em produção. A matriz é especificação de controle de acesso, não uma migração.
+## Decisões e limites
+**Confirmado pela direção:** facilitador e administrador pertencem à operação VIPAZ; gestor pertence à instituição; parceiro pode atender múltiplas instituições. **Ainda a verificar:** nomes/códigos exatos, procedimento de confirmação de vínculos, delegações e regras finas de escrita. Nenhuma política RLS foi alterada. Não executar migrações DRAFT nem alterar os cinco pilotos.
