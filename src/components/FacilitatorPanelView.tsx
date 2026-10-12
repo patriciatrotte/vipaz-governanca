@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ConfirmParticipantPanel } from './ConfirmParticipantPanel';
+import { getInstitutionalAccessToken } from '../services/institutionalAuth';
 import { usePilot } from '../context/PilotContext';
 import { DOORS_DEFINITIONS } from '../data/methodologyConstants';
 import { 
@@ -67,6 +68,24 @@ export const FacilitatorPanelView: React.FC = () => {
     addPendingItem,
     currentUser
   } = usePilot();
+
+  const [canonicalSessionId,setCanonicalSessionId]=useState<string|null>(null);
+  useEffect(()=>{
+    let cancelled=false;
+    setCanonicalSessionId(null);
+    const cycleId=currentCycle?.id;
+    const token=getInstitutionalAccessToken();
+    if(!cycleId||!token||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cycleId))return;
+    void fetch(`/api/data/cycle-session?cycleId=${encodeURIComponent(cycleId)}`,{
+      headers:{Authorization:`Bearer ${token}`},cache:'no-store'
+    }).then(async response=>{
+      if(!response.ok)throw Error('session lookup unavailable');
+      return response.json();
+    }).then(data=>{
+      if(!cancelled&&typeof data?.session?.id==='string')setCanonicalSessionId(data.session.id);
+    }).catch(()=>{if(!cancelled)setCanonicalSessionId(null);});
+    return ()=>{cancelled=true;};
+  },[currentCycle?.id]);
 
   // Localiza a resposta original selecionada no fluxo de investigação
   const focusedResponse = activeResponseId 
@@ -338,7 +357,7 @@ export const FacilitatorPanelView: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
-      {currentCycle?.investigationSessionId && <ConfirmParticipantPanel sessionId={currentCycle.investigationSessionId} />}
+      {canonicalSessionId && <ConfirmParticipantPanel key={canonicalSessionId} sessionId={canonicalSessionId} />}
       {/* Barra de Retorno à Investigação da Porta (Orientação de Retorno do Facilitador) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900 border border-slate-800 px-4 py-3 rounded-xl shadow-xs">
         <button
