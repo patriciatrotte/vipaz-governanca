@@ -11,7 +11,7 @@ export default async function handler(req: Request, res: Response) {
   if (!url || !key) return res.status(503).json({ error: 'database_not_configured' });
   const b = req.body || {};
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  if (!uuid.test(b.cycleId) || !/^D1\.[1-6]$/.test(b.doorId || '') ||
+  if (!uuid.test(b.cycleId) || !uuid.test(b.sessionId) || !/^D1\.[1-6]$/.test(b.doorId || '') ||
     !b.questionLegacyId || !b.responseLegacyId ||
     typeof b.questionText !== 'string' || !b.questionText.trim() ||
     typeof b.responseText !== 'string' || !b.responseText.trim() ||
@@ -35,14 +35,16 @@ export default async function handler(req: Request, res: Response) {
     return rows[0].id;
   }
   try {
+    // A response must be attached to an explicitly identified canonical session.
     const sessions = await read('investigation_sessions', new URLSearchParams({
-      select: 'id', cycle_id: 'eq.' + b.cycleId, order: 'created_at.asc', limit: '1'
+      select: 'id,cycle_id', id: 'eq.' + b.sessionId,
+      cycle_id: 'eq.' + b.cycleId, limit: '2'
     }));
-    const sessionId = sessions[0]?.id || await insert('investigation_sessions', {
-      cycle_id: b.cycleId, modality: 'FACILITATED',
-      facilitator_name: b.respondentName || 'Facilitador VIPAZ',
-      metadata: { source: 'VIPAZ_NATIVE' }
-    });
+    if (!Array.isArray(sessions) || sessions.length !== 1 ||
+        sessions[0]?.id !== b.sessionId || sessions[0]?.cycle_id !== b.cycleId) {
+      return res.status(409).json({ error: 'interview_session_not_unambiguously_resolved' });
+    }
+    const sessionId = b.sessionId;
     const existingQuestions = await read('question_instances', new URLSearchParams({
       select: 'id', session_id: 'eq.' + sessionId, legacy_id: 'eq.' + b.questionLegacyId, limit: '1'
     }));
@@ -63,6 +65,6 @@ export default async function handler(req: Request, res: Response) {
     return res.status(201).json({ saved: true, sessionId, questionId, responseId });
   } catch (error) {
     console.error('[VIPAZ] Interview central write failed', error);
-    return res.status(502).json({ error: 'interview_write_failed', detail: String(error instanceof Error ? error.message : error).slice(0,400) });
+    return res.status(502).json({ error: 'interview_write_failed' });
   }
 }
