@@ -1239,7 +1239,8 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
 
     const token = getInstitutionalAccessToken();
     const cycleId = currentCycle?.id;
-    if (!token || !cycleId) {
+    const sessionId = currentCycle?.investigationSessionId;
+    if (!token || !cycleId || !sessionId) {
       window.alert('Resposta não salva: autentique-se institucionalmente e selecione um ciclo central.');
       return;
     }
@@ -1249,7 +1250,7 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
           body: JSON.stringify({
-            cycleId, doorId, questionLegacyId: newQuestionInstance.id,
+            cycleId, sessionId, doorId, questionLegacyId: newQuestionInstance.id,
             responseLegacyId: newResponse.id, questionText: newQuestionInstance.text,
             responseText: newResponse.originalText, respondentName: user.name,
             respondentRole: user.department || user.role
