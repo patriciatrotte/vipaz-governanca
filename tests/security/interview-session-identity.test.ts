@@ -28,7 +28,7 @@ async function environment(run:()=>Promise<void>){
 test('interview rejects absent or invalid session identity without network',async()=>environment(async()=>{
   let calls=0;
   globalThis.fetch=(async()=>{calls++;throw Error('unexpected');}) as typeof fetch;
-  for(const id of [undefined,'legacy-session','']){
+  for(const id of [null,'legacy-session','']){
     const r=response();await handler(request(id),r.res as any);
     assert.equal(r.status(),400);
   }
