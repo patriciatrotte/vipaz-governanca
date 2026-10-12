@@ -122,3 +122,23 @@ BEGIN
  IF n <> 0 THEN RAISE EXCEPTION 'unauthorized session persisted'; END IF;
 END $$;
 SELECT 'Cross-cycle identity and denial checks passed' AS result;
+
+-- Current DRAFT contract: a participant legacy identifier cannot silently
+-- be reused in another session, even though production has no UNIQUE constraint.
+-- This is a safety test, not a final decision on global identifier semantics.
+SET vipaz.test_admin = 'yes';
+DO $$
+DECLARE
+ n integer;
+BEGIN
+ BEGIN
+   PERFORM public.vipaz_create_investigation_atomic(
+     '11111111-1111-4111-8111-111111111111',
+     's-other-participant', 'Facilitador', 'p-1', 'Pessoa', 'Responsavel');
+   RAISE EXCEPTION 'participant legacy identifier reused across sessions';
+ EXCEPTION WHEN unique_violation THEN NULL;
+ END;
+ SELECT count(*) INTO n FROM public.investigation_sessions
+ WHERE legacy_id='s-other-participant';
+ IF n <> 0 THEN RAISE EXCEPTION 'cross-session participant conflict left partial session'; END IF;
+END $$;
