@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { getInstitutionalAccessToken, subscribeInstitutionalSession } from '../services/institutionalAuth';
+import { getInstitutionalAccessToken, getInstitutionalSignedInEmail, subscribeInstitutionalSession } from '../services/institutionalAuth';
 import {
   Organization,
   EvaluationCycle,
@@ -983,17 +983,54 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
     throw new Error('Organização não encontrada para iniciar o ciclo D1.');
   }
 
-  const newCycleId =
-    `cycle-d1-${organizationId.replace('org-camara-', '')}-${Date.now().toString(36)}`;
-
+  // Persist only an operation identifier and non-personal cycle metadata.
+  // Namespace by verified institutional login and canonical organization.
+  // The database remains authoritative for identity and permissions.
+  const signedInEmail = getInstitutionalSignedInEmail();
+  const token = getInstitutionalAccessToken();
+  if (!signedInEmail || !token) {
+    throw new Error('Autenticação institucional necessária para iniciar o ciclo.');
+  }
+  const pendingKey = `VIPAZ_PENDING_D1_OPEN:${encodeURIComponent(signedInEmail.toLowerCase())}:${org.id}`;
+  type PendingD1Open = { cycleLegacyId: string; cycleName: string; methodologyVersion: string };
+  let pending: PendingD1Open | null = null;
+  try {
+    const saved = localStorage.getItem(pendingKey);
+    if (saved) {
+      const parsed: unknown = JSON.parse(saved);
+      if (parsed && typeof parsed === 'object' &&
+          typeof (parsed as PendingD1Open).cycleLegacyId === 'string' &&
+          typeof (parsed as PendingD1Open).cycleName === 'string' &&
+          typeof (parsed as PendingD1Open).methodologyVersion === 'string') {
+        pending = parsed as PendingD1Open;
+      } else {
+        throw new Error('Operação pendente inválida. É necessária reconciliação.');
+      }
+    }
+  } catch (error) {
+    throw new Error('Não foi possível recuperar a abertura pendente. Nenhum novo ciclo foi iniciado.');
+  }
+  if (!pending) {
+    pending = {
+      cycleLegacyId: `cycle-d1-${crypto.randomUUID()}`,
+      cycleName: `Ciclo D1 Inicial ${new Date().getFullYear()}.${new Date().getMonth() < 6 ? '1' : '2'}`,
+      methodologyVersion: METHODOLOGY_VERSION
+    };
+    try {
+      localStorage.setItem(pendingKey, JSON.stringify(pending));
+    } catch {
+      throw new Error('Não foi possível preservar o identificador da operação. Nenhum ciclo foi iniciado.');
+    }
+  }
+  const newCycleId = pending.cycleLegacyId;
   const now = new Date().toISOString();
 
   const newCycle: EvaluationCycle = {
     id: newCycleId,
     organizationId,
     dimension: 'D1',
-    methodologyVersion: METHODOLOGY_VERSION,
-    name: `Ciclo D1 Inicial ${new Date().getFullYear()}.${new Date().getMonth() < 6 ? '1' : '2'}`,
+    methodologyVersion: pending.methodologyVersion,
+    name: pending.cycleName,
     cycleType: 'INITIAL_ASSESSMENT',
     status: 'NAO_INICIADO',
     createdAt: now,
@@ -1077,6 +1114,10 @@ const startD1Cycle = async (organizationId: string): Promise<EvaluationCycle> =>
   //    ciclo -> sessão -> participante estar confirmada.
   // Avoid selecting from the stale pre-update cycles closure.
   setCurrentCycleId(centralCycleId);
+
+  // Clear only after the complete operation and local state are confirmed.
+  // If this cleanup fails, a future retry reuses the same database operation.
+  try { localStorage.removeItem(pendingKey); } catch { /* safe to retry */ }
 
   return confirmedCycle;
 };
