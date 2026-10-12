@@ -3,7 +3,7 @@ import type { Request, Response } from 'express';
 export default async function handler(req: Request, res: Response) {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
-  const token = /^Bearer\\s+([^\\s]+)$/i.exec(req.headers.authorization || '')?.[1];
+  const token = /^Bearer\s+([^\s]+)$/i.exec(req.headers.authorization || '')?.[1];
   res.setHeader('Cache-Control', 'no-store');
   if (!token) return res.status(401).json({ error: 'authentication_required' });
   const authHeaders = { apikey: key || '', Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
