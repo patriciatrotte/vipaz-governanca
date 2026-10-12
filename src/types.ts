@@ -22,6 +22,7 @@ export type CycleStatus = 'NAO_INICIADO' | 'EM_ANDAMENTO' | 'CONCLUIDO_VALIDADO'
 export interface EvaluationCycle {
   id: string; // cycle_id (UUID Canônico)
   legacyId?: string;
+  investigationSessionId?: string; // UUID returned by the atomic opening RPC
   organizationId: string;
   name: string; // ex: "Ciclo D1 Inicial 2026.1"
   dimension: 'D1';
