@@ -17,6 +17,16 @@ export default async function handler(req: Request, res: Response) {
   const key=process.env.SUPABASE_PUBLISHABLE_KEY||process.env.VITE_SUPABASE_PUBLISHABLE_KEY||process.env.SUPABASE_ANON_KEY;
   if(!url||!key)return res.status(503).json({error:'database_not_configured'});
   try{
+    // RLS on participants allows cycle members to read. Confirmation notes
+    // are more sensitive: require the same global-admin predicate as writes.
+    // The role table SELECT policy itself calls vipaz_private.is_global_admin().
+    const rolesResponse=await fetch(`${url}/rest/v1/global_user_roles?select=role_code&role_code=eq.ADMIN_VIPAZ&status=eq.ACTIVE&limit=1`,{
+      headers:{apikey:key,Authorization:`Bearer ${token}`,Accept:'application/json'}
+    });
+    if(!rolesResponse.ok)return res.status(rolesResponse.status===401?401:rolesResponse.status===403?403:502).json({error:'confirmation_reconciliation_authorization_failed'});
+    const roles=await rolesResponse.json();
+    if(!Array.isArray(roles))return res.status(502).json({error:'confirmation_reconciliation_authorization_invalid'});
+    if(!roles.some(role=>role?.role_code==='ADMIN_VIPAZ'))return res.status(403).json({error:'confirmation_reconciliation_forbidden'});
     const upstream=await fetch(`${url}/rest/v1/interview_participants?legacy_id=eq.${encodeURIComponent(operationId)}&select=id,legacy_id,session_id,name,role,metadata&limit=2`,{
       headers:{apikey:key,Authorization:`Bearer ${token}`,Accept:'application/json'}
     });
