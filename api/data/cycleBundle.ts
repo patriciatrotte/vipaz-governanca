@@ -3,10 +3,10 @@ import type { Request, Response } from 'express';
 const getSupabaseConfig = (authorization: string | undefined) => {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
-  const token = /^Bearer\\s+([^\\s]+)$/i.exec(authorization || '')?.[1];
+  const token = /^Bearer\s+([^\s]+)$/i.exec(authorization || '')?.[1];
   if (!url || !key) throw new Error('Supabase public configuration is missing.');
   if (!token) throw new Error('authentication_required');
-  return { url: url.replace(/\\/$/, ''), key, token };
+  return { url: url.replace(/\/$/, ''), key, token };
 };
 
 const buildHeaders = (key: string, token: string) => ({
