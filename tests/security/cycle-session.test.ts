@@ -72,3 +72,16 @@ test('canonical session lookup never returns records on upstream denial',async()
     }
   });
 });
+
+test('native session lookup can disambiguate using stable legacy ID',async()=>{
+  await environment(async()=>{
+    const legacy='session-cycle-d1-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    globalThis.fetch=(async(url:string|URL|Request)=>{
+      assert.ok(String(url).includes('legacy_id=eq.'+legacy));
+      return new Response(JSON.stringify([{id:SESSION,cycle_id:CYCLE,legacy_id:legacy}]),{status:200});
+    }) as typeof fetch;
+    const r=response();
+    await handler({...request(),query:{cycleId:CYCLE,sessionLegacyId:legacy}},r.res as any);
+    assert.equal(r.status(),200);
+  });
+});
