@@ -52,8 +52,8 @@ BEGIN
       OR v_cycle.name IS DISTINCT FROM p_cycle_name
       OR v_cycle.methodology_code IS DISTINCT FROM 'VIPAZ-D1'
       OR v_cycle.methodology_version IS DISTINCT FROM p_methodology_version
-      OR v_cycle.status IS DISTINCT FROM 'NOT_STARTED'
-      OR v_cycle.metadata IS DISTINCT FROM '{"dimension":"D1","cycle_type":"INITIAL_ASSESSMENT"}'::jsonb THEN
+      OR v_cycle.metadata->>'dimension' IS DISTINCT FROM 'D1'
+      OR v_cycle.metadata->>'cycle_type' IS DISTINCT FROM 'INITIAL_ASSESSMENT' THEN
       RAISE EXCEPTION 'cycle_identity_conflict' USING ERRCODE='23505';
     END IF;
   ELSE
@@ -80,6 +80,8 @@ BEGIN
     RETURNING * INTO v_session;
   END IF;
 
+  -- An existing cycle may legitimately advance to IN_PROGRESS/COMPLETED or
+  -- gain metadata after creation. Retrying the opening must not reset it.
   IF p_participant_name IS NOT NULL THEN
     PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('participant:' || p_participant_legacy_id,0));
     SELECT * INTO v_existing FROM public.interview_participants
