@@ -25,7 +25,7 @@ INSERT INTO public.vipaz_test_partner_links VALUES
 ('P','B','ACTIVE',now()-interval '1 day',NULL),
 ('P','C','SUSPENDED',now()-interval '1 day',NULL);
 CREATE FUNCTION public.vipaz_test_visible(p_org text) RETURNS boolean
-LANGUAGE sql STABLE AS $$
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $
  SELECT COALESCE(current_setting('vipaz.test_admin',true),'no')='yes'
  OR EXISTS (
  SELECT 1 FROM public.vipaz_test_memberships m
