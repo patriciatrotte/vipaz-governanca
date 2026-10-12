@@ -25,7 +25,7 @@ INSERT INTO public.vipaz_test_partner_links VALUES
 ('P','B','ACTIVE',now()-interval '1 day',NULL),
 ('P','C','SUSPENDED',now()-interval '1 day',NULL);
 CREATE FUNCTION public.vipaz_test_visible(p_org text) RETURNS boolean
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $vipaz_authz$
  SELECT COALESCE(current_setting('vipaz.test_admin',true),'no')='yes'
  OR EXISTS (
  SELECT 1 FROM public.vipaz_test_memberships m
@@ -42,7 +42,7 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $
  AND m.valid_from<=now() AND (m.valid_until IS NULL OR m.valid_until>now())
  AND l.status='ACTIVE' AND l.valid_from<=now() AND (l.valid_until IS NULL OR l.valid_until>now())
  );
-$$;
+$vipaz_authz$;
 ALTER TABLE public.vipaz_test_organizations ENABLE ROW LEVEL SECURITY;
 GRANT SELECT ON public.vipaz_test_organizations TO authenticated;
 CREATE POLICY vipaz_test_read ON public.vipaz_test_organizations FOR SELECT TO authenticated
