@@ -10,11 +10,11 @@ export type PendingCycleOpen = {
 
 export type PendingCycleStore = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
-export function pendingCycleKey(email: string, canonicalOrganizationId: string): string {
-  if (!email.trim() || !canonicalOrganizationId.trim()) {
+export function pendingCycleKey(userId: string, canonicalOrganizationId: string): string {
+  if (!userId.trim() || !canonicalOrganizationId.trim()) {
     throw new Error('Identidade institucional incompleta.');
   }
-  return `VIPAZ_PENDING_D1_OPEN:${encodeURIComponent(email.trim().toLowerCase())}:${canonicalOrganizationId}`;
+  return `VIPAZ_PENDING_D1_OPEN:${encodeURIComponent(userId.trim().toLowerCase())}:${canonicalOrganizationId}`;
 }
 
 export function getOrCreatePendingCycle(
