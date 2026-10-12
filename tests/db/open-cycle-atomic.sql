@@ -16,6 +16,16 @@ BEGIN
     OR b->>'created' IS DISTINCT FROM 'false' THEN
     RAISE EXCEPTION 'whole-operation retry failed';
   END IF;
+  UPDATE public.governance_cycles
+    SET status='IN_PROGRESS',metadata=metadata || '{"progress_marker":"retained"}'::jsonb
+    WHERE legacy_id='cycle-open-1';
+  b := public.vipaz_open_cycle_atomic('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    'cycle-open-1','Ciclo Inicial','1.0','session-open-1','Facilitador',
+    'participant-open-1','Interlocutor','Gestor');
+  IF b->'cycle'->>'status' IS DISTINCT FROM 'IN_PROGRESS'
+    OR b->'cycle'->'metadata'->>'progress_marker' IS DISTINCT FROM 'retained' THEN
+    RAISE EXCEPTION 'retry changed existing cycle progress';
+  END IF;
   BEGIN
     PERFORM public.vipaz_open_cycle_atomic('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
       'cycle-open-1','Changed','1.0','session-open-1','Facilitador',
