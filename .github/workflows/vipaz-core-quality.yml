@@ -70,5 +70,9 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261012_vipaz_open_cycle_atomic_DRAFT.sql
       - name: Verify whole-cycle rollback and idempotency
         run: psql -v ON_ERROR_STOP=1 -f tests/db/open-cycle-atomic.sql
+      - name: Install participant confirmation draft in isolated database
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261012_vipaz_confirm_participant_DRAFT.sql
+      - name: Verify explicit confirmation, audit and denial
+        run: psql -v ON_ERROR_STOP=1 -f tests/db/confirm-participant.sql
       - name: Verify synthetic institutional and partner isolation
         run: psql -v ON_ERROR_STOP=1 -f tests/db/authorization-scenarios.sql
