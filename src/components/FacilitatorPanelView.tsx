@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ConfirmParticipantPanel } from './ConfirmParticipantPanel';
 import { usePilot } from '../context/PilotContext';
 import { DOORS_DEFINITIONS } from '../data/methodologyConstants';
 import { 
@@ -337,6 +338,7 @@ export const FacilitatorPanelView: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {currentCycle?.investigationSessionId && <ConfirmParticipantPanel sessionId={currentCycle.investigationSessionId} />}
       {/* Barra de Retorno à Investigação da Porta (Orientação de Retorno do Facilitador) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900 border border-slate-800 px-4 py-3 rounded-xl shadow-xs">
         <button
