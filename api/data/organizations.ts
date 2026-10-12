@@ -1,14 +1,17 @@
 import type { Request, Response } from 'express';
-import { buildSupabaseHeaders } from '../../src/services/persistence/supabaseAdapters.js';
 
 export default async function handler(req: Request, res: Response) {
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SECRET_KEY;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY;
+  const token = /^Bearer\\s+([^\\s]+)$/i.exec(req.headers.authorization || '')?.[1];
+  res.setHeader('Cache-Control', 'no-store');
+  if (!token) return res.status(401).json({ error: 'authentication_required' });
+  const authHeaders = { apikey: key || '', Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
   if (!url || !key) return res.status(503).json({ error: 'database_not_configured' });
 
   if (req.method === 'GET') {
-    const r = await fetch(`${url}/rest/v1/organizations?select=*&order=created_at.asc`, { headers: buildSupabaseHeaders(key) });
-    if (!r.ok) return res.status(502).json({ error: 'organizations_read_failed', details: await r.text() });
+    const r = await fetch(`${url}/rest/v1/organizations?select=*&order=created_at.asc`, { headers: authHeaders });
+    if (!r.ok) return res.status(r.status === 401 ? 401 : r.status === 403 ? 403 : 502).json({ error: 'organizations_read_failed', details: await r.text() });
     return res.status(200).json(await r.json());
   }
 
@@ -25,7 +28,7 @@ export default async function handler(req: Request, res: Response) {
           };
     const r = await fetch(`${url}/rest/v1/organizations?select=*`, {
       method: 'POST',
-      headers: { ...buildSupabaseHeaders(key), Prefer: 'return=representation,resolution=merge-duplicates' },
+      headers: { ...authHeaders, Prefer: 'return=representation,resolution=merge-duplicates' },
       body: JSON.stringify(payload)
     });
     if (!r.ok) {
