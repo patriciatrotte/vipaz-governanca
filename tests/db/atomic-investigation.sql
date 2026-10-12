@@ -46,3 +46,50 @@ BEGIN
  END;
 END $$;
 SELECT 'VIPAZ disposable DB integration checks passed' AS result;
+
+-- Confirm actual database privileges rather than only simulated admin flags.
+DO $$
+DECLARE fn regprocedure := 'public.vipaz_create_investigation_atomic(uuid,text,text,text,text,text)'::regprocedure;
+BEGIN
+ IF NOT has_function_privilege('authenticated', fn, 'EXECUTE') THEN
+   RAISE EXCEPTION 'authenticated execute grant missing';
+ END IF;
+ IF has_function_privilege('anon', fn, 'EXECUTE') THEN
+   RAISE EXCEPTION 'anon execute privilege unexpected';
+ END IF;
+END $$;
+SET ROLE anon;
+DO $$
+BEGIN
+ BEGIN
+   PERFORM public.vipaz_create_investigation_atomic(
+     '11111111-1111-4111-8111-111111111111','anon-attempt','Facilitador');
+   RAISE EXCEPTION 'anon unexpectedly succeeded';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+END $$;
+RESET ROLE;
+SET vipaz.test_admin = 'yes';
+SET ROLE authenticated;
+DO $$
+DECLARE response jsonb;
+BEGIN
+ response := public.vipaz_create_investigation_atomic(
+   '11111111-1111-4111-8111-111111111111','role-success','Facilitador');
+ IF response->'session'->>'legacy_id' IS DISTINCT FROM 'role-success' THEN
+   RAISE EXCEPTION 'authenticated role result unexpected';
+ END IF;
+END $$;
+RESET ROLE;
+SET vipaz.test_admin = 'no';
+SET ROLE authenticated;
+DO $$
+BEGIN
+ BEGIN
+   PERFORM public.vipaz_create_investigation_atomic(
+     '11111111-1111-4111-8111-111111111111','role-denied','Facilitador');
+   RAISE EXCEPTION 'non-admin unexpectedly succeeded';
+ EXCEPTION WHEN insufficient_privilege THEN NULL;
+ END;
+END $$;
+RESET ROLE;
