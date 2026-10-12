@@ -21,6 +21,34 @@ export const ConfirmParticipantPanel: React.FC<{ sessionId: string }> = ({ sessi
     try {
       const key=confirmationKey(userId,sessionId);
       const participantLegacyId=getOrCreateConfirmationId(localStorage,key,()=>crypto.randomUUID());
+      // Before any retry, reconcile the opaque operation ID against the database.
+      // A read failure is not evidence that the prior write failed: block replay.
+      const check=await fetch(`/api/data/reconcile-participant?sessionId=${encodeURIComponent(sessionId)}&operationId=${encodeURIComponent(participantLegacyId)}`,{
+        headers:{Authorization:`Bearer ${token}`},cache:'no-store'
+      });
+      if(!check.ok){
+        setMessage('Não foi possível reconciliar a operação pendente. Nenhuma nova gravação foi enviada.');
+        return;
+      }
+      const reconciliation=await check.json();
+      if(reconciliation?.state==='CONFIRMED'){
+        const participant=reconciliation.participant;
+        if(participant?.name!==name.trim()||
+           (participant?.role||null)!==(role.trim()||null)||
+           participant?.confirmationNote!==note.trim()||
+           participant?.confirmedBy!==userId){
+          setMessage('A operação já foi confirmada com outros dados. Não é seguro repetir; solicite revisão.');
+          return;
+        }
+        setConfirmed(true);
+        setMessage('Confirmação anterior recuperada do registro central.');
+        try{localStorage.removeItem(key);}catch{}
+        return;
+      }
+      if(reconciliation?.state!=='NOT_FOUND'){
+        setMessage('Estado da confirmação não reconhecido. Nenhuma gravação foi enviada.');
+        return;
+      }
       const response=await fetch('/api/data/confirm-participant',{
         method:'POST',
         headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
