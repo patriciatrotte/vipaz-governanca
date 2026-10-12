@@ -32,3 +32,37 @@ jobs:
         run: npm test
       - name: Production build
         run: npm run build
+
+  disposable-db-integration:
+    name: Disposable PostgreSQL atomicity tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test-only-password
+          POSTGRES_DB: vipaz_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d vipaz_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: test-only-password
+      PGDATABASE: vipaz_ci
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Bootstrap isolated schema
+        run: psql -v ON_ERROR_STOP=1 -f tests/db/fixture.sql
+      - name: Install draft function in isolated database
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261012_vipaz_atomic_investigation_DRAFT.sql
+      - name: Verify atomicity and idempotency
+        run: psql -v ON_ERROR_STOP=1 -f tests/db/atomic-investigation.sql
