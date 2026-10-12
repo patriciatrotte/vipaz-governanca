@@ -27,6 +27,11 @@ export default async function handler(req: Request, res: Response) {
   }
 
   if (req.method === 'POST') {
+    // A cycle must not be created when its required investigation RPC is disabled.
+    // Otherwise the following session request fails and leaves an orphaned cycle.
+    if (process.env.VIPAZ_ATOMIC_INVESTIGATION_ENABLED !== 'true') {
+      return res.status(503).json({ error: 'atomic_investigation_not_enabled' });
+    }
     try {
       const body = req.body || {};
       const orgFilter = body.organizationId
