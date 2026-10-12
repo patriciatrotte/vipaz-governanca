@@ -54,6 +54,14 @@ BEGIN
   a := public.vipaz_open_cycle_atomic('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     'cycle-no-person','Ciclo Sem Interlocutor','1.0','session-no-person','Facilitador');
   IF a->'participant' <> 'null'::jsonb THEN RAISE EXCEPTION 'unexpected participant'; END IF;
+  INSERT INTO public.interview_participants(legacy_id,session_id,name,participant_type)
+  VALUES ('later-confirmed', (a->'session'->>'id')::uuid,'Confirmed later','RESPONDENT');
+  b := public.vipaz_open_cycle_atomic('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    'cycle-no-person','Ciclo Sem Interlocutor','1.0','session-no-person','Facilitador');
+  IF b->'session'->>'id' IS DISTINCT FROM a->'session'->>'id'
+     OR b->'participant' <> 'null'::jsonb THEN
+    RAISE EXCEPTION 'participant-free retry changed confirmed session';
+  END IF;
 END $checks$;
 SET vipaz.test_admin = 'no';
 DO $checks$
